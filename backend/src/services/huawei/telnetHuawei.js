@@ -1,56 +1,130 @@
-const { Client } = require('node-telnet-client');
+const net = require('net');
 const logger = require('../../middleware/logger');
 
+// Minimal Telnet client using net.Socket — avoids node-telnet-client's broken server
 class TelnetHuawei {
   constructor(olt) {
     this.olt = olt;
-    this.connection = null;
+    this.socket = null;
     this.connected = false;
+    this._buffer = '';
+    this._waiters = [];
   }
 
-  async connect() {
+  connect() {
     const creds = this._getCredentials();
-    this.connection = new Client();
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error('Telnet connect timeout')), 15000);
-      this.connection.connect({
-        host: this.olt.ip,
-        port: 23,
-        loginPrompt: /[Uu]ser[Nn]ame:|[Ll]ogin:/,
-        passwordPrompt: /[Pp]assword:/,
-        username: creds.username || 'admin',
-        password: creds.password || 'admin',
-        shellPrompt: /[>#]\s*$/,
-        timeout: 10000,
-        negotiationMandatory: false,
+      const socket = new net.Socket();
+      this.socket = socket;
+      const timeout = setTimeout(() => { socket.destroy(); reject(new Error('Telnet connect timeout')); }, 15000);
+
+      socket.connect(23, this.olt.ip);
+
+      socket.on('data', (data) => {
+        // Strip Telnet option bytes (IAC sequences)
+        const stripped = this._stripTelnet(data);
+        this._buffer += stripped;
+        this._dispatch();
       });
-      this.connection.on('ready', () => {
-        clearTimeout(timeout);
-        this.connected = true;
-        resolve();
-      });
-      this.connection.on('error', (err) => { clearTimeout(timeout); reject(err); });
+
+      socket.on('error', (err) => { clearTimeout(timeout); reject(err); });
+      socket.on('close', () => { this.connected = false; });
+
+      // Login sequence: wait for username prompt → send user → wait for password → send pass → wait for shell
+      this._waitFor(/[Uu]ser[Nn]ame:|[Ll]ogin:/i, 12000)
+        .then(() => { socket.write(creds.username + '\r\n'); return this._waitFor(/[Pp]assword:/i, 8000); })
+        .then(() => { socket.write(creds.password + '\r\n'); return this._waitFor(/[>#]\s*$/m, 10000); })
+        .then(() => { clearTimeout(timeout); this.connected = true; resolve(); })
+        .catch((err) => { clearTimeout(timeout); socket.destroy(); reject(err); });
     });
   }
 
   async disconnect() {
-    if (this.connection && this.connected) {
-      try { this.connection.end(); } catch (e) {}
+    if (this.socket) {
+      try { this.socket.destroy(); } catch (e) {}
+      this.socket = null;
       this.connected = false;
     }
   }
 
   async sendCommand(cmd, timeout = 10000) {
     if (!this.connected) await this.connect();
+    this._buffer = '';
+    this.socket.write(cmd + '\r\n');
+    const output = await this._waitFor(/[>#]\s*$/m, timeout);
+    return output;
+  }
+
+  // ── Prompt parsing helpers ──────────────────────────────────────────────────
+
+  _waitFor(pattern, timeout) {
     return new Promise((resolve, reject) => {
-      const t = setTimeout(() => reject(new Error(`Timeout: ${cmd}`)), timeout);
-      this.connection.exec(cmd, (err, response) => {
-        clearTimeout(t);
-        if (err) return reject(err);
-        resolve(response || '');
+      const t = setTimeout(() => {
+        this._waiters = this._waiters.filter(w => w.resolve !== resolve);
+        reject(new Error(`Telnet timeout waiting for ${pattern}`));
+      }, timeout);
+
+      const check = () => {
+        if (pattern.test(this._buffer)) {
+          clearTimeout(t);
+          const result = this._buffer;
+          this._buffer = '';
+          return true;
+        }
+        return false;
+      };
+
+      if (check()) { resolve(this._buffer); return; }
+
+      this._waiters.push({
+        check: () => pattern.test(this._buffer),
+        resolve: (buf) => { clearTimeout(t); resolve(buf); },
       });
     });
   }
+
+  _dispatch() {
+    this._waiters = this._waiters.filter((w) => {
+      if (w.check()) { w.resolve(this._buffer); this._buffer = ''; return false; }
+      return true;
+    });
+  }
+
+  _stripTelnet(data) {
+    const bytes = Buffer.from(data);
+    const out = [];
+    let i = 0;
+    while (i < bytes.length) {
+      if (bytes[i] === 0xff) {         // IAC
+        const cmd = bytes[i + 1];
+        if (cmd === 0xfb || cmd === 0xfc || cmd === 0xfd || cmd === 0xfe) {
+          // WILL/WONT/DO/DONT — send DONT/WONT back, skip 3 bytes
+          const reply = cmd === 0xfd ? 0xfc : 0xfe; // DO→WONT, WILL→DONT
+          if (this.socket && !this.socket.destroyed) {
+            this.socket.write(Buffer.from([0xff, reply, bytes[i + 2]]));
+          }
+          i += 3;
+        } else {
+          i += 2; // IAC + single cmd
+        }
+      } else {
+        out.push(bytes[i]);
+        i++;
+      }
+    }
+    return Buffer.from(out).toString('utf8');
+  }
+
+  _getCredentials() {
+    if (this.olt.credentials_encrypted) {
+      try {
+        return require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted) || {};
+      } catch (e) { return {}; }
+    }
+    return { username: 'admin', password: 'admin' };
+  }
+
+  // ── OLT commands ────────────────────────────────────────────────────────────
 
   async getONTInfo(frameId, slotId, portId) {
     try {
@@ -134,15 +208,6 @@ class TelnetHuawei {
       }
     }
     return alarms;
-  }
-
-  _getCredentials() {
-    if (this.olt.credentials_encrypted) {
-      try {
-        return require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted) || {};
-      } catch (e) { return {}; }
-    }
-    return {};
   }
 }
 

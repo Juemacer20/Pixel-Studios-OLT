@@ -159,6 +159,7 @@ model Alert {
   ack_at       DateTime?
   ack_by       String?
 
+  olt OLT? @relation(fields: [olt_id], references: [id])
   ont ONT? @relation(fields: [ont_id], references: [id])
 
   @@map("alerts")
