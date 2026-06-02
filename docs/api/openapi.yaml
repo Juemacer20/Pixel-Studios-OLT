@@ -1,0 +1,1256 @@
+openapi: 3.0.3
+info:
+  title: Pixel Studios OLT API
+  version: 1.0.0
+  description: |
+    REST API for Pixel Studios OLT — an OLT management and monitoring platform
+    for ISPs supporting Huawei MA5800/MA5680T, KingType C300, and VSOL V2801.
+
+    All endpoints require JWT Bearer authentication unless noted otherwise.
+    Roles: **admin** (full access), **noc** (operations), **readonly** (view only).
+  contact:
+    name: Pixel Studios
+    email: itel3456516807@gmail.com
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3001/api/v1
+    description: Local development
+  - url: https://olt.example.com/api/v1
+    description: Production
+
+tags:
+  - name: Auth
+    description: Authentication and session management
+  - name: OLTs
+    description: OLT device management and live status
+  - name: ONTs
+    description: ONT/ONU subscriber management
+  - name: Alerts
+    description: Alert management and history
+  - name: Clients
+    description: ISP subscriber records
+  - name: Dashboard
+    description: Summary metrics and network health
+  - name: ZTP
+    description: Zero-Touch Provisioning
+  - name: TR-069
+    description: ACS and CPE device management
+  - name: Map
+    description: GPS locations for ONTs and NAP boxes
+  - name: Notifications
+    description: Email/SMS notification configuration
+  - name: Reports
+    description: Historical data exports
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    OLT:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: OLT-CENTRO-1
+        ip:
+          type: string
+          format: ipv4
+          example: 192.168.1.1
+        brand:
+          type: string
+          enum: [huawei, kingtype, vsol]
+        model:
+          type: string
+          example: MA5800-X7
+        status:
+          type: string
+          enum: [ONLINE, OFFLINE, DEGRADED, MAINTENANCE]
+        uptime:
+          type: integer
+          description: Seconds since last boot
+        cpu_usage:
+          type: number
+          format: float
+          example: 45.2
+        temperature:
+          type: number
+          format: float
+          example: 52.0
+        ont_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    ONT:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        serial_number:
+          type: string
+          example: HWTC1A2B3C4D
+        pon_port_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [ONLINE, OFFLINE, LOS, DYING_GASP, UNKNOWN]
+        rx_power:
+          type: number
+          format: float
+          description: Received optical power in dBm
+          example: -18.5
+        tx_power:
+          type: number
+          format: float
+          description: Transmit power in dBm
+          example: 2.1
+        distance:
+          type: number
+          description: Distance in meters
+        lat:
+          type: number
+          format: float
+        lon:
+          type: number
+          format: float
+        client_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [LOS, DYING_GASP, LOW_SIGNAL, HIGH_SIGNAL, CPU_HIGH, TEMP_HIGH, OFFLINE, RECOVERED]
+        severity:
+          type: string
+          enum: [CRITICAL, HIGH, MEDIUM, LOW]
+        message:
+          type: string
+        acknowledged:
+          type: boolean
+        resolved:
+          type: boolean
+        acknowledged_at:
+          type: string
+          format: date-time
+        resolved_at:
+          type: string
+          format: date-time
+        ont_id:
+          type: string
+          format: uuid
+        olt_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+
+    Client:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Juan García
+        contract_number:
+          type: string
+          example: PSO-00142
+        phone:
+          type: string
+          example: +54 9 11 2345-6789
+        email:
+          type: string
+          format: email
+        address:
+          type: string
+        plan:
+          type: string
+          example: Plan 100 Mbps
+
+    SignalHistory:
+      type: object
+      properties:
+        ont_id:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        rx_power:
+          type: number
+          format: float
+        tx_power:
+          type: number
+          format: float
+
+    TR069Device:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        device_id:
+          type: string
+        manufacturer:
+          type: string
+        model:
+          type: string
+        software_version:
+          type: string
+        last_inform:
+          type: string
+          format: date-time
+        ip_address:
+          type: string
+          format: ipv4
+
+    ZTPProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        service_profile_id:
+          type: string
+          format: uuid
+        speed_profile_id:
+          type: string
+          format: uuid
+        vlan_id:
+          type: integer
+        auto_approve:
+          type: boolean
+
+    SpeedProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: Plan 100 Mbps
+        download_kbps:
+          type: integer
+          example: 102400
+        upload_kbps:
+          type: integer
+          example: 20480
+
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items: {}
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+        totalPages:
+          type: integer
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        statusCode:
+          type: integer
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ──────────────────────── AUTH ────────────────────────
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with username and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: admin
+                password:
+                  type: string
+                  format: password
+                  example: admin123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      username:
+                        type: string
+                      role:
+                        type: string
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token using httpOnly refresh token cookie
+      security: []
+      responses:
+        '200':
+          description: New access token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+        '401':
+          description: Refresh token invalid or expired
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Invalidate session and clear refresh token cookie
+      responses:
+        '200':
+          description: Logged out successfully
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                  username:
+                    type: string
+                  role:
+                    type: string
+
+  # ──────────────────────── OLTs ────────────────────────
+  /olts:
+    get:
+      tags: [OLTs]
+      summary: List all OLTs
+      responses:
+        '200':
+          description: Array of OLTs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OLT'
+    post:
+      tags: [OLTs]
+      summary: Create a new OLT (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, ip, brand, model]
+              properties:
+                name:
+                  type: string
+                ip:
+                  type: string
+                brand:
+                  type: string
+                  enum: [huawei, kingtype, vsol]
+                model:
+                  type: string
+                credentials:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                    password:
+                      type: string
+                    community:
+                      type: string
+      responses:
+        '201':
+          description: OLT created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OLT'
+
+  /olts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      tags: [OLTs]
+      summary: Get OLT by ID
+      responses:
+        '200':
+          description: OLT details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OLT'
+        '404':
+          description: OLT not found
+    put:
+      tags: [OLTs]
+      summary: Update OLT (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OLT'
+      responses:
+        '200':
+          description: Updated OLT
+    delete:
+      tags: [OLTs]
+      summary: Delete OLT (admin only)
+      responses:
+        '204':
+          description: Deleted
+
+  /olts/{id}/status:
+    get:
+      tags: [OLTs]
+      summary: Get live OLT status (queries device via SNMP/SSH)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Live status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cpu_usage:
+                    type: number
+                  temperature:
+                    type: number
+                  uptime:
+                    type: integer
+                  ont_count:
+                    type: integer
+
+  /olts/{id}/ports:
+    get:
+      tags: [OLTs]
+      summary: List PON ports for an OLT
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: PON ports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    port_id:
+                      type: string
+                    type:
+                      type: string
+                      enum: [GPON, EPON]
+                    ont_count:
+                      type: integer
+
+  /olts/{id}/command:
+    post:
+      tags: [OLTs]
+      summary: Send CLI command to OLT (noc+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [command]
+              properties:
+                command:
+                  type: string
+                  example: display version
+      responses:
+        '200':
+          description: Command output
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  output:
+                    type: string
+                  duration_ms:
+                    type: integer
+
+  # ──────────────────────── ONTs ────────────────────────
+  /onts:
+    get:
+      tags: [ONTs]
+      summary: List ONTs with pagination and filtering
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ONLINE, OFFLINE, LOS, DYING_GASP]
+        - name: olt_id
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated ONTs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+    post:
+      tags: [ONTs]
+      summary: Register a new ONT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serial_number, pon_port_id]
+              properties:
+                serial_number:
+                  type: string
+                pon_port_id:
+                  type: string
+                client_id:
+                  type: string
+      responses:
+        '201':
+          description: ONT created
+
+  /onts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [ONTs]
+      summary: Get ONT by ID
+      responses:
+        '200':
+          description: ONT details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ONT'
+    put:
+      tags: [ONTs]
+      summary: Update ONT
+      responses:
+        '200':
+          description: Updated ONT
+    delete:
+      tags: [ONTs]
+      summary: Delete ONT (admin only)
+      responses:
+        '204':
+          description: Deleted
+
+  /onts/{id}/signal:
+    get:
+      tags: [ONTs]
+      summary: Get current live signal (RX/TX) for ONT
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Signal readings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rx_power:
+                    type: number
+                  tx_power:
+                    type: number
+                  status:
+                    type: string
+                  cached:
+                    type: boolean
+
+  /onts/{id}/signal/history:
+    get:
+      tags: [ONTs]
+      summary: Get signal history from TimescaleDB
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: range
+          in: query
+          schema:
+            type: string
+            enum: [1h, 6h, 24h, 7d, 30d]
+            default: 24h
+      responses:
+        '200':
+          description: Time-series signal data
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SignalHistory'
+
+  /onts/{id}/reboot:
+    post:
+      tags: [ONTs]
+      summary: Reboot ONT via OLT (noc+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Reboot initiated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+
+  /onts/{id}/location:
+    put:
+      tags: [ONTs]
+      summary: Update ONT GPS coordinates
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lon]
+              properties:
+                lat:
+                  type: number
+                lon:
+                  type: number
+      responses:
+        '200':
+          description: Location updated
+
+  /onts/{id}/dhcp:
+    get:
+      tags: [ONTs]
+      summary: Get DHCP leases for ONT
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: DHCP lease records
+
+  # ──────────────────────── ALERTS ────────────────────────
+  /alerts:
+    get:
+      tags: [Alerts]
+      summary: List alerts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [active, acknowledged, resolved]
+        - name: severity
+          in: query
+          schema:
+            type: string
+            enum: [CRITICAL, HIGH, MEDIUM, LOW]
+      responses:
+        '200':
+          description: Paginated alerts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+
+  /alerts/{id}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge an alert (noc+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert acknowledged
+
+  /alerts/{id}/resolve:
+    post:
+      tags: [Alerts]
+      summary: Resolve an alert (noc+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert resolved
+
+  # ──────────────────────── CLIENTS ────────────────────────
+  /clients:
+    get:
+      tags: [Clients]
+      summary: List clients
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+          description: Search by name, contract number, or phone
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Paginated clients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
+    post:
+      tags: [Clients]
+      summary: Create client (noc+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Client'
+      responses:
+        '201':
+          description: Client created
+
+  /clients/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Clients]
+      summary: Get client by ID
+      responses:
+        '200':
+          description: Client detail with linked ONTs
+    put:
+      tags: [Clients]
+      summary: Update client (noc+)
+      responses:
+        '200':
+          description: Updated
+    delete:
+      tags: [Clients]
+      summary: Delete client (admin only)
+      responses:
+        '204':
+          description: Deleted
+
+  # ──────────────────────── DASHBOARD ────────────────────────
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Get platform-wide KPI summary
+      responses:
+        '200':
+          description: Summary metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalOLTs:
+                    type: integer
+                  onlineOLTs:
+                    type: integer
+                  totalONTs:
+                    type: integer
+                  onlineONTs:
+                    type: integer
+                  losONTs:
+                    type: integer
+                  activeAlerts:
+                    type: integer
+                  criticalAlerts:
+                    type: integer
+
+  /dashboard/network-health:
+    get:
+      tags: [Dashboard]
+      summary: Get per-OLT network health stats
+      responses:
+        '200':
+          description: Health stats per OLT
+
+  # ──────────────────────── ZTP ────────────────────────
+  /ztp/pending:
+    get:
+      tags: [ZTP]
+      summary: List pending (unauthorized) ONTs discovered by OLTs
+      responses:
+        '200':
+          description: Pending ONTs
+
+  /ztp/profiles:
+    get:
+      tags: [ZTP]
+      summary: List ZTP profiles
+      responses:
+        '200':
+          description: ZTP profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ZTPProfile'
+    post:
+      tags: [ZTP]
+      summary: Create ZTP profile (admin only)
+      responses:
+        '201':
+          description: Profile created
+
+  /ztp/authorize:
+    post:
+      tags: [ZTP]
+      summary: Authorize a pending ONT and apply a ZTP profile (noc+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [serial_number, pon_port_id, profile_id]
+              properties:
+                serial_number:
+                  type: string
+                pon_port_id:
+                  type: string
+                profile_id:
+                  type: string
+      responses:
+        '200':
+          description: ONT authorized and provisioned
+
+  # ──────────────────────── TR-069 ────────────────────────
+  /tr069/devices:
+    get:
+      tags: [TR-069]
+      summary: List managed CPE devices
+      responses:
+        '200':
+          description: TR-069 device list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TR069Device'
+
+  /tr069/devices/{id}/parameters:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [TR-069]
+      summary: Get CPE parameters (GetParameterValues)
+      parameters:
+        - name: path
+          in: query
+          schema:
+            type: string
+            default: InternetGatewayDevice.
+      responses:
+        '200':
+          description: Parameter tree
+    put:
+      tags: [TR-069]
+      summary: Set CPE parameters (SetParameterValues) (noc+)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties:
+                type: string
+      responses:
+        '200':
+          description: Parameters set
+
+  /tr069/devices/{id}/firmware:
+    post:
+      tags: [TR-069]
+      summary: Push firmware update to CPE (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [firmware_url, version]
+              properties:
+                firmware_url:
+                  type: string
+                version:
+                  type: string
+      responses:
+        '202':
+          description: Firmware push queued
+
+  /tr069/devices/{id}/diagnostics:
+    post:
+      tags: [TR-069]
+      summary: Run remote diagnostic on CPE (noc+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type:
+                  type: string
+                  enum: [ping, traceroute, speedtest]
+                target:
+                  type: string
+                  example: 8.8.8.8
+      responses:
+        '200':
+          description: Diagnostic result
+
+  # ──────────────────────── MAP ────────────────────────
+  /map/onts:
+    get:
+      tags: [Map]
+      summary: Get ONTs with GPS coordinates for map rendering
+      responses:
+        '200':
+          description: ONTs with lat/lon and signal status
+
+  /map/napboxes:
+    get:
+      tags: [Map]
+      summary: Get NAP box locations
+      responses:
+        '200':
+          description: NAP boxes with coordinates
+
+  /map/napboxes/{id}/location:
+    put:
+      tags: [Map]
+      summary: Update NAP box location
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lat, lon]
+              properties:
+                lat:
+                  type: number
+                lon:
+                  type: number
+      responses:
+        '200':
+          description: Location updated
+
+  # ──────────────────────── NOTIFICATIONS ────────────────────────
+  /notifications/config:
+    get:
+      tags: [Notifications]
+      summary: List notification channel configs (admin only)
+      responses:
+        '200':
+          description: Notification configs
+    post:
+      tags: [Notifications]
+      summary: Create or update notification channel (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel, enabled]
+              properties:
+                channel:
+                  type: string
+                  enum: [email, sms, webhook]
+                enabled:
+                  type: boolean
+                min_severity:
+                  type: string
+                  enum: [CRITICAL, HIGH, MEDIUM, LOW]
+                config:
+                  type: object
+                  description: Channel-specific config (SMTP, Twilio, webhook URL)
+      responses:
+        '201':
+          description: Config saved
+
+  /notifications/test:
+    post:
+      tags: [Notifications]
+      summary: Send a test notification (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [channel]
+              properties:
+                channel:
+                  type: string
+                  enum: [email, sms, webhook]
+      responses:
+        '200':
+          description: Test notification sent
+
+  # ──────────────────────── REPORTS ────────────────────────
+  /reports/signal:
+    get:
+      tags: [Reports]
+      summary: Export signal history as CSV
+      parameters:
+        - name: ont_id
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: CSV file
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  /reports/alerts:
+    get:
+      tags: [Reports]
+      summary: Export alerts history as CSV
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: severity
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: CSV export
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+  # ──────────────────────── ACS (TR-069 endpoint) ────────────────────────
+  /acs:
+    post:
+      tags: [TR-069]
+      summary: CWMP ACS endpoint for CPE Inform messages
+      security: []
+      requestBody:
+        required: false
+        content:
+          text/xml:
+            schema:
+              type: string
+      responses:
+        '200':
+          description: CWMP response envelope
+          content:
+            text/xml:
+              schema:
+                type: string
