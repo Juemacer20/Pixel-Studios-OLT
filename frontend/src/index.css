@@ -1,0 +1,104 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-base: #0A0E1A;
+  --bg-surface: #111827;
+  --bg-card: #1A2235;
+  --bg-input: #1F2D44;
+  --cyan: #00D4FF;
+  --orange: #FF6B35;
+  --green: #00FF94;
+  --red: #FF3B5C;
+  --purple: #A855F7;
+  --border: #1E2D45;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-base);
+  color: #E2E8F0;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-surface); }
+::-webkit-scrollbar-thumb { background: #2D3A52; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3D4A62; }
+
+.font-mono { font-family: 'IBM Plex Mono', monospace; }
+
+.signal-optimal { color: #00FF94; }
+.signal-normal { color: #00D4FF; }
+.signal-warn { color: #FF6B35; }
+.signal-critical { color: #FF3B5C; }
+.signal-high { color: #A855F7; }
+.signal-unknown { color: #6B7280; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-online { background: #00FF94; box-shadow: 0 0 6px #00FF94; animation: pulse-green 2s infinite; }
+.status-offline { background: #6B7280; }
+.status-los { background: #FF3B5C; box-shadow: 0 0 6px #FF3B5C; animation: pulse-red 2s infinite; }
+.status-pending { background: #FF6B35; }
+
+@keyframes pulse-red {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #FF3B5C; }
+  50% { opacity: 0.5; box-shadow: 0 0 12px #FF3B5C; }
+}
+@keyframes pulse-green {
+  0%, 100% { opacity: 1; box-shadow: 0 0 6px #00FF94; }
+  50% { opacity: 0.5; box-shadow: 0 0 12px #00FF94; }
+}
+@keyframes slide-in {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.btn-primary {
+  background: var(--cyan);
+  color: #0A0E1A;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.btn-primary:hover { opacity: 0.85; }
+
+.input-base {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: #E2E8F0;
+  padding: 8px 12px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input-base:focus { border-color: var(--cyan); }
