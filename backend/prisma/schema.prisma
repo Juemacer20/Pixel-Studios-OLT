@@ -1,0 +1,298 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OLTStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+  MAINTENANCE
+}
+
+enum ONTStatus {
+  ONLINE
+  OFFLINE
+  LOS
+  DYING_GASP
+  PENDING
+  DEACTIVATED
+}
+
+enum AlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum AlertType {
+  LOS
+  DYING_GASP
+  HIGH_SIGNAL
+  LOW_SIGNAL
+  CPU_HIGH
+  TEMP_HIGH
+  PORT_DOWN
+  ONT_OFFLINE
+  CUSTOM
+}
+
+enum Protocol {
+  GPON
+  EPON
+  XGSPON
+}
+
+enum WANMode {
+  DHCP
+  STATIC
+  PPPOE
+}
+
+model OLT {
+  id                    String    @id @default(uuid())
+  name                  String    @unique
+  brand                 String
+  model                 String
+  ip                    String    @unique
+  community             String    @default("public")
+  port                  Int       @default(161)
+  location              String?
+  credentials_encrypted String?
+  status                OLTStatus @default(OFFLINE)
+  uptime                BigInt?
+  cpu_usage             Float?
+  temperature           Float?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  ponPorts PONPort[]
+  onts     ONT[]
+  alerts   Alert[]
+
+  @@map("olts")
+}
+
+model PONPort {
+  id          String @id @default(uuid())
+  olt_id      String
+  port_number Int
+  capacity    Int    @default(128)
+  used        Int    @default(0)
+  status      String @default("active")
+
+  olt  OLT   @relation(fields: [olt_id], references: [id], onDelete: Cascade)
+  onts ONT[]
+
+  @@unique([olt_id, port_number])
+  @@map("pon_ports")
+}
+
+model ONT {
+  id               String    @id @default(uuid())
+  olt_id           String
+  pon_port_id      String?
+  serial_number    String    @unique
+  mac              String?
+  description      String?
+  status           ONTStatus @default(OFFLINE)
+  rx_power         Float?
+  tx_power         Float?
+  last_seen        DateTime?
+  provisioned_at   DateTime?
+  latitude         Float?
+  longitude        Float?
+  nap_box_id       String?
+  speed_profile_id String?
+  protocol         Protocol  @default(GPON)
+  created_at       DateTime  @default(now())
+  updated_at       DateTime  @updatedAt
+
+  olt           OLT           @relation(fields: [olt_id], references: [id])
+  ponPort       PONPort?      @relation(fields: [pon_port_id], references: [id])
+  napBox        NAPBox?       @relation(fields: [nap_box_id], references: [id])
+  speedProfile  SpeedProfile? @relation(fields: [speed_profile_id], references: [id])
+  client        Client?
+  alerts        Alert[]
+  signalHistory SignalHistory[]
+  dhcpLeases    DHCPLease[]
+  tr069Device   TR069Device?
+
+  @@map("onts")
+}
+
+model Client {
+  id              String   @id @default(uuid())
+  ont_id          String   @unique
+  name            String
+  address         String?
+  phone           String?
+  email           String?
+  service_plan    String?
+  contract_number String?  @unique
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  ont          ONT           @relation(fields: [ont_id], references: [id])
+  tr069Devices TR069Device[]
+
+  @@map("clients")
+}
+
+model Alert {
+  id           String        @id @default(uuid())
+  olt_id       String?
+  ont_id       String?
+  type         AlertType
+  severity     AlertSeverity
+  message      String
+  acknowledged Boolean       @default(false)
+  resolved     Boolean       @default(false)
+  created_at   DateTime      @default(now())
+  resolved_at  DateTime?
+  ack_at       DateTime?
+  ack_by       String?
+
+  ont ONT? @relation(fields: [ont_id], references: [id])
+
+  @@map("alerts")
+}
+
+model SignalHistory {
+  ont_id    String
+  rx_power  Float?
+  tx_power  Float?
+  timestamp DateTime @default(now())
+
+  ont ONT @relation(fields: [ont_id], references: [id], onDelete: Cascade)
+
+  @@id([ont_id, timestamp])
+  @@map("signal_history")
+}
+
+model TR069Device {
+  id                     String    @id @default(uuid())
+  serial_number          String    @unique
+  oui                    String?
+  product_class          String?
+  manufacturer           String?
+  software_version       String?
+  hardware_version       String?
+  ip_address             String?
+  last_inform            DateTime?
+  connection_request_url String?
+  ont_id                 String?   @unique
+  client_id              String?
+  parameters             Json?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  ont    ONT?    @relation(fields: [ont_id], references: [id])
+  client Client? @relation(fields: [client_id], references: [id])
+
+  @@map("tr069_devices")
+}
+
+model ServiceProfile {
+  id             String   @id @default(uuid())
+  name           String   @unique
+  data_vlan      Int?
+  voip_vlan      Int?
+  iptv_vlan      Int?
+  speed_down     Int?
+  speed_up       Int?
+  wan_mode       WANMode  @default(DHCP)
+  sip_server     String?
+  multicast_vlan Int?
+  created_at     DateTime @default(now())
+
+  ztpProfiles ZTPProfile[]
+
+  @@map("service_profiles")
+}
+
+model ZTPProfile {
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  service_profile_id String?
+  description        String?
+  created_at         DateTime @default(now())
+
+  serviceProfile ServiceProfile? @relation(fields: [service_profile_id], references: [id])
+
+  @@map("ztp_profiles")
+}
+
+model NotificationConfig {
+  id           String        @id @default(uuid())
+  channel      String
+  destination  String
+  events       Json
+  severity_min AlertSeverity @default(HIGH)
+  schedule     Json?
+  enabled      Boolean       @default(true)
+  created_at   DateTime      @default(now())
+
+  @@map("notification_configs")
+}
+
+model SpeedProfile {
+  id            String   @id @default(uuid())
+  name          String   @unique
+  download_mbps Int
+  upload_mbps   Int
+  burst_down    Int?
+  burst_up      Int?
+  created_at    DateTime @default(now())
+
+  onts ONT[]
+
+  @@map("speed_profiles")
+}
+
+model NAPBox {
+  id          String   @id @default(uuid())
+  name        String
+  latitude    Float?
+  longitude   Float?
+  address     String?
+  ports_total Int      @default(16)
+  ports_used  Int      @default(0)
+  created_at  DateTime @default(now())
+
+  onts ONT[]
+
+  @@map("nap_boxes")
+}
+
+model DHCPLease {
+  id         String    @id @default(uuid())
+  ont_id     String
+  ip         String
+  mac        String
+  hostname   String?
+  expires_at DateTime?
+  created_at DateTime  @default(now())
+
+  ont ONT @relation(fields: [ont_id], references: [id], onDelete: Cascade)
+
+  @@map("dhcp_leases")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  user_id    String?
+  action     String
+  target     String?
+  details    Json?
+  ip_address String?
+  created_at DateTime @default(now())
+
+  @@map("audit_logs")
+}
