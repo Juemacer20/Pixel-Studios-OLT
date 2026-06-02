@@ -1,0 +1,70 @@
+version: '3.9'
+
+services:
+  node-app:
+    build:
+      context: ../../backend
+      dockerfile: Dockerfile
+    container_name: pixel-olt-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/pixel_studios_olt
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ../../backend/logs:/app/logs
+    networks:
+      - olt-network
+
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: pixel-olt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: pixel_studios_olt
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - olt-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: pixel-olt-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - olt-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  olt-network:
+    driver: bridge
