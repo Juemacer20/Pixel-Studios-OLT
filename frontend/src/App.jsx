@@ -1,10 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from './components/layout/Sidebar';
 import Topbar from './components/layout/Topbar';
 import AlertBanner from './components/layout/AlertBanner';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useUIStore } from './store/uiStore';
+import { useAuthStore } from './store/authStore';
+import Login from './pages/Login';
 
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const OLTs = React.lazy(() => import('./pages/OLTs'));
@@ -15,7 +17,7 @@ const MapView = React.lazy(() => import('./pages/MapView'));
 const TR069 = React.lazy(() => import('./pages/TR069'));
 const NotificationSettings = React.lazy(() => import('./pages/NotificationSettings'));
 
-export default function App() {
+function AppLayout() {
   useWebSocket();
   const sidebarCollapsed = useUIStore(s => s.sidebarCollapsed);
 
@@ -45,5 +47,16 @@ export default function App() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  const token = useAuthStore(s => s.token);
+
+  return (
+    <Routes>
+      <Route path="/login" element={token ? <Navigate to="/dashboard" replace /> : <Login />} />
+      <Route path="/*" element={token ? <AppLayout /> : <Navigate to="/login" replace />} />
+    </Routes>
   );
 }

@@ -30,7 +30,9 @@ api.interceptors.response.use(
         return api(original);
       } catch (e) {
         accessToken = null;
-        window.location.href = '/login';
+        // Clear auth store and let React Router handle the redirect
+        const { useAuthStore } = await import('../store/authStore');
+        useAuthStore.getState().clearAuth();
       }
     }
     return Promise.reject(error);
