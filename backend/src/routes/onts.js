@@ -14,5 +14,8 @@ router.get('/:id/signal/history', ctrl.getSignalHistory);
 router.post('/:id/reboot', checkRole('noc'), ctrl.reboot);
 router.put('/:id/location', checkRole('noc'), ctrl.updateLocation);
 router.get('/:id/dhcp-leases', ctrl.getDHCPLeases);
+router.get('/:id/mac-table', ctrl.getMACTable);
+router.post('/:id/provision', checkRole('noc'), ctrl.provision);
+router.post('/:id/wan-config', checkRole('noc'), ctrl.wanConfig);
 
 module.exports = router;

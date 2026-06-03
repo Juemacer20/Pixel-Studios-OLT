@@ -2,7 +2,7 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 export default function SpeedProfiles() {
-  const { data: profiles = [] } = useQuery({ queryKey: ['speed-profiles'], queryFn: () => api.get('/speedProfiles').then(r => r.data.data || []).catch(() => []) });
+  const { data: profiles = [] } = useQuery({ queryKey: ['speed-profiles'], queryFn: () => api.get('/speed-profiles').then(r => r.data.data || []).catch(() => []) });
   return (
     <div className="flex flex-col gap-2 text-xs">
       {profiles.map(p => (

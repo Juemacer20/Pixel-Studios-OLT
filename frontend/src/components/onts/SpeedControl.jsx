@@ -7,11 +7,11 @@ export default function SpeedControl({ ontId }) {
   const [selected, setSelected] = useState('');
   const { data: profiles = [] } = useQuery({
     queryKey: ['speed-profiles'],
-    queryFn: () => api.get('/speedProfiles').then(r => r.data.data || []).catch(() => []),
+    queryFn: () => api.get('/speed-profiles').then(r => r.data.data || []).catch(() => []),
   });
   const apply = async () => {
     if (!selected) return;
-    try { await api.post(`/speedProfiles/apply/${ontId}`, { profileId: selected }); toast.success('Plan aplicado'); }
+    try { await api.post(`/speed-profiles/apply/${ontId}`, { profileId: selected }); toast.success('Plan aplicado'); }
     catch (e) { toast.error('Error al aplicar plan'); }
   };
   return (

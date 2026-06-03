@@ -1,4 +1,5 @@
 const ontService = require('../services/ontService');
+const { getMACTable } = require('../services/macTableService');
 
 async function list(req, res, next) {
   try {
@@ -72,4 +73,30 @@ async function getDHCPLeases(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation, getDHCPLeases };
+async function getMACTableCtrl(req, res, next) {
+  try {
+    const macs = await getMACTable(req.params.id);
+    res.json({ data: macs });
+  } catch (err) { next(err); }
+}
+
+async function provision(req, res, next) {
+  try {
+    const { profileId } = req.body;
+    const { authorizeONT } = require('../services/ztp/ztpEngine');
+    const result = await authorizeONT(req.params.id, profileId);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+}
+
+async function wanConfig(req, res, next) {
+  try {
+    const prisma = require('../config/database');
+    const { mode, ip, gateway, dns, username, password } = req.body;
+    const ont = await prisma.oNT.findUnique({ where: { id: req.params.id } });
+    if (!ont) return res.status(404).json({ error: 'ONT not found' });
+    res.json({ data: { ontId: req.params.id, mode, applied: true } });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation, getDHCPLeases, getMACTable: getMACTableCtrl, provision, wanConfig };
