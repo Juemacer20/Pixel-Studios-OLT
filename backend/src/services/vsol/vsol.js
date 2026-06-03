@@ -1,109 +1,96 @@
-const { Client: SSHClient } = require('ssh2');
-const fs = require('fs');
-const os = require('os');
+const net = require('net');
 const logger = require('../../middleware/logger');
-
-function loadSystemPrivateKey() {
-  const candidates = ['id_ed25519', 'id_rsa', 'id_ecdsa'].map(k => `${os.homedir()}/.ssh/${k}`);
-  for (const p of candidates) {
-    try { return fs.readFileSync(p); } catch {}
-  }
-  return null;
-}
 
 class VSOL {
   constructor(olt) {
     this.olt = olt;
-    this.conn = null;
-    this.stream = null;
+    this.socket = null;
     this.connected = false;
-    this.buffer = '';
+    this._buffer = '';
+    this._waiters = [];
   }
 
   async connect() {
+    // For polling (getSystemInfo/getCPUUsage/getTemperature) SNMP is used — no connection needed.
+    // Telnet connect is only attempted when sendCommand is called explicitly (e.g. terminal).
+    return this;
+  }
+
+  async _telnetConnect() {
+    if (this.connected) return;
     const creds = this._getCredentials();
-    return new Promise((resolve, reject) => {
-      const conn = new SSHClient();
-      const timeout = setTimeout(() => reject(new Error('SSH timeout')), 30000);
+    await new Promise((resolve, reject) => {
+      const socket = new net.Socket();
+      this.socket = socket;
+      const globalTimeout = setTimeout(() => { socket.destroy(); reject(new Error('Telnet connect timeout')); }, 20000);
 
-      conn.on('ready', () => {
-        this.conn = conn;
-        conn.shell({ term: 'vt100', cols: 220, rows: 50 }, (err, stream) => {
-          if (err) { clearTimeout(timeout); return reject(err); }
-          this.stream = stream;
-          stream.on('data', (d) => { this.buffer += d.toString(); });
-          stream.stderr.on('data', (d) => { this.buffer += d.toString(); });
-
-          // Handle double-auth: SSH key opens the channel, then OLT prompts Login/Password
-          const waitFor = (pattern, timeoutMs = 8000) => new Promise((res, rej) => {
-            const check = setInterval(() => {
-              if (pattern.test(this.buffer)) { clearInterval(check); res(); }
-            }, 100);
-            setTimeout(() => { clearInterval(check); rej(new Error(`Timeout waiting for ${pattern}`)); }, timeoutMs);
-          });
-
-          (async () => {
-            try {
-              await waitFor(/Login:/i);
-              this.buffer = '';
-              stream.write(`${creds.username || 'admin'}\n`);
-              await waitFor(/Password:/i);
-              this.buffer = '';
-              stream.write(`${creds.password || 'admin'}\n`);
-              // Wait for shell prompt (VSOL typically shows '>' or '#')
-              await waitFor(/[>#$]\s*$/, 8000);
-              this.buffer = '';
-              this.connected = true;
-              clearTimeout(timeout);
-              resolve();
-            } catch (e) {
-              clearTimeout(timeout);
-              reject(new Error(`VSOL auth failed: ${e.message}`));
-            }
-          })();
-        });
+      socket.connect(23, this.olt.ip);
+      socket.on('data', (data) => {
+        this._buffer += data.toString().replace(/\xff[\xfb-\xfe]./gs, '').replace(/\xff\xf./gs, '');
+        this._dispatch();
       });
+      socket.on('error', (err) => { clearTimeout(globalTimeout); reject(err); });
+      socket.on('close', () => { this.connected = false; });
 
-      conn.on('error', (err) => { clearTimeout(timeout); reject(err); });
-
-      const privateKey = loadSystemPrivateKey();
-      conn.connect({
-        host: this.olt.ip,
-        port: 22,
-        username: 'admin',
-        ...(privateKey ? { privateKey } : {}),
-        readyTimeout: 15000,
-        algorithms: {
-          kex: ['ecdh-sha2-nistp256', 'diffie-hellman-group14-sha256', 'diffie-hellman-group14-sha1'],
-          serverHostKey: ['ssh-ed25519', 'ssh-rsa'],
-          cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr', 'aes128-cbc'],
-          hmac: ['hmac-sha2-256', 'hmac-sha1'],
-        },
-      });
+      this._waitFor(/[Uu]ser[Nn]ame:|[Ll]ogin:/i, 12000)
+        .then(() => { socket.write((creds.username || 'admin') + '\r\n'); return this._waitFor(/[Pp]assword:/i, 8000); })
+        .then(() => { socket.write((creds.password || 'admin') + '\r\n'); return this._waitFor(/[>#$]\s*$/m, 10000); })
+        .then(() => { clearTimeout(globalTimeout); this.connected = true; resolve(); })
+        .catch((err) => { clearTimeout(globalTimeout); socket.destroy(); reject(new Error(`VSOL auth failed: ${err.message}`)); });
     });
   }
 
   disconnect() {
-    if (this.stream) try { this.stream.end(); } catch (e) {}
-    if (this.conn) try { this.conn.end(); } catch (e) {}
+    if (this.socket) {
+      try { this.socket.destroy(); } catch (e) {}
+      this.socket = null;
+    }
     this.connected = false;
   }
 
-  async sendCommand(cmd, waitMs = 3000) {
-    if (!this.connected) await this.connect();
-    this.buffer = '';
-    this.stream.write(`${cmd}\n`);
-    await new Promise(r => setTimeout(r, waitMs));
-    return this.buffer;
+  async sendCommand(cmd, timeout = 8000) {
+    await this._telnetConnect();
+    this._buffer = '';
+    this.socket.write(cmd + '\r\n');
+    return this._waitFor(/[>#$]\s*$/m, timeout).catch(() => this._buffer);
+  }
+
+  _waitFor(pattern, timeout) {
+    return new Promise((resolve, reject) => {
+      if (pattern.test(this._buffer)) { const r = this._buffer; this._buffer = ''; return resolve(r); }
+      const t = setTimeout(() => {
+        this._waiters = this._waiters.filter(w => w.id !== id);
+        reject(new Error(`Telnet timeout waiting for ${pattern}`));
+      }, timeout);
+      const id = Symbol();
+      this._waiters.push({
+        id,
+        check: () => pattern.test(this._buffer),
+        resolve: () => { clearTimeout(t); const r = this._buffer; this._buffer = ''; resolve(r); },
+        reject: () => { clearTimeout(t); reject(new Error(`Telnet closed`)); },
+      });
+    });
+  }
+
+  _dispatch() {
+    this._waiters = this._waiters.filter(w => { if (w.check()) { w.resolve(); return false; } return true; });
   }
 
   async getSystemInfo() {
+    // Use SNMP sysUpTime — no credentials needed
     try {
-      const output = await this.sendCommand('show version');
-      const upMatch = output.match(/uptime.*?(\d+)/i);
-      return { description: `VSOL ${this.olt.model}`, uptime: upMatch ? parseInt(upMatch[1]) * 3600 : 0, name: this.olt.name };
+      const snmp = require('net-snmp');
+      const session = snmp.createSession(this.olt.ip, this.olt.community || 'public', { timeout: 5000, retries: 1 });
+      const uptime = await new Promise((res, rej) => {
+        session.get(['1.3.6.1.2.1.1.3.0'], (err, vbs) => {
+          session.close();
+          if (err || !vbs[0] || snmp.isVarbindError(vbs[0])) return rej(err || new Error('no uptime'));
+          res(Math.floor(vbs[0].value / 100)); // centiseconds → seconds
+        });
+      });
+      return { description: `VSOL ${this.olt.model}`, uptime, name: this.olt.name };
     } catch (e) {
-      return { description: 'VSOL OLT', uptime: 0, name: this.olt.name };
+      throw e; // let poll job mark OFFLINE
     }
   }
 
@@ -222,6 +209,8 @@ class VSOL {
   }
 
   async getCPUUsage() {
+    // Requires Telnet credentials — returns null until configured
+    if (!this._getCredentials().password) return null;
     try {
       const output = await this.sendCommand('show cpu');
       const match = output.match(/(\d+(?:\.\d+)?)\s*%/);
@@ -230,6 +219,7 @@ class VSOL {
   }
 
   async getTemperature() {
+    if (!this._getCredentials().password) return null;
     try {
       const output = await this.sendCommand('show temperature');
       const match = output.match(/(\d+)\s*[Cc]/);
