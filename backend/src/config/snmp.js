@@ -41,15 +41,17 @@ function getNext(session, oids) {
   });
 }
 
-function walk(session, oid) {
+function walk(session, oid, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const results = [];
+    const t = setTimeout(() => resolve(results), timeoutMs);
     session.walk(oid, 20, (varbinds) => {
       varbinds.forEach((vb) => {
         if (!snmp.isVarbindError(vb)) results.push(vb);
       });
     }, (error) => {
-      if (error) return reject(error);
+      clearTimeout(t);
+      if (error) return resolve(results); // return empty on error, don't reject
       resolve(results);
     });
   });
