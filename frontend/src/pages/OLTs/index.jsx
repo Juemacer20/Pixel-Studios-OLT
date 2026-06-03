@@ -7,7 +7,7 @@ import {
   IconPencil, IconRefresh, IconTrash, IconTerminal2,
   IconPlus, IconX, IconChevronDown, IconChevronRight,
   IconServer, IconWifi, IconWifiOff, IconAlertTriangle,
-  IconCpu,
+  IconCpu, IconCloudDownload,
 } from '@tabler/icons-react';
 
 /* ─── Mock data (fallback when API unavailable) ─────────────────────────── */
@@ -223,6 +223,8 @@ export default function OLTs() {
   const [expandedId, setExpandedId] = useState(null);
   const [terminalOlt, setTerminalOlt] = useState(null);
   const [pollingId, setPollingId] = useState(null);
+  const [syncingId, setSyncingId] = useState(null);
+  const [syncResult, setSyncResult] = useState(null);
 
   /* ── Data fetching ── */
   const { data, isLoading } = useQuery({
@@ -276,6 +278,22 @@ export default function OLTs() {
       await queryClient.invalidateQueries({ queryKey: ['olts'] });
     } finally {
       setTimeout(() => setPollingId(null), 1200);
+    }
+  };
+
+  const handleSync = async (olt) => {
+    setSyncingId(olt.id);
+    setSyncResult(null);
+    try {
+      const res = await oltAPI.scan(olt.id);
+      const { scanned, saved } = res.data?.data || {};
+      setSyncResult({ oltName: olt.name, scanned, saved });
+      await queryClient.invalidateQueries({ queryKey: ['olts'] });
+      await queryClient.invalidateQueries({ queryKey: ['onts'] });
+    } catch (e) {
+      setSyncResult({ oltName: olt.name, error: true });
+    } finally {
+      setSyncingId(null);
     }
   };
 
@@ -403,6 +421,15 @@ export default function OLTs() {
                         </button>
                         <button
                           className="btn-icon tooltip"
+                          data-tip="Sincronizar ONUs"
+                          onClick={(e) => { e.stopPropagation(); handleSync(olt); }}
+                          disabled={syncingId === olt.id}
+                          style={{ color: syncingId === olt.id ? 'var(--cyan)' : undefined, opacity: syncingId === olt.id ? 0.7 : 1 }}
+                        >
+                          <IconCloudDownload size={13} style={{ animation: syncingId === olt.id ? 'spin-slow 0.9s linear infinite' : 'none' }} />
+                        </button>
+                        <button
+                          className="btn-icon tooltip"
                           data-tip="Terminal"
                           onClick={(e) => { e.stopPropagation(); setTerminalOlt(olt); }}
                         >
@@ -435,6 +462,31 @@ export default function OLTs() {
           onClose={() => setModalOlt(null)}
           onSave={handleSave}
         />
+      )}
+
+      {/* ── Sync result toast ── */}
+      {syncResult && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, zIndex: 400,
+          background: syncResult.error ? 'var(--red)' : 'var(--card-bg)',
+          border: `1px solid ${syncResult.error ? 'rgba(248,81,73,0.5)' : 'var(--border-light)'}`,
+          borderRadius: 8, padding: '12px 16px', minWidth: 260,
+          boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+          animation: 'fade-in 0.2s ease',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+        }}>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>
+              {syncResult.error ? `Error sincronizando ${syncResult.oltName}` : `Sincronización completa — ${syncResult.oltName}`}
+            </p>
+            {!syncResult.error && (
+              <p style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {syncResult.scanned} ONUs detectadas · {syncResult.saved} guardadas
+              </p>
+            )}
+          </div>
+          <button className="btn-icon" onClick={() => setSyncResult(null)}><IconX size={12} /></button>
+        </div>
       )}
 
       {/* ── Terminal Drawer ── */}

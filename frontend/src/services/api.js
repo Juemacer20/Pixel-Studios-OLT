@@ -48,6 +48,7 @@ export const oltAPI = {
   status: (id) => api.get(`/olts/${id}/status`),
   ports: (id) => api.get(`/olts/${id}/ports`),
   portONTs: (id, port) => api.get(`/olts/${id}/ports/${port}/onts`),
+  scan: (id) => api.post(`/olts/${id}/scan`),
   command: (id, cmd) => api.post(`/olts/${id}/command`, { cmd }),
 };
 
