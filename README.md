@@ -64,11 +64,11 @@ npm run dev
 La UI queda en `http://localhost:5173`.
 
 ### Login por defecto
-| Usuario | Contraseña | Rol |
-|---------|-----------|-----|
-| admin | admin123 | admin |
-| noc | noc123 | noc |
-| viewer | viewer123 | readonly |
+| Email | Contraseña | Rol |
+|-------|-----------|-----|
+| admin@pixel-studios.com | password | admin |
+| noc@pixel-studios.com | password | noc |
+| viewer@pixel-studios.com | password | readonly |
 
 ---
 
