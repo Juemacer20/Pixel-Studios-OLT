@@ -25,7 +25,7 @@ app.use('/api', general);
 
 app.get('/health', (req, res) => res.json({ status: 'ok', uptime: process.uptime(), ts: new Date() }));
 
-// Routes (loaded after DB is ready)
+// Routes
 app.use('/api/v1/auth', require('./routes/auth'));
 app.use('/api/v1/olts', require('./routes/olts'));
 app.use('/api/v1/onts', require('./routes/onts'));
@@ -37,6 +37,10 @@ app.use('/api/v1/ztp', require('./routes/ztp'));
 app.use('/api/v1/tr069', require('./routes/tr069'));
 app.use('/api/v1/notifications', require('./routes/notifications'));
 app.use('/api/v1/map', require('./routes/map'));
+app.use('/api/v1/dhcp', require('./routes/dhcp'));
+app.use('/api/v1/gps', require('./routes/gps'));
+app.use('/api/v1/vlan', require('./routes/vlan'));
+app.use('/api/v1/speed-profiles', require('./routes/speedProfiles'));
 
 app.use(notFound);
 app.use(errorHandler);

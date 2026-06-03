@@ -15,6 +15,7 @@ const Alerts = React.lazy(() => import('./pages/Alerts'));
 const Clients = React.lazy(() => import('./pages/Clients'));
 const MapView = React.lazy(() => import('./pages/MapView'));
 const TR069 = React.lazy(() => import('./pages/TR069'));
+const ZTP = React.lazy(() => import('./pages/ZTP'));
 const NotificationSettings = React.lazy(() => import('./pages/NotificationSettings'));
 
 function AppLayout() {
@@ -41,6 +42,7 @@ function AppLayout() {
               <Route path="/clients/*" element={<Clients />} />
               <Route path="/map" element={<MapView />} />
               <Route path="/tr069" element={<TR069 />} />
+              <Route path="/ztp" element={<ZTP />} />
               <Route path="/notifications" element={<NotificationSettings />} />
             </Routes>
           </React.Suspense>
