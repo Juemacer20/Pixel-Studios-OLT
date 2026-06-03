@@ -1,0 +1,1401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Studios OLT — Rediseño estilo SmartOLT</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    background: #0d1117;
+    color: #c9d1d9;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ───── VARIABLES ───── */
+  :root {
+    --sidebar-w: 210px;
+    --sidebar-bg: #161b22;
+    --sidebar-border: #21262d;
+    --topbar-h: 48px;
+    --topbar-bg: #161b22;
+    --content-bg: #0d1117;
+    --card-bg: #161b22;
+    --card-border: #21262d;
+    --accent: #1f6feb;
+    --accent-hover: #388bfd;
+    --green: #3fb950;
+    --red: #f85149;
+    --orange: #d29922;
+    --purple: #bc8cff;
+    --cyan: #79c0ff;
+    --text-primary: #c9d1d9;
+    --text-secondary: #8b949e;
+    --text-muted: #484f58;
+    --drawer-w: 560px;
+  }
+
+  /* ───── LAYOUT ───── */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ───── SIDEBAR ───── */
+  .sidebar {
+    width: var(--sidebar-w);
+    min-width: var(--sidebar-w);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-logo {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #1f6feb, #0d419d);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; letter-spacing: -0.5px;
+    flex-shrink: 0;
+  }
+  .logo-text { line-height: 1.2; }
+  .logo-name { font-size: 12.5px; font-weight: 600; color: #e6edf3; }
+  .logo-sub { font-size: 10px; color: var(--text-secondary); font-family: 'SF Mono', monospace; }
+
+  .sidebar-nav { flex: 1; overflow-y: auto; padding: 8px 0; }
+  .nav-section { margin-bottom: 4px; }
+  .nav-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
+    color: var(--text-muted); text-transform: uppercase;
+    padding: 8px 16px 4px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-radius: 0;
+    position: relative;
+    transition: all 0.1s;
+    font-size: 12.5px;
+  }
+  .nav-item:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+  .nav-item.active {
+    background: rgba(31,111,235,0.15);
+    color: var(--accent-hover);
+    border-right: 2px solid var(--accent);
+  }
+  .nav-item svg { flex-shrink: 0; }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--red);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+  }
+  .nav-badge.orange { background: var(--orange); }
+
+  .sidebar-footer {
+    padding: 12px 16px;
+    border-top: 1px solid var(--sidebar-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: linear-gradient(135deg, #1f6feb, #388bfd);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; color: #fff; flex-shrink: 0;
+  }
+  .user-info { flex: 1; min-width: 0; }
+  .user-name { font-size: 12px; font-weight: 600; color: #e6edf3; }
+  .user-role { font-size: 10px; color: var(--text-secondary); }
+
+  /* ───── MAIN ───── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  /* ───── TOPBAR ───── */
+  .topbar {
+    height: var(--topbar-h);
+    background: var(--topbar-bg);
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 20px;
+    flex-shrink: 0;
+  }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; color: var(--text-secondary); font-size: 12px; }
+  .breadcrumb .sep { color: var(--text-muted); }
+  .breadcrumb .current { color: #e6edf3; font-weight: 500; }
+
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  .olt-selector {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-size: 12px; color: var(--text-primary);
+    cursor: pointer;
+  }
+
+  .topbar-btn {
+    width: 32px; height: 32px;
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .topbar-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+
+  .notif-dot {
+    position: absolute; top: 5px; right: 5px;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--red);
+    border: 1px solid var(--topbar-bg);
+  }
+
+  /* ───── CONTENT ───── */
+  .content {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column;
+    padding: 16px 20px;
+    background: var(--content-bg);
+  }
+
+  /* ───── PAGE HEADER ───── */
+  .page-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 14px; flex-shrink: 0;
+  }
+  .page-title { font-size: 16px; font-weight: 600; color: #e6edf3; }
+  .page-count {
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--card-border);
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 11px; color: var(--text-secondary);
+    font-family: 'SF Mono', monospace;
+  }
+  .page-header-right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: 1px solid transparent;
+  }
+  .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-secondary { background: rgba(255,255,255,0.05); color: var(--text-primary); border-color: var(--card-border); }
+
+  /* ───── STATS BAR ───── */
+  .stats-bar {
+    display: flex; gap: 10px;
+    margin-bottom: 14px; flex-shrink: 0;
+  }
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 10px;
+    flex: 1;
+  }
+  .stat-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .stat-icon.green { background: rgba(63,185,80,0.15); color: var(--green); }
+  .stat-icon.red { background: rgba(248,81,73,0.15); color: var(--red); }
+  .stat-icon.orange { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .stat-icon.blue { background: rgba(31,111,235,0.15); color: var(--accent-hover); }
+  .stat-icon.purple { background: rgba(188,140,255,0.15); color: var(--purple); }
+
+  .stat-val { font-size: 20px; font-weight: 700; color: #e6edf3; font-family: 'SF Mono', monospace; line-height: 1; }
+  .stat-label { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* ───── FILTER BAR ───── */
+  .filter-bar {
+    display: flex; gap: 8px; align-items: center;
+    margin-bottom: 12px; flex-shrink: 0;
+  }
+  .search-box {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 0 10px;
+    flex: 0 0 260px;
+  }
+  .search-box input {
+    background: none; border: none; outline: none;
+    color: var(--text-primary); font-size: 12px;
+    padding: 7px 0; width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  .filter-select {
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  .status-filter {
+    display: flex; gap: 4px; margin-left: auto;
+  }
+  .status-pill {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid var(--card-border);
+    cursor: pointer; color: var(--text-secondary);
+    background: transparent;
+  }
+  .status-pill.active { border-color: var(--accent); color: var(--accent-hover); background: rgba(31,111,235,0.1); }
+  .status-pill.green-pill { border-color: var(--green); color: var(--green); background: rgba(63,185,80,0.1); }
+  .status-pill.red-pill { border-color: var(--red); color: var(--red); background: rgba(248,81,73,0.1); }
+  .status-pill.orange-pill { border-color: var(--orange); color: var(--orange); background: rgba(210,153,34,0.1); }
+
+  /* ───── TABLE ───── */
+  .table-wrap {
+    flex: 1; overflow: auto;
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    background: var(--card-bg);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  thead th {
+    background: rgba(255,255,255,0.03);
+    padding: 9px 12px;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--card-border);
+    white-space: nowrap;
+    cursor: pointer;
+  }
+  thead th:hover { color: var(--text-primary); }
+  thead th .sort { opacity: 0.4; margin-left: 3px; }
+
+  tbody tr {
+    border-bottom: 1px solid rgba(33,38,45,0.8);
+    cursor: pointer;
+    transition: background 0.08s;
+  }
+  tbody tr:hover { background: rgba(255,255,255,0.04); }
+  tbody tr.selected { background: rgba(31,111,235,0.08); border-color: rgba(31,111,235,0.15); }
+  tbody tr:last-child { border-bottom: none; }
+
+  td { padding: 8px 12px; vertical-align: middle; white-space: nowrap; }
+
+  .td-check { width: 32px; }
+  .td-check input { cursor: pointer; accent-color: var(--accent); }
+
+  /* STATUS BADGES */
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border-radius: 4px;
+    font-size: 10.5px; font-weight: 600;
+  }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .badge.online { background: rgba(63,185,80,0.15); color: var(--green); }
+  .badge.online .badge-dot { background: var(--green); box-shadow: 0 0 4px var(--green); animation: pulse 2s infinite; }
+  .badge.offline { background: rgba(139,148,158,0.1); color: var(--text-secondary); }
+  .badge.offline .badge-dot { background: var(--text-muted); }
+  .badge.los { background: rgba(248,81,73,0.15); color: var(--red); }
+  .badge.los .badge-dot { background: var(--red); box-shadow: 0 0 4px var(--red); animation: pulse 1s infinite; }
+  .badge.degraded { background: rgba(210,153,34,0.15); color: var(--orange); }
+  .badge.degraded .badge-dot { background: var(--orange); }
+  .badge.pending { background: rgba(188,140,255,0.12); color: var(--purple); }
+  .badge.pending .badge-dot { background: var(--purple); }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* SIGNAL */
+  .signal {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 12px; font-weight: 500;
+  }
+  .sig-optimal { color: #3fb950; }
+  .sig-normal  { color: #79c0ff; }
+  .sig-warn    { color: #d29922; }
+  .sig-critical{ color: #f85149; }
+  .sig-high    { color: #bc8cff; }
+
+  /* BRAND TAG */
+  .brand-tag {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 1px 6px; border-radius: 4px;
+    font-size: 10px; font-weight: 600;
+    border: 1px solid;
+  }
+  .brand-huawei { border-color: rgba(210,153,34,0.4); color: var(--orange); background: rgba(210,153,34,0.08); }
+  .brand-kingtype { border-color: rgba(31,111,235,0.4); color: var(--accent-hover); background: rgba(31,111,235,0.08); }
+  .brand-vsol { border-color: rgba(188,140,255,0.4); color: var(--purple); background: rgba(188,140,255,0.08); }
+
+  /* CLIENT CELL */
+  .client-cell { display: flex; flex-direction: column; gap: 1px; }
+  .client-name { color: #e6edf3; font-weight: 500; font-size: 12px; }
+  .client-contract { font-size: 10px; color: var(--text-muted); font-family: monospace; }
+
+  /* ACTIONS */
+  .actions { display: flex; gap: 4px; opacity: 0; transition: opacity 0.1s; }
+  tr:hover .actions, tr.selected .actions { opacity: 1; }
+  .act-btn {
+    width: 26px; height: 26px;
+    border: 1px solid var(--card-border);
+    border-radius: 5px;
+    background: rgba(255,255,255,0.04);
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 12px;
+  }
+  .act-btn:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); border-color: rgba(255,255,255,0.15); }
+  .act-btn.red:hover { background: rgba(248,81,73,0.15); color: var(--red); border-color: rgba(248,81,73,0.3); }
+  .act-btn.green:hover { background: rgba(63,185,80,0.12); color: var(--green); border-color: rgba(63,185,80,0.3); }
+
+  /* ───── DRAWER ───── */
+  .drawer {
+    width: var(--drawer-w);
+    min-width: var(--drawer-w);
+    background: var(--card-bg);
+    border-left: 1px solid var(--card-border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+
+  .drawer-header {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex; align-items: flex-start; gap: 12px;
+    flex-shrink: 0;
+  }
+  .drawer-title-block { flex: 1; min-width: 0; }
+  .drawer-ont-id { font-family: monospace; font-size: 11px; color: var(--text-muted); }
+  .drawer-title { font-size: 15px; font-weight: 600; color: #e6edf3; margin: 2px 0; }
+  .drawer-meta { font-size: 11px; color: var(--text-secondary); display: flex; gap: 8px; align-items: center; }
+  .drawer-close {
+    width: 28px; height: 28px; border: 1px solid var(--card-border);
+    border-radius: 6px; background: transparent; color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; font-size: 14px;
+  }
+
+  .drawer-actions {
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--card-border);
+    display: flex; gap: 6px; align-items: center; flex-shrink: 0;
+  }
+  .drawer-actions .btn { padding: 5px 10px; font-size: 11.5px; }
+
+  /* TABS */
+  .tabs {
+    display: flex; border-bottom: 1px solid var(--card-border);
+    padding: 0 16px; flex-shrink: 0;
+  }
+  .tab {
+    padding: 9px 12px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active { color: var(--accent-hover); border-color: var(--accent); }
+
+  .drawer-body { flex: 1; overflow-y: auto; padding: 16px; }
+
+  /* INFO GRID */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-bottom: 16px;
+  }
+  .info-card {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--card-border);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+  .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 4px; }
+  .info-val { font-size: 13px; font-weight: 500; color: #e6edf3; font-family: 'SF Mono', monospace; }
+  .info-val.green { color: var(--green); }
+  .info-val.red { color: var(--red); }
+  .info-val.orange { color: var(--orange); }
+
+  /* SIGNAL CHART */
+  .chart-wrap {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
+  .chart-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .chart-title { font-size: 12px; font-weight: 600; color: #e6edf3; }
+  .chart-time-sel { display: flex; gap: 4px; }
+  .time-btn {
+    padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;
+    border: 1px solid var(--card-border); cursor: pointer; color: var(--text-secondary);
+    background: transparent;
+  }
+  .time-btn.active { background: rgba(31,111,235,0.2); color: var(--accent-hover); border-color: var(--accent); }
+
+  /* SVG Chart */
+  .signal-svg { width: 100%; height: 120px; }
+
+  .chart-legend {
+    display: flex; gap: 16px; margin-top: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--text-secondary); }
+  .legend-dot { width: 8px; height: 2px; border-radius: 1px; }
+
+  /* THRESHOLDS */
+  .threshold-line {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px; border-radius: 6px;
+    background: rgba(248,81,73,0.07);
+    border: 1px solid rgba(248,81,73,0.2);
+    margin-bottom: 6px;
+  }
+  .threshold-line.warn { background: rgba(210,153,34,0.07); border-color: rgba(210,153,34,0.2); }
+  .threshold-label { font-size: 10.5px; color: var(--text-secondary); }
+  .threshold-val { font-size: 11px; font-weight: 600; font-family: monospace; margin-left: auto; }
+  .threshold-val.red { color: var(--red); }
+  .threshold-val.orange { color: var(--orange); }
+
+  /* SERVICES SECTION */
+  .section-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text-muted);
+    margin-bottom: 8px; margin-top: 14px;
+  }
+  .service-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px; border-radius: 6px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--card-border);
+    margin-bottom: 6px;
+  }
+  .service-icon { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .service-icon.data { background: rgba(31,111,235,0.15); }
+  .service-icon.voip { background: rgba(63,185,80,0.12); }
+  .service-icon.iptv { background: rgba(188,140,255,0.12); }
+  .service-info { flex: 1; }
+  .service-name { font-size: 12px; font-weight: 500; color: #e6edf3; }
+  .service-detail { font-size: 10.5px; color: var(--text-secondary); font-family: monospace; }
+  .service-badge { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  .service-badge.on { background: rgba(63,185,80,0.15); color: var(--green); }
+  .service-badge.off { background: rgba(139,148,158,0.1); color: var(--text-muted); }
+
+  /* EVENTS */
+  .event-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(33,38,45,0.8);
+  }
+  .event-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 4px; flex-shrink: 0; }
+  .event-time { font-size: 10.5px; color: var(--text-muted); font-family: monospace; white-space: nowrap; min-width: 50px; }
+  .event-msg { font-size: 12px; color: var(--text-secondary); }
+  .event-msg strong { color: var(--text-primary); }
+
+  /* BATCH BAR */
+  .batch-bar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1f2937;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    z-index: 100;
+    animation: slideUp 0.2s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateX(-50%) translateY(20px); opacity: 0; }
+    to { transform: translateX(-50%) translateY(0); opacity: 1; }
+  }
+  .batch-count { font-size: 12px; color: var(--text-secondary); }
+  .batch-count strong { color: #e6edf3; }
+  .batch-sep { width: 1px; height: 20px; background: rgba(255,255,255,0.1); }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px;
+    border-top: 1px solid var(--card-border);
+    flex-shrink: 0;
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .pag-btn {
+    width: 28px; height: 28px; border: 1px solid var(--card-border);
+    border-radius: 5px; background: transparent;
+    color: var(--text-secondary); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px;
+  }
+  .pag-btn:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+  .pag-btn.active { background: rgba(31,111,235,0.2); color: var(--accent-hover); border-color: var(--accent); }
+  .pag-sep { color: var(--text-muted); margin: 0 4px; }
+
+  /* KingType/VSOL marker */
+  .olt-cell { display: flex; flex-direction: column; gap: 2px; }
+  .olt-name { color: var(--text-primary); font-size: 12px; }
+  .olt-port { font-size: 10px; color: var(--text-muted); font-family: monospace; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+
+  /* DISTANCE CELL */
+  .dist { font-family: monospace; font-size: 11.5px; color: var(--text-secondary); }
+
+  /* UPTIME */
+  .uptime { font-family: monospace; font-size: 11px; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">PS</div>
+      <div class="logo-text">
+        <div class="logo-name">Pixel Studios</div>
+        <div class="logo-sub">OLT Manager v2.0</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-label">Monitoreo</div>
+
+        <div class="nav-item" title="Dashboard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </div>
+
+        <div class="nav-item" title="OLTs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 12h.01M10 12h.01"/></svg>
+          OLTs
+          <span class="nav-badge orange" style="font-size:9px;padding:1px 5px;">4</span>
+        </div>
+
+        <div class="nav-item active" title="ONTs / ONUs">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+          ONTs / ONUs
+          <span class="nav-badge">8</span>
+        </div>
+
+        <div class="nav-item" title="Puertos PON">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Puertos PON
+        </div>
+
+        <div class="nav-item" title="Señal en tiempo real">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Señal / Gráficos
+        </div>
+
+        <div class="nav-item" title="Mapa">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>
+          Mapa GPS
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Gestión</div>
+
+        <div class="nav-item" title="Clientes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Clientes
+        </div>
+
+        <div class="nav-item" title="ZTP - Autorización">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          ZTP — Autorización
+          <span class="nav-badge orange">3</span>
+        </div>
+
+        <div class="nav-item" title="Perfiles de Velocidad">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+          Perfiles de Velocidad
+        </div>
+
+        <div class="nav-item" title="TR-069 / ACS">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+          TR-069 / ACS
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Reportes y Sistema</div>
+
+        <div class="nav-item" title="Eventos">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          Eventos / Alertas
+          <span class="nav-badge">12</span>
+        </div>
+
+        <div class="nav-item" title="Reportes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Reportes
+        </div>
+
+        <div class="nav-item" title="Configuración">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Configuración
+        </div>
+
+        <div class="nav-item" title="Usuarios">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Usuarios / Roles
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">AD</div>
+      <div class="user-info">
+        <div class="user-name">Admin</div>
+        <div class="user-role">Administrador</div>
+      </div>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#484f58;cursor:pointer;flex-shrink:0"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════ MAIN ═══════════════════ -->
+  <div class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+      <div class="breadcrumb">
+        <span>Pixel Studios OLT</span>
+        <span class="sep">›</span>
+        <span class="current">ONTs / ONUs</span>
+      </div>
+
+      <div class="topbar-right">
+        <div class="olt-selector">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+          Todas las OLTs
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+
+        <div class="olt-selector">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06"/></svg>
+          Polling: 60s
+        </div>
+
+        <div class="topbar-btn" title="Alertas">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span class="notif-dot"></span>
+        </div>
+        <div class="topbar-btn" title="Terminal global">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+        </div>
+        <div class="topbar-btn" title="Actualizar datos">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTENT + DRAWER -->
+    <div style="display:flex;flex:1;overflow:hidden;">
+
+      <!-- CONTENT -->
+      <div class="content">
+
+        <!-- PAGE HEADER -->
+        <div class="page-header">
+          <div class="page-title">ONTs / ONUs</div>
+          <div class="page-count">50 dispositivos</div>
+          <div class="page-header-right">
+            <button class="btn btn-secondary" style="font-size:11.5px;padding:5px 10px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Exportar CSV
+            </button>
+            <button class="btn btn-primary" style="font-size:11.5px;padding:5px 10px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Agregar ONT
+            </button>
+          </div>
+        </div>
+
+        <!-- STATS BAR -->
+        <div class="stats-bar">
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+            </div>
+            <div>
+              <div class="stat-val">50</div>
+              <div class="stat-label">Total ONTs</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon green">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+              <div class="stat-val">43</div>
+              <div class="stat-label">En línea</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon red">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <div>
+              <div class="stat-val">4</div>
+              <div class="stat-label">LOS / CorteFibra</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon orange">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            </div>
+            <div>
+              <div class="stat-val">3</div>
+              <div class="stat-label">Sin autorizar (ZTP)</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon purple">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+            </div>
+            <div>
+              <div class="stat-val" style="font-size:16px;">-18.4</div>
+              <div class="stat-label">RX Promedio (dBm)</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FILTER BAR -->
+        <div class="filter-bar">
+          <div class="search-box">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#484f58;flex-shrink:0"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" placeholder="Buscar serial, MAC, cliente, IP…" value="">
+          </div>
+
+          <div class="filter-select">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/></svg>
+            Todas las OLTs
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <div class="filter-select">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg>
+            Puerto PON
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+
+          <div class="filter-select">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="12" y1="18" x2="20" y2="18"/></svg>
+            Señal ▾
+          </div>
+
+          <div class="status-filter">
+            <div class="status-pill active">Todos (50)</div>
+            <div class="status-pill green-pill">Online (43)</div>
+            <div class="status-pill red-pill">LOS (4)</div>
+            <div class="status-pill">Offline (3)</div>
+            <div class="status-pill orange-pill">Degradado (2)</div>
+          </div>
+        </div>
+
+        <!-- TABLE -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="td-check"><input type="checkbox"></th>
+                <th>Serial / MAC <span class="sort">↕</span></th>
+                <th>Cliente <span class="sort">↕</span></th>
+                <th>OLT / Marca <span class="sort">↕</span></th>
+                <th>Puerto PON <span class="sort">↕</span></th>
+                <th>RX (dBm) <span class="sort">↓</span></th>
+                <th>TX (dBm) <span class="sort">↕</span></th>
+                <th>Distancia <span class="sort">↕</span></th>
+                <th>Estado <span class="sort">↕</span></th>
+                <th>Última vista <span class="sort">↕</span></th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+
+              <!-- ROW 1 — selected, LOS, Huawei -->
+              <tr class="selected">
+                <td class="td-check"><input type="checkbox" checked></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">HWTC8F2A4C1E</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">a4:2b:8c:1e:4f:2a</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">Juan García</span>
+                    <span class="client-contract">CTR-847291-24</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">HW-MA5800-01</span>
+                    <span class="brand-tag brand-huawei">Huawei MA5800</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/0/1</td>
+                <td><span class="signal sig-critical">-28.7</span></td>
+                <td><span class="signal sig-normal">+2.4</span></td>
+                <td><span class="dist">1.82 km</span></td>
+                <td><span class="badge los"><span class="badge-dot"></span>LOS</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 3 min</td>
+                <td>
+                  <div class="actions" style="opacity:1;">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 2 — Online, KingType -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">KTCA9E3B7F41</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">c9:3e:7f:41:2d:b8</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">María López</span>
+                    <span class="client-contract">CTR-392847-24</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">KT-OLT-C300-01</span>
+                    <span class="brand-tag brand-kingtype">KingType C300</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">1/1/3</td>
+                <td><span class="signal sig-optimal">-18.3</span></td>
+                <td><span class="signal sig-normal">+3.1</span></td>
+                <td><span class="dist">0.94 km</span></td>
+                <td><span class="badge online"><span class="badge-dot"></span>En línea</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 45 s</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 3 — Online, VSOL -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">VSOL4D2F8A0C</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">d4:2f:8a:0c:e1:93</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">Carlos Rodríguez</span>
+                    <span class="client-contract">CTR-501938-25</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">VSOL-V2801-01</span>
+                    <span class="brand-tag brand-vsol">VSOL V2801</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/2/7</td>
+                <td><span class="signal sig-warn">-24.1</span></td>
+                <td><span class="signal sig-normal">+2.8</span></td>
+                <td><span class="dist">3.21 km</span></td>
+                <td><span class="badge degraded"><span class="badge-dot"></span>Degradado</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 1 min</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 4 — Online, Huawei -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">HWTC3C9A1B7D</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">3c:9a:1b:7d:f2:04</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">Valentina Torres</span>
+                    <span class="client-contract">CTR-774812-24</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">HW-MA5680T-02</span>
+                    <span class="brand-tag brand-huawei">Huawei MA5680T</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/1/14</td>
+                <td><span class="signal sig-optimal">-16.8</span></td>
+                <td><span class="signal sig-normal">+3.5</span></td>
+                <td><span class="dist">0.67 km</span></td>
+                <td><span class="badge online"><span class="badge-dot"></span>En línea</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 22 s</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 5 — LOS, KingType C320 -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">KTC320A7B2E9F</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">a7:b2:e9:f0:3c:5d</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">Diego Sánchez</span>
+                    <span class="client-contract">CTR-128304-25</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">KT-OLT-C320-02</span>
+                    <span class="brand-tag brand-kingtype">KingType C320</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/0/8</td>
+                <td><span class="signal sig-critical">-31.2</span></td>
+                <td><span class="signal sig-normal">+2.1</span></td>
+                <td><span class="dist">4.18 km</span></td>
+                <td><span class="badge los"><span class="badge-dot"></span>LOS</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 8 min</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 6 — Online, VSOL V1600G -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">VSOL1G5E7A2B</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">5e:7a:2b:9c:d1:38</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name">Empresa Netcor S.A.</span>
+                    <span class="client-contract">CTR-990021-24</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">VSOL-V1600G-03</span>
+                    <span class="brand-tag brand-vsol">VSOL V1600G</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/3/2</td>
+                <td><span class="signal sig-normal">-20.6</span></td>
+                <td><span class="signal sig-normal">+3.3</span></td>
+                <td><span class="dist">1.54 km</span></td>
+                <td><span class="badge online"><span class="badge-dot"></span>En línea</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 12 s</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn green" title="Reboot">↻</div>
+                    <div class="act-btn" title="Ping">⦿</div>
+                    <div class="act-btn" title="Terminal">≥_</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 7 — Pending, Huawei -->
+              <tr>
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#e6edf3;font-weight:500;">HWTCF1D4A902</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">f1:d4:a9:02:7e:bc</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name" style="color:#484f58;font-style:italic;">Sin asignar</span>
+                    <span class="client-contract">— ZTP pendiente —</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">HW-MA5800-01</span>
+                    <span class="brand-tag brand-huawei">Huawei MA5800</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/0/5</td>
+                <td><span class="signal sig-normal">-19.4</span></td>
+                <td><span class="signal sig-normal">+2.9</span></td>
+                <td><span class="dist">1.13 km</span></td>
+                <td><span class="badge pending"><span class="badge-dot"></span>No autorizado</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 2 min</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" style="background:rgba(188,140,255,0.15);color:#bc8cff;border-color:rgba(188,140,255,0.3);" title="Autorizar ZTP">✓ Auto</div>
+                    <div class="act-btn red" title="Rechazar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- ROW 8 — Offline, Huawei -->
+              <tr style="opacity:0.65;">
+                <td class="td-check"><input type="checkbox"></td>
+                <td>
+                  <div style="font-family:monospace;font-size:11.5px;color:#8b949e;font-weight:500;">HWTC2A7E4C09</div>
+                  <div style="font-family:monospace;font-size:10px;color:#484f58;">2a:7e:4c:09:b3:f5</div>
+                </td>
+                <td>
+                  <div class="client-cell">
+                    <span class="client-name" style="color:#8b949e;">Facundo Medina</span>
+                    <span class="client-contract">CTR-643071-23</span>
+                  </div>
+                </td>
+                <td>
+                  <div class="olt-cell">
+                    <span class="olt-name">HW-MA5800-02</span>
+                    <span class="brand-tag brand-huawei">Huawei MA5800</span>
+                  </div>
+                </td>
+                <td style="font-family:monospace;font-size:11px;color:#8b949e;">0/1/11</td>
+                <td><span class="signal" style="color:#484f58;">—</span></td>
+                <td><span class="signal" style="color:#484f58;">—</span></td>
+                <td><span class="dist">2.40 km</span></td>
+                <td><span class="badge offline"><span class="badge-dot"></span>Offline</span></td>
+                <td style="font-family:monospace;font-size:10.5px;color:#484f58;">hace 4 h</td>
+                <td>
+                  <div class="actions">
+                    <div class="act-btn" title="Ver detalle">👁</div>
+                    <div class="act-btn red" title="Eliminar">✕</div>
+                  </div>
+                </td>
+              </tr>
+
+            </tbody>
+          </table>
+
+          <!-- PAGINATION -->
+          <div class="pagination">
+            Mostrando 1–8 de 50
+            <div style="margin-left:auto;display:flex;gap:4px;align-items:center;">
+              <div class="pag-btn">‹</div>
+              <div class="pag-btn active">1</div>
+              <div class="pag-btn">2</div>
+              <div class="pag-btn">3</div>
+              <span class="pag-sep">…</span>
+              <div class="pag-btn">7</div>
+              <div class="pag-btn">›</div>
+            </div>
+            <div class="filter-select" style="margin-left:12px;font-size:11px;">8 por página ▾</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════════ DRAWER ═══════════════════ -->
+      <div class="drawer">
+
+        <div class="drawer-header">
+          <div class="drawer-title-block">
+            <div class="drawer-ont-id">ONT #0047 · OID 0.0.1.3</div>
+            <div class="drawer-title">HWTC8F2A4C1E</div>
+            <div class="drawer-meta">
+              <span class="badge los" style="font-size:10px;padding:1px 6px;"><span class="badge-dot"></span>LOS</span>
+              <span>·</span>
+              <span style="color:#8b949e;">Juan García</span>
+              <span>·</span>
+              <span style="font-family:monospace;color:#484f58;font-size:10px;">HW-MA5800-01 · 0/0/1</span>
+            </div>
+          </div>
+          <div class="drawer-close">✕</div>
+        </div>
+
+        <!-- QUICK ACTIONS -->
+        <div class="drawer-actions">
+          <button class="btn btn-secondary">
+            <span>↻</span> Reboot ONT
+          </button>
+          <button class="btn btn-secondary">
+            <span>⦿</span> Ping
+          </button>
+          <button class="btn btn-secondary">
+            <span>⟿</span> Traceroute
+          </button>
+          <button class="btn btn-secondary">
+            <span>≥_</span> Terminal CLI
+          </button>
+          <button class="btn btn-secondary" style="margin-left:auto;color:var(--red);border-color:rgba(248,81,73,0.3);">
+            Eliminar
+          </button>
+        </div>
+
+        <!-- TABS -->
+        <div class="tabs">
+          <div class="tab active">Resumen</div>
+          <div class="tab">Señal</div>
+          <div class="tab">Servicios</div>
+          <div class="tab">WAN / IP</div>
+          <div class="tab">DHCP</div>
+          <div class="tab">Eventos</div>
+        </div>
+
+        <!-- BODY — Tab: Resumen -->
+        <div class="drawer-body">
+
+          <!-- INFO GRID -->
+          <div class="info-grid">
+            <div class="info-card">
+              <div class="info-label">Serial</div>
+              <div class="info-val">HWTC8F2A4C1E</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">MAC Address</div>
+              <div class="info-val">a4:2b:8c:1e:4f:2a</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Modelo</div>
+              <div class="info-val">HG8010H</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Firmware</div>
+              <div class="info-val" style="font-size:11px;">V3R016C10S100</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">RX Power</div>
+              <div class="info-val red">-28.7 dBm</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">TX Power</div>
+              <div class="info-val green">+2.4 dBm</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Temperatura</div>
+              <div class="info-val orange">47°C</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Distancia fibra</div>
+              <div class="info-val">1.82 km</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Uptime</div>
+              <div class="info-val" style="font-size:11px;">12d 04h 33m</div>
+            </div>
+            <div class="info-card">
+              <div class="info-label">Última señal OK</div>
+              <div class="info-val" style="font-size:11px;color:#d29922;">hace 3 min</div>
+            </div>
+          </div>
+
+          <!-- SIGNAL CHART MINI -->
+          <div class="chart-wrap">
+            <div class="chart-header">
+              <div class="chart-title">Señal óptica — últimas 24h</div>
+              <div class="chart-time-sel">
+                <div class="time-btn active">24h</div>
+                <div class="time-btn">7d</div>
+                <div class="time-btn">30d</div>
+              </div>
+            </div>
+
+            <!-- SVG mini chart -->
+            <svg class="signal-svg" viewBox="0 0 520 120" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="rxGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#3fb950" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#3fb950" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#388bfd" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#388bfd" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <!-- Grid lines -->
+              <line x1="0" y1="30" x2="520" y2="30" stroke="#21262d" stroke-width="1"/>
+              <line x1="0" y1="60" x2="520" y2="60" stroke="#21262d" stroke-width="1"/>
+              <line x1="0" y1="90" x2="520" y2="90" stroke="#21262d" stroke-width="1"/>
+              <!-- Labels -->
+              <text x="2" y="28" font-size="8" fill="#484f58" font-family="monospace">-15</text>
+              <text x="2" y="58" font-size="8" fill="#484f58" font-family="monospace">-20</text>
+              <text x="2" y="88" font-size="8" fill="#484f58" font-family="monospace">-25</text>
+              <!-- Threshold LOS line -->
+              <line x1="0" y1="108" x2="520" y2="108" stroke="#f85149" stroke-width="1" stroke-dasharray="4,3"/>
+              <text x="490" y="106" font-size="7" fill="#f85149" font-family="monospace">-27</text>
+              <!-- TX line (blue, flat top) -->
+              <polyline points="0,18 65,16 130,17 195,15 260,14 325,16 390,15 455,16 520,14" fill="none" stroke="#388bfd" stroke-width="1.5"/>
+              <!-- RX area (green with drop at end = LOS event) -->
+              <polygon points="0,50 65,48 130,52 195,47 260,49 325,51 390,50 420,53 440,60 460,78 480,105 500,110 520,112 520,120 0,120" fill="url(#rxGrad)"/>
+              <polyline points="0,50 65,48 130,52 195,47 260,49 325,51 390,50 420,53 440,60 460,78 480,105 500,110 520,112" fill="none" stroke="#3fb950" stroke-width="1.5"/>
+              <!-- LOS event marker -->
+              <circle cx="480" cy="105" r="3" fill="#f85149"/>
+              <text x="455" y="100" font-size="7" fill="#f85149" font-family="monospace">LOS</text>
+            </svg>
+
+            <div class="chart-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:#3fb950;"></div>RX Power</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#388bfd;"></div>TX Power</div>
+              <div class="legend-item"><div class="legend-dot" style="background:#f85149;height:1px;width:16px;border-top:1px dashed #f85149;background:none;"></div>Umbral LOS (-27 dBm)</div>
+            </div>
+          </div>
+
+          <!-- THRESHOLDS -->
+          <div class="section-title">Umbrales de alerta</div>
+          <div class="threshold-line">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#f85149"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>
+            <span class="threshold-label">LOS — Corte de fibra</span>
+            <span class="threshold-val red">≤ -27.0 dBm</span>
+          </div>
+          <div class="threshold-line warn">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#d29922"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/></svg>
+            <span class="threshold-label">Warning — Señal débil</span>
+            <span class="threshold-val orange">≤ -25.0 dBm</span>
+          </div>
+
+          <!-- SERVICES QUICK VIEW -->
+          <div class="section-title">Servicios activos</div>
+
+          <div class="service-row">
+            <div class="service-icon data">📡</div>
+            <div class="service-info">
+              <div class="service-name">Datos — Internet</div>
+              <div class="service-detail">VLAN 100 · PPPoE · 100 Mbps ↓ / 30 Mbps ↑</div>
+            </div>
+            <span class="service-badge on">ACTIVO</span>
+          </div>
+
+          <div class="service-row">
+            <div class="service-icon voip">📞</div>
+            <div class="service-info">
+              <div class="service-name">VoIP — SIP</div>
+              <div class="service-detail">VLAN 200 · Extensión 1042</div>
+            </div>
+            <span class="service-badge off">INACTIVO</span>
+          </div>
+
+          <div class="service-row">
+            <div class="service-icon iptv">📺</div>
+            <div class="service-info">
+              <div class="service-name">IPTV / Multicast</div>
+              <div class="service-detail">VLAN 300 · Multicast habilitado</div>
+            </div>
+            <span class="service-badge off">INACTIVO</span>
+          </div>
+
+          <!-- RECENT EVENTS -->
+          <div class="section-title">Eventos recientes</div>
+
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--red);"></div>
+            <span class="event-time">21:27</span>
+            <span class="event-msg"><strong>LOS detectado</strong> — RX cayó a -28.7 dBm (umbral: -27.0)</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--orange);"></div>
+            <span class="event-time">21:24</span>
+            <span class="event-msg"><strong>Señal degradándose</strong> — RX -25.3 dBm (warning)</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--text-muted);"></div>
+            <span class="event-time">09:15</span>
+            <span class="event-msg">ONT re-registrada en OLT tras reboot</span>
+          </div>
+          <div class="event-row">
+            <div class="event-dot" style="background:var(--green);"></div>
+            <span class="event-time">ayer 14:02</span>
+            <span class="event-msg"><strong>Online</strong> — Señal estable -18.2 dBm</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- end content+drawer -->
+  </div><!-- end main -->
+</div><!-- end app -->
+
+<!-- BATCH BAR (muestra cuando hay selección) -->
+<div class="batch-bar">
+  <span class="batch-count"><strong>2</strong> ONTs seleccionadas</span>
+  <div class="batch-sep"></div>
+  <button class="btn btn-secondary" style="padding:4px 10px;font-size:11.5px;">↻ Reboot masivo</button>
+  <button class="btn btn-secondary" style="padding:4px 10px;font-size:11.5px;">⦿ Ping masivo</button>
+  <button class="btn btn-secondary" style="padding:4px 10px;font-size:11.5px;color:var(--red);border-color:rgba(248,81,73,0.3);">✕ Eliminar</button>
+  <div class="batch-sep"></div>
+  <button class="btn btn-secondary" style="padding:4px 10px;font-size:11.5px;">✕ Cancelar</button>
+</div>
+
+</body>
+</html>

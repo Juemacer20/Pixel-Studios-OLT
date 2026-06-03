@@ -9,6 +9,7 @@ import Login from './pages/Login';
 
 const Dashboard        = React.lazy(() => import('./pages/Dashboard'));
 const OLTs             = React.lazy(() => import('./pages/OLTs'));
+const OLTConfig        = React.lazy(() => import('./pages/OLTConfig'));
 const ONTs             = React.lazy(() => import('./pages/ONTs'));
 const Clients          = React.lazy(() => import('./pages/Clients'));
 const MapView          = React.lazy(() => import('./pages/MapView'));
@@ -49,7 +50,8 @@ function AppLayout() {
             <Routes>
               <Route path="/"                element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard"       element={<Dashboard />} />
-              <Route path="/olts/*"          element={<OLTs />} />
+              <Route path="/olts"             element={<OLTs />} />
+              <Route path="/olts/:id/config" element={<OLTConfig />} />
               <Route path="/onts/*"          element={<ONTs />} />
               <Route path="/clients/*"       element={<Clients />} />
               <Route path="/map"             element={<MapView />} />

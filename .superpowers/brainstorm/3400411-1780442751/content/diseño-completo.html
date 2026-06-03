@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pixel Studios OLT — Diseño Completo</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Inter',sans-serif;background:#060b14;color:#e2e8f0;min-height:100vh;}
+
+  /* ── Layout ── */
+  .shell{display:flex;height:100vh;overflow:hidden;}
+  .sidebar{width:220px;min-width:220px;background:#0a0f1a;border-right:1px solid #1a2540;display:flex;flex-direction:column;overflow-y:auto;}
+  .main{flex:1;display:flex;flex-direction:column;overflow:hidden;background:#060b14;}
+  .topbar{height:52px;background:#0a0f1a;border-bottom:1px solid #1a2540;display:flex;align-items:center;padding:0 20px;gap:16px;flex-shrink:0;}
+  .content{flex:1;overflow-y:auto;padding:20px;}
+
+  /* ── Sidebar ── */
+  .logo{padding:18px 16px;border-bottom:1px solid #1a2540;display:flex;align-items:center;gap:10px;}
+  .logo-icon{width:28px;height:28px;background:linear-gradient(135deg,#00d4ff,#0094ff);border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#060b14;font-family:'IBM Plex Mono',monospace;}
+  .logo-text{font-size:13px;font-weight:700;color:#e2e8f0;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;line-height:1.2;}
+  .logo-sub{font-size:10px;color:#4a6080;font-weight:400;}
+
+  .nav-section{padding:14px 12px 4px;font-size:9px;font-weight:700;color:#2d4060;text-transform:uppercase;letter-spacing:.12em;}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:8px 14px;margin:1px 6px;border-radius:7px;cursor:pointer;font-size:13px;color:#6b8aaa;transition:all .15s;position:relative;}
+  .nav-item:hover{background:#111b2e;color:#c4d4e8;}
+  .nav-item.active{background:#0d2040;color:#00d4ff;}
+  .nav-item.active::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:18px;background:#00d4ff;border-radius:0 3px 3px 0;}
+  .nav-icon{width:16px;height:16px;opacity:.7;flex-shrink:0;}
+  .nav-item.active .nav-icon{opacity:1;}
+  .nav-badge{margin-left:auto;background:#ff3b5c;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;font-family:'IBM Plex Mono',monospace;}
+  .nav-badge.warn{background:#ff6b35;}
+  .nav-badge.ok{background:#00b86e;}
+
+  /* ── Topbar ── */
+  .topbar-title{font-size:14px;font-weight:600;color:#e2e8f0;}
+  .topbar-path{font-size:12px;color:#3a5070;}
+  .topbar-sep{color:#1a2540;font-size:16px;}
+  .topbar-search{margin-left:auto;display:flex;align-items:center;gap:8px;background:#111b2e;border:1px solid #1a2540;border-radius:8px;padding:6px 12px;width:240px;}
+  .topbar-search input{background:none;border:none;outline:none;color:#c4d4e8;font-size:13px;width:100%;}
+  .topbar-search input::placeholder{color:#2d4060;}
+  .topbar-actions{display:flex;align-items:center;gap:8px;margin-left:12px;}
+  .topbar-btn{width:32px;height:32px;border-radius:8px;background:#111b2e;border:1px solid #1a2540;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#6b8aaa;font-size:14px;position:relative;}
+  .topbar-btn .dot{position:absolute;top:6px;right:6px;width:6px;height:6px;background:#ff3b5c;border-radius:50%;border:2px solid #0a0f1a;}
+  .user-chip{display:flex;align-items:center;gap:8px;background:#111b2e;border:1px solid #1a2540;border-radius:8px;padding:5px 10px;cursor:pointer;}
+  .user-avatar{width:22px;height:22px;border-radius:6px;background:linear-gradient(135deg,#00d4ff,#0094ff);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#060b14;}
+  .user-name{font-size:12px;color:#c4d4e8;font-weight:500;}
+
+  /* ── KPI Cards ── */
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:16px;}
+  .kpi{background:#0a0f1a;border:1px solid #1a2540;border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;}
+  .kpi::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:10px 10px 0 0;}
+  .kpi.cyan::after{background:#00d4ff;}
+  .kpi.green::after{background:#00ff94;}
+  .kpi.red::after{background:#ff3b5c;}
+  .kpi.orange::after{background:#ff6b35;}
+  .kpi.purple::after{background:#a855f7;}
+  .kpi-label{font-size:10px;color:#3a5070;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+  .kpi-value{font-size:26px;font-weight:700;font-family:'IBM Plex Mono',monospace;line-height:1;}
+  .kpi.cyan .kpi-value{color:#00d4ff;}
+  .kpi.green .kpi-value{color:#00ff94;}
+  .kpi.red .kpi-value{color:#ff3b5c;}
+  .kpi.orange .kpi-value{color:#ff6b35;}
+  .kpi.purple .kpi-value{color:#a855f7;}
+  .kpi-sub{font-size:11px;color:#3a5070;margin-top:4px;}
+  .kpi-icon{position:absolute;right:14px;top:14px;font-size:20px;opacity:.15;}
+
+  /* ── Grid layout ── */
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
+  .grid-3{display:grid;grid-template-columns:2fr 1fr;gap:12px;margin-bottom:12px;}
+
+  /* ── Panel ── */
+  .panel{background:#0a0f1a;border:1px solid #1a2540;border-radius:10px;overflow:hidden;}
+  .panel-header{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid #1a2540;gap:10px;}
+  .panel-title{font-size:13px;font-weight:600;color:#c4d4e8;}
+  .panel-subtitle{font-size:11px;color:#3a5070;margin-left:auto;}
+  .panel-actions{margin-left:auto;display:flex;gap:6px;}
+  .btn{padding:5px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:'Inter',sans-serif;}
+  .btn-primary{background:#00d4ff;color:#060b14;}
+  .btn-ghost{background:transparent;color:#6b8aaa;border:1px solid #1a2540;}
+  .btn-ghost:hover{background:#111b2e;color:#c4d4e8;}
+  .btn-danger{background:rgba(255,59,92,.15);color:#ff3b5c;border:1px solid rgba(255,59,92,.3);}
+  .btn-sm{padding:3px 8px;font-size:11px;}
+
+  /* ── Table ── */
+  .table{width:100%;border-collapse:collapse;}
+  .table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:700;color:#2d4060;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid #1a2540;white-space:nowrap;}
+  .table td{padding:9px 12px;font-size:12px;color:#c4d4e8;border-bottom:1px solid #0f1825;white-space:nowrap;font-family:'IBM Plex Mono',monospace;}
+  .table tr:hover td{background:#0d1526;}
+  .table tr:last-child td{border-bottom:none;}
+  .td-name{font-family:'Inter',sans-serif!important;font-weight:500;color:#e2e8f0!important;}
+  .td-muted{color:#3a5070!important;}
+
+  /* ── Badges ── */
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+  .badge::before{content:'';width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+  .badge-online{background:rgba(0,255,148,.1);color:#00ff94;border:1px solid rgba(0,255,148,.25);}
+  .badge-online::before{background:#00ff94;box-shadow:0 0 4px #00ff94;}
+  .badge-offline{background:rgba(255,59,92,.1);color:#ff3b5c;border:1px solid rgba(255,59,92,.25);}
+  .badge-offline::before{background:#ff3b5c;}
+  .badge-los{background:rgba(255,107,53,.1);color:#ff6b35;border:1px solid rgba(255,107,53,.25);}
+  .badge-los::before{background:#ff6b35;box-shadow:0 0 4px #ff6b35;}
+  .badge-pending{background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.25);}
+  .badge-pending::before{background:#a855f7;}
+
+  /* Signal strength bar */
+  .sig-bar{display:flex;align-items:center;gap:6px;}
+  .sig-val{font-size:12px;font-family:'IBM Plex Mono',monospace;min-width:52px;}
+  .sig-val.good{color:#00ff94;}
+  .sig-val.warn{color:#ff6b35;}
+  .sig-val.crit{color:#ff3b5c;}
+  .sig-track{width:56px;height:4px;background:#1a2540;border-radius:2px;overflow:hidden;}
+  .sig-fill{height:100%;border-radius:2px;}
+  .sig-fill.good{background:linear-gradient(90deg,#00b86e,#00ff94);}
+  .sig-fill.warn{background:#ff6b35;}
+  .sig-fill.crit{background:#ff3b5c;}
+
+  /* ── Signal Chart (CSS-only) ── */
+  .chart-area{padding:12px 16px 8px;position:relative;height:160px;}
+  .chart-grid{position:absolute;inset:12px 16px 24px;display:flex;flex-direction:column;justify-content:space-between;}
+  .chart-line{border-top:1px dashed #1a2540;position:relative;}
+  .chart-label{position:absolute;left:-38px;top:-8px;font-size:9px;color:#2d4060;font-family:'IBM Plex Mono',monospace;}
+  .chart-svg{position:absolute;inset:12px 16px 24px;}
+  .chart-legend{display:flex;gap:16px;padding:0 16px 10px;font-size:11px;color:#6b8aaa;}
+  .chart-legend span{display:flex;align-items:center;gap:5px;}
+  .chart-legend span::before{content:'';width:20px;height:2px;border-radius:1px;}
+  .chart-legend .rx::before{background:#00d4ff;}
+  .chart-legend .tx::before{background:#00ff94;}
+  .chart-legend .ref::before{background:#ff3b5c;border-top:2px dashed #ff3b5c;height:0;}
+
+  /* ── Event timeline ── */
+  .event-list{padding:8px 0;}
+  .event-item{display:flex;align-items:flex-start;gap:12px;padding:9px 16px;}
+  .event-item:hover{background:#0d1526;}
+  .event-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px;}
+  .event-dot.online{background:#00ff94;box-shadow:0 0 5px #00ff94;}
+  .event-dot.offline{background:#ff3b5c;}
+  .event-dot.los{background:#ff6b35;box-shadow:0 0 5px #ff6b35;}
+  .event-dot.warn{background:#a855f7;}
+  .event-body{flex:1;min-width:0;}
+  .event-title{font-size:12px;color:#c4d4e8;font-weight:500;}
+  .event-meta{font-size:11px;color:#3a5070;margin-top:1px;font-family:'IBM Plex Mono',monospace;}
+
+  /* ── OLT cards ── */
+  .olt-card{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid #0f1825;cursor:pointer;}
+  .olt-card:hover{background:#0d1526;}
+  .olt-card:last-child{border-bottom:none;}
+  .olt-icon{width:36px;height:36px;border-radius:8px;background:#111b2e;border:1px solid #1a2540;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#00d4ff;flex-shrink:0;}
+  .olt-name{font-size:13px;font-weight:600;color:#e2e8f0;}
+  .olt-meta{font-size:11px;color:#3a5070;font-family:'IBM Plex Mono',monospace;}
+  .olt-stats{margin-left:auto;text-align:right;}
+  .olt-onts{font-size:13px;font-weight:700;color:#00d4ff;font-family:'IBM Plex Mono',monospace;}
+  .olt-cpu{font-size:10px;color:#3a5070;}
+  .cpu-bar{width:60px;height:3px;background:#1a2540;border-radius:2px;margin-top:3px;overflow:hidden;}
+  .cpu-fill{height:100%;background:#00d4ff;border-radius:2px;}
+
+  /* ── Fiber Tree ── */
+  .fiber-tree{padding:12px 14px;}
+  .ft-olt{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#111b2e;border-radius:7px;margin-bottom:8px;border:1px solid #1a2540;}
+  .ft-olt-label{font-size:12px;font-weight:600;color:#00d4ff;font-family:'IBM Plex Mono',monospace;}
+  .ft-ports{padding-left:16px;border-left:2px solid #1a2540;margin-left:14px;}
+  .ft-port{margin-bottom:4px;}
+  .ft-port-header{display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;}
+  .ft-port-label{font-size:11px;color:#6b8aaa;font-family:'IBM Plex Mono',monospace;}
+  .ft-port-count{font-size:10px;color:#3a5070;}
+  .ft-onts{padding-left:14px;border-left:1px dashed #1a2540;margin-left:12px;}
+  .ft-ont{display:flex;align-items:center;gap:6px;padding:3px 6px;font-size:11px;color:#6b8aaa;font-family:'IBM Plex Mono',monospace;cursor:pointer;}
+  .ft-ont:hover{color:#c4d4e8;}
+  .ft-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+
+  /* ── Section header ── */
+  .section-tabs{display:flex;gap:2px;padding:0 16px;border-bottom:1px solid #1a2540;}
+  .tab{padding:9px 14px;font-size:12px;font-weight:500;color:#3a5070;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .tab.active{color:#00d4ff;border-bottom-color:#00d4ff;}
+  .tab:hover:not(.active){color:#6b8aaa;}
+
+  /* Scrollbar */
+  ::-webkit-scrollbar{width:4px;height:4px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  ::-webkit-scrollbar-thumb{background:#1a2540;border-radius:2px;}
+
+  /* ── Feature callouts ── */
+  .callout{background:#060b14;border:1px solid #1a2540;border-radius:8px;padding:10px 14px;font-size:11px;color:#6b8aaa;line-height:1.6;}
+  .callout strong{color:#00d4ff;}
+
+  /* ── Annotation ── */
+  .annotation{position:absolute;background:#00d4ff;color:#060b14;font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;white-space:nowrap;z-index:10;}
+  .ann-line{position:absolute;border:1px dashed rgba(0,212,255,.4);}
+
+  .section-label{font-size:11px;font-weight:700;color:#00d4ff;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+  .section-label::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,#1a2540,transparent);}
+
+  .tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600;font-family:'IBM Plex Mono',monospace;}
+  .tag-huawei{background:rgba(0,212,255,.1);color:#00d4ff;border:1px solid rgba(0,212,255,.2);}
+  .tag-zte{background:rgba(0,255,148,.1);color:#00ff94;border:1px solid rgba(0,255,148,.2);}
+  .tag-kingtype{background:rgba(168,85,247,.1);color:#a855f7;border:1px solid rgba(168,85,247,.2);}
+  .tag-vsol{background:rgba(255,107,53,.1);color:#ff6b35;border:1px solid rgba(255,107,53,.2);}
+
+  /* ── Page wrapper ── */
+  .page-wrapper{padding:24px;max-width:1600px;margin:0 auto;}
+  .page-title{font-size:22px;font-weight:700;color:#e2e8f0;margin-bottom:4px;}
+  .page-subtitle{font-size:13px;color:#3a5070;margin-bottom:24px;}
+  .divider{height:1px;background:linear-gradient(90deg,#1a2540,transparent);margin:32px 0;}
+</style>
+</head>
+<body>
+<div class="page-wrapper">
+
+  <!-- HEADER -->
+  <div style="text-align:center;margin-bottom:32px;">
+    <div style="display:inline-flex;align-items:center;gap:10px;background:#0a0f1a;border:1px solid #1a2540;border-radius:12px;padding:10px 20px;margin-bottom:16px;">
+      <div class="logo-icon">PS</div>
+      <span style="font-size:15px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#00d4ff;">PIXEL STUDIOS OLT</span>
+      <span style="font-size:11px;color:#3a5070;">— Diseño propuesto v2.0</span>
+    </div>
+    <div style="font-size:13px;color:#6b8aaa;max-width:700px;margin:0 auto;">
+      Basado en análisis completo de <strong style="color:#00d4ff">SmartOLT</strong> + <strong style="color:#00ff94">AdminOLT</strong>.
+      Soporta <span class="tag tag-huawei">Huawei MA5800/MA5680T</span>
+      <span class="tag tag-zte">ZTE C300/C320/C600</span>
+      <span class="tag tag-kingtype">KingType C300</span>
+      <span class="tag tag-vsol">VSOL V2801/V1600</span>
+    </div>
+  </div>
+
+  <!-- SECTION 1: NAVIGATION -->
+  <div class="section-label">① Sidebar — Navegación completa</div>
+  <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;margin-bottom:32px;">
+    <div class="sidebar" style="height:auto;border-radius:10px;border:1px solid #1a2540;">
+      <div class="logo">
+        <div class="logo-icon">PS</div>
+        <div><div class="logo-text">Pixel Studios</div><div class="logo-sub">OLT Platform v2</div></div>
+      </div>
+      <div class="nav-section">Monitoreo</div>
+      <div class="nav-item active">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Señal en vivo
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        Métricas OLT
+        <span class="nav-badge warn">3</span>
+      </div>
+
+      <div class="nav-section">Dispositivos</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        OLTs
+        <span class="nav-badge ok">4</span>
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        ONTs / ONUs
+        <span class="nav-badge">50</span>
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Clientes
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        ZTP — Autorizar
+        <span class="nav-badge" style="background:#a855f7">7</span>
+      </div>
+
+      <div class="nav-section">Red</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+        Mapa GPS
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+        DHCP / Leases
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        VLANs
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        TR-069 / ACS
+      </div>
+
+      <div class="nav-section">Sistema</div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        Alertas
+        <span class="nav-badge">8</span>
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Historial eventos
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
+        Notificaciones
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        Terminal CLI
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        API / Integración
+      </div>
+      <div class="nav-item">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Configuración
+      </div>
+      <div style="height:12px;"></div>
+    </div>
+
+    <div>
+      <div class="callout" style="margin-bottom:12px;">
+        <strong>16 secciones</strong> de navegación organizadas en 4 grupos: Monitoreo · Dispositivos · Red · Sistema.
+        Los badges muestran conteos en tiempo real (ONTs offline, alertas activas, equipos pendientes de ZTP).
+      </div>
+      <!-- KPI preview in context -->
+      <div class="kpi-row" style="grid-template-columns:repeat(3,1fr);">
+        <div class="kpi cyan"><div class="kpi-label">OLTs activas</div><div class="kpi-value">4</div><div class="kpi-sub">Huawei · KingType · VSOL</div><div class="kpi-icon">🖥</div></div>
+        <div class="kpi green"><div class="kpi-label">ONTs online</div><div class="kpi-value">43</div><div class="kpi-sub">de 50 totales (86%)</div><div class="kpi-icon">📡</div></div>
+        <div class="kpi red"><div class="kpi-label">Alertas críticas</div><div class="kpi-value">8</div><div class="kpi-sub">3 LOS · 2 CPU · 3 señal baja</div><div class="kpi-icon">🚨</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 2: DASHBOARD PRINCIPAL -->
+  <div class="section-label">② Dashboard principal — Vista NOC</div>
+  <div class="topbar" style="border-radius:10px 10px 0 0;border:1px solid #1a2540;border-bottom:none;">
+    <span class="topbar-title">Dashboard</span>
+    <span class="topbar-sep">/</span>
+    <span class="topbar-path">Vista en tiempo real</span>
+    <div class="topbar-search"><span style="color:#3a5070;font-size:13px;">🔍</span><input placeholder="Buscar ONT, cliente, serial…"></div>
+    <div class="topbar-actions">
+      <div class="topbar-btn">🔔<div class="dot"></div></div>
+      <div class="topbar-btn">⚡</div>
+      <div class="user-chip"><div class="user-avatar">A</div><span class="user-name">admin</span></div>
+    </div>
+  </div>
+
+  <div style="background:#060b14;border:1px solid #1a2540;border-top:none;border-radius:0 0 10px 10px;padding:16px;margin-bottom:24px;">
+    <!-- KPI Row completa -->
+    <div class="kpi-row" style="margin-bottom:14px;">
+      <div class="kpi cyan"><div class="kpi-label">Total ONTs</div><div class="kpi-value">50</div><div class="kpi-sub">4 OLTs · 28 puertos PON</div><div class="kpi-icon">📡</div></div>
+      <div class="kpi green"><div class="kpi-label">Online</div><div class="kpi-value">43</div><div class="kpi-sub">↑ 2 desde hace 1h</div><div class="kpi-icon">✅</div></div>
+      <div class="kpi red"><div class="kpi-label">Offline / LOS</div><div class="kpi-value">7</div><div class="kpi-sub">3 LOS · 4 sin señal</div><div class="kpi-icon">❌</div></div>
+      <div class="kpi orange"><div class="kpi-label">Alertas activas</div><div class="kpi-value">8</div><div class="kpi-sub">2 críticas · 6 warnings</div><div class="kpi-icon">⚠</div></div>
+      <div class="kpi purple"><div class="kpi-label">ZTP pendientes</div><div class="kpi-value">7</div><div class="kpi-sub">Nuevos sin autorizar</div><div class="kpi-icon">🔌</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:220px 1fr 280px;gap:12px;align-items:start;">
+      <!-- OLT List -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">OLTs</span>
+          <div class="panel-actions"><button class="btn btn-primary btn-sm">+ Agregar</button></div>
+        </div>
+        <div class="olt-card">
+          <div class="olt-icon">MA</div>
+          <div><div class="olt-name">OLT-CENTRAL</div><div class="olt-meta">192.168.1.10 · Huawei MA5800</div></div>
+          <div class="olt-stats"><div class="olt-onts">18 ONT</div><div class="olt-cpu">CPU 23%</div><div class="cpu-bar"><div class="cpu-fill" style="width:23%"></div></div></div>
+        </div>
+        <div class="olt-card">
+          <div class="olt-icon" style="color:#00ff94">MA</div>
+          <div><div class="olt-name">OLT-SUR</div><div class="olt-meta">192.168.1.11 · MA5680T</div></div>
+          <div class="olt-stats"><div class="olt-onts">14 ONT</div><div class="olt-cpu">CPU 18%</div><div class="cpu-bar"><div class="cpu-fill" style="width:18%;background:#00ff94"></div></div></div>
+        </div>
+        <div class="olt-card">
+          <div class="olt-icon" style="color:#a855f7">KT</div>
+          <div><div class="olt-name">OLT-NORTE</div><div class="olt-meta">192.168.1.12 · KingType C300</div></div>
+          <div class="olt-stats"><div class="olt-onts" style="color:#a855f7">12 ONT</div><div class="olt-cpu">CPU 41%</div><div class="cpu-bar"><div class="cpu-fill" style="width:41%;background:#a855f7"></div></div></div>
+        </div>
+        <div class="olt-card" style="opacity:.7">
+          <div class="olt-icon" style="color:#ff6b35">VS</div>
+          <div><div class="olt-name">OLT-RURAL</div><div class="olt-meta">192.168.1.13 · VSOL V2801</div></div>
+          <div class="olt-stats"><div class="olt-onts" style="color:#ff6b35">6 ONT</div><div class="olt-cpu" style="color:#ff6b35">⚠ Degradada</div></div>
+        </div>
+      </div>
+
+      <!-- ONT Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">ONTs en tiempo real</span>
+          <div style="display:flex;gap:6px;margin-left:auto;align-items:center;">
+            <select style="background:#111b2e;border:1px solid #1a2540;color:#6b8aaa;border-radius:6px;padding:4px 8px;font-size:11px;outline:none;">
+              <option>Todas las OLTs</option>
+              <option>OLT-CENTRAL</option>
+            </select>
+            <select style="background:#111b2e;border:1px solid #1a2540;color:#6b8aaa;border-radius:6px;padding:4px 8px;font-size:11px;outline:none;">
+              <option>Todos los estados</option>
+              <option>Online</option>
+              <option>Offline</option>
+              <option>LOS</option>
+            </select>
+            <button class="btn btn-ghost btn-sm">⬇ CSV</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Serial / ID</th>
+                <th>Cliente</th>
+                <th>OLT · Puerto</th>
+                <th>Estado</th>
+                <th>RX (dBm)</th>
+                <th>TX (dBm)</th>
+                <th>Atenuación</th>
+                <th>Distancia</th>
+                <th>Uptime</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="td-name">HWTC-A1B2C3D4</td>
+                <td class="td-name">García, Juan</td>
+                <td>CENTRAL · 0/1/0</td>
+                <td><span class="badge badge-online">Online</span></td>
+                <td><div class="sig-bar"><span class="sig-val good">-18.4</span><div class="sig-track"><div class="sig-fill good" style="width:75%"></div></div></div></td>
+                <td><span style="color:#6b8aaa">+2.1</span></td>
+                <td><span style="color:#00ff94">20.5 dB</span></td>
+                <td>1.2 km</td>
+                <td>14d 6h</td>
+                <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+              </tr>
+              <tr>
+                <td class="td-name">HWTC-E5F6G7H8</td>
+                <td class="td-name">López, María</td>
+                <td>CENTRAL · 0/1/1</td>
+                <td><span class="badge badge-online">Online</span></td>
+                <td><div class="sig-bar"><span class="sig-val warn">-24.8</span><div class="sig-track"><div class="sig-fill warn" style="width:40%"></div></div></div></td>
+                <td><span style="color:#6b8aaa">+1.8</span></td>
+                <td><span style="color:#ff6b35">26.6 dB</span></td>
+                <td>2.8 km</td>
+                <td>3d 2h</td>
+                <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+              </tr>
+              <tr style="background:rgba(255,59,92,.04);">
+                <td class="td-name">KTC3-112233AA</td>
+                <td class="td-name">Martínez ISP</td>
+                <td>NORTE · 0/0/2</td>
+                <td><span class="badge badge-los">LOS</span></td>
+                <td><div class="sig-bar"><span class="sig-val crit">-38.0</span><div class="sig-track"><div class="sig-fill crit" style="width:5%"></div></div></div></td>
+                <td><span style="color:#3a5070">—</span></td>
+                <td><span style="color:#ff3b5c">40.0 dB ⚠</span></td>
+                <td>—</td>
+                <td><span style="color:#ff3b5c">0h</span></td>
+                <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+              </tr>
+              <tr>
+                <td class="td-name">VSOL-556677BB</td>
+                <td class="td-name">Rodríguez, Ana</td>
+                <td>RURAL · 0/1/0</td>
+                <td><span class="badge badge-offline">Offline</span></td>
+                <td><div class="sig-bar"><span class="sig-val crit">—</span><div class="sig-track"></div></div></td>
+                <td><span style="color:#3a5070">—</span></td>
+                <td>—</td>
+                <td>—</td>
+                <td><span style="color:#ff3b5c">Corte 2h</span></td>
+                <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+              </tr>
+              <tr>
+                <td class="td-name">HWTC-I9J0K1L2</td>
+                <td class="td-name">Pérez, Carlos</td>
+                <td>SUR · 0/2/4</td>
+                <td><span class="badge badge-online">Online</span></td>
+                <td><div class="sig-bar"><span class="sig-val good">-20.1</span><div class="sig-track"><div class="sig-fill good" style="width:68%"></div></div></div></td>
+                <td><span style="color:#6b8aaa">+2.5</span></td>
+                <td><span style="color:#00ff94">22.6 dB</span></td>
+                <td>1.8 km</td>
+                <td>21d 14h</td>
+                <td><button class="btn btn-ghost btn-sm">⋯</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="padding:8px 14px;border-top:1px solid #1a2540;display:flex;align-items:center;font-size:11px;color:#3a5070;gap:8px;">
+          Mostrando 5 de 50 ONTs
+          <div style="margin-left:auto;display:flex;gap:4px;">
+            <button class="btn btn-ghost btn-sm">‹</button>
+            <button class="btn btn-ghost btn-sm" style="background:#0d2040;color:#00d4ff;">1</button>
+            <button class="btn btn-ghost btn-sm">2</button>
+            <button class="btn btn-ghost btn-sm">3</button>
+            <button class="btn btn-ghost btn-sm">›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Events -->
+      <div class="panel">
+        <div class="panel-header"><span class="panel-title">Eventos recientes</span><span class="panel-subtitle">En vivo</span></div>
+        <div class="event-list">
+          <div class="event-item"><div class="event-dot los"></div><div class="event-body"><div class="event-title">LOS — KTCX-112233AA</div><div class="event-meta">NORTE · 0/0/2 · hace 8 min</div></div></div>
+          <div class="event-item"><div class="event-dot offline"></div><div class="event-body"><div class="event-title">PowerFail — VSOL-556677BB</div><div class="event-meta">RURAL · 0/1/0 · hace 2h</div></div></div>
+          <div class="event-item"><div class="event-dot warn"></div><div class="event-body"><div class="event-title">Señal baja (-24.8) — López</div><div class="event-meta">CENTRAL · 0/1/1 · hace 3h</div></div></div>
+          <div class="event-item"><div class="event-dot online"></div><div class="event-body"><div class="event-title">Reconexión — García</div><div class="event-meta">CENTRAL · 0/1/0 · hace 5h</div></div></div>
+          <div class="event-item"><div class="event-dot los"></div><div class="event-body"><div class="event-title">FiberCut — HWTC-ZZ99</div><div class="event-meta">SUR · 0/2/7 · ayer 22:14</div></div></div>
+          <div class="event-item"><div class="event-dot online"></div><div class="event-body"><div class="event-title">Online — HWTC-I9J0K1L2</div><div class="event-meta">SUR · 0/2/4 · ayer 20:00</div></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 3: ONT DETAIL -->
+  <div class="section-label">③ Detalle de ONT — Señal, historial, acciones</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:32px;">
+
+    <!-- Signal Chart -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">📊 Historial señal óptica — HWTC-E5F6G7H8</span>
+        <div class="panel-actions">
+          <button class="btn btn-ghost btn-sm" style="color:#00d4ff;border-color:rgba(0,212,255,.3);">1h</button>
+          <button class="btn btn-ghost btn-sm">6h</button>
+          <button class="btn btn-ghost btn-sm">24h</button>
+          <button class="btn btn-ghost btn-sm">7d</button>
+        </div>
+      </div>
+      <!-- SVG Chart -->
+      <div style="padding:12px 16px 0;position:relative;">
+        <svg width="100%" height="140" viewBox="0 0 500 140" preserveAspectRatio="none">
+          <!-- Grid lines -->
+          <line x1="0" y1="20" x2="500" y2="20" stroke="#1a2540" stroke-dasharray="3,3"/>
+          <line x1="0" y1="50" x2="500" y2="50" stroke="#1a2540" stroke-dasharray="3,3"/>
+          <line x1="0" y1="80" x2="500" y2="80" stroke="#1a2540" stroke-dasharray="3,3"/>
+          <line x1="0" y1="110" x2="500" y2="110" stroke="#1a2540" stroke-dasharray="3,3"/>
+          <!-- Labels -->
+          <text x="0" y="18" fill="#2d4060" font-size="9" font-family="IBM Plex Mono">-8</text>
+          <text x="0" y="48" fill="#2d4060" font-size="9" font-family="IBM Plex Mono">-15</text>
+          <text x="0" y="78" fill="#2d4060" font-size="9" font-family="IBM Plex Mono">-22</text>
+          <text x="0" y="108" fill="#2d4060" font-size="9" font-family="IBM Plex Mono">-29</text>
+          <!-- Reference lines -->
+          <line x1="20" y1="35" x2="500" y2="35" stroke="#ff3b5c" stroke-dasharray="4,3" stroke-width="1.5" opacity=".6"/>
+          <text x="400" y="32" fill="#ff3b5c" font-size="9" font-family="IBM Plex Mono">LOS -27dBm</text>
+          <line x1="20" y1="20" x2="500" y2="20" stroke="#ff6b35" stroke-dasharray="4,3" stroke-width="1.5" opacity=".6"/>
+          <text x="400" y="17" fill="#ff6b35" font-size="9" font-family="IBM Plex Mono">HIGH -8dBm</text>
+          <!-- RX line (blue) -->
+          <polyline points="20,75 60,72 100,76 140,70 180,74 220,85 260,82 300,78 340,80 380,88 420,85 460,90 500,87"
+            fill="none" stroke="#00d4ff" stroke-width="2" stroke-linejoin="round"/>
+          <polyline points="20,75 60,72 100,76 140,70 180,74 220,85 260,82 300,78 340,80 380,88 420,85 460,90 500,87 500,140 20,140"
+            fill="url(#rxGrad)" opacity=".15"/>
+          <!-- TX line (green) -->
+          <polyline points="20,62 60,60 100,63 140,58 180,61 220,66 260,64 300,61 340,63 380,68 420,65 460,69 500,67"
+            fill="none" stroke="#00ff94" stroke-width="2" stroke-linejoin="round"/>
+          <defs>
+            <linearGradient id="rxGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#00d4ff"/>
+              <stop offset="100%" stop-color="transparent"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <div class="chart-legend" style="padding:8px 16px 12px;">
+        <span class="rx">RX Power (dBm)</span>
+        <span class="tx">TX Power (dBm)</span>
+        <span style="display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:20px;border-top:2px dashed #ff3b5c;"></span><span style="color:#ff3b5c">Umbral LOS</span></span>
+      </div>
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid #1a2540;">
+        <div style="padding:10px 14px;border-right:1px solid #1a2540;">
+          <div style="font-size:9px;color:#3a5070;text-transform:uppercase;margin-bottom:3px;">RX actual</div>
+          <div style="font-size:16px;font-weight:700;color:#ff6b35;font-family:'IBM Plex Mono',monospace;">-24.8</div>
+          <div style="font-size:9px;color:#ff6b35;">⚠ Señal baja</div>
+        </div>
+        <div style="padding:10px 14px;border-right:1px solid #1a2540;">
+          <div style="font-size:9px;color:#3a5070;text-transform:uppercase;margin-bottom:3px;">Atenuación</div>
+          <div style="font-size:16px;font-weight:700;color:#ff6b35;font-family:'IBM Plex Mono',monospace;">26.6 dB</div>
+          <div style="font-size:9px;color:#3a5070;">Normal &lt;25dB</div>
+        </div>
+        <div style="padding:10px 14px;border-right:1px solid #1a2540;">
+          <div style="font-size:9px;color:#3a5070;text-transform:uppercase;margin-bottom:3px;">Distancia</div>
+          <div style="font-size:16px;font-weight:700;color:#c4d4e8;font-family:'IBM Plex Mono',monospace;">2.8 km</div>
+          <div style="font-size:9px;color:#3a5070;">Fibra GPON</div>
+        </div>
+        <div style="padding:10px 14px;">
+          <div style="font-size:9px;color:#3a5070;text-transform:uppercase;margin-bottom:3px;">Temperatura</div>
+          <div style="font-size:16px;font-weight:700;color:#00ff94;font-family:'IBM Plex Mono',monospace;">42 °C</div>
+          <div style="font-size:9px;color:#3a5070;">Normal &lt;60°C</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ONT Detail + Actions -->
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <!-- Info + actions -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">HWTC-E5F6G7H8</span>
+          <span class="badge badge-online" style="margin-left:8px;">Online</span>
+          <span class="tag tag-huawei" style="margin-left:6px;">Huawei MA5800</span>
+          <div class="panel-actions">
+            <button class="btn btn-ghost btn-sm">🔄 Reboot</button>
+            <button class="btn btn-danger btn-sm">⚙ Reset</button>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;">
+          <div style="padding:10px 14px;border-right:1px solid #1a2540;border-bottom:1px solid #1a2540;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">Cliente</div>
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0;">López, María</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #1a2540;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">Servicio</div>
+            <div style="font-size:13px;font-weight:600;color:#e2e8f0;">Plan 50 Mbps</div>
+          </div>
+          <div style="padding:10px 14px;border-right:1px solid #1a2540;border-bottom:1px solid #1a2540;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">IP asignada</div>
+            <div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#00d4ff;">192.168.100.47</div>
+          </div>
+          <div style="padding:10px 14px;border-bottom:1px solid #1a2540;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">MAC address</div>
+            <div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#c4d4e8;">A4:C3:F0:12:34:56</div>
+          </div>
+          <div style="padding:10px 14px;border-right:1px solid #1a2540;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">OLT · Puerto · ONT ID</div>
+            <div style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:#c4d4e8;">CENTRAL · 0/1/1 · ID:2</div>
+          </div>
+          <div style="padding:10px 14px;">
+            <div style="font-size:9px;color:#3a5070;margin-bottom:2px;">Uptime</div>
+            <div style="font-size:13px;font-family:'IBM Plex Mono',monospace;color:#c4d4e8;">3d 2h 14m</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Config tabs -->
+      <div class="panel">
+        <div class="section-tabs">
+          <div class="tab active">WAN</div>
+          <div class="tab">VLANs</div>
+          <div class="tab">Velocidad</div>
+          <div class="tab">Puertos ETH</div>
+          <div class="tab">Triple Play</div>
+          <div class="tab">GPS</div>
+        </div>
+        <div style="padding:14px 16px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div>
+              <div style="font-size:9px;color:#3a5070;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Modo WAN</div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-primary btn-sm">PPPoE</button>
+                <button class="btn btn-ghost btn-sm">DHCP</button>
+                <button class="btn btn-ghost btn-sm">IP Fija</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#3a5070;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">Modo enrutamiento</div>
+              <div style="display:flex;gap:6px;">
+                <button class="btn btn-primary btn-sm">Router</button>
+                <button class="btn btn-ghost btn-sm">Bridge</button>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:9px;color:#3a5070;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">VLAN datos</div>
+              <input value="100" style="background:#111b2e;border:1px solid #1a2540;color:#c4d4e8;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;width:100%;outline:none;">
+            </div>
+            <div>
+              <div style="font-size:9px;color:#3a5070;margin-bottom:5px;text-transform:uppercase;letter-spacing:.06em;">T-CONT / GEM</div>
+              <input value="T1 · GEM:10" style="background:#111b2e;border:1px solid #1a2540;color:#c4d4e8;border-radius:6px;padding:5px 10px;font-size:12px;font-family:'IBM Plex Mono',monospace;width:100%;outline:none;">
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;">
+            <button class="btn btn-primary">💾 Guardar config</button>
+            <button class="btn btn-ghost">↩ Revertir</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 4: ZTP -->
+  <div class="section-label">④ ZTP — Autorización zero-touch de ONTs nuevos</div>
+  <div class="panel" style="margin-bottom:32px;">
+    <div class="panel-header">
+      <span class="panel-title">🔌 ONTs pendientes de autorización</span>
+      <span class="badge badge-pending" style="margin-left:8px;">7 nuevos</span>
+      <div class="panel-actions">
+        <button class="btn btn-ghost btn-sm">Autorizar todos</button>
+        <button class="btn btn-primary btn-sm">+ Perfil ZTP</button>
+      </div>
+    </div>
+    <table class="table">
+      <thead><tr>
+        <th>Serial</th><th>OLT · Puerto</th><th>Modelo detectado</th>
+        <th>Detectado hace</th><th>Perfil ZTP</th><th>Acciones</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>HWTC-AABBCCDD</td><td>CENTRAL · 0/1/5</td>
+          <td><span class="tag tag-huawei">Huawei HG8245H</span></td>
+          <td class="td-muted">hace 4 min</td>
+          <td>
+            <select style="background:#111b2e;border:1px solid #1a2540;color:#c4d4e8;border-radius:5px;padding:3px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;outline:none;">
+              <option>Plan 30 Mbps PPPoE</option>
+              <option>Plan 50 Mbps PPPoE</option>
+              <option>Plan 100 Mbps Fija</option>
+            </select>
+          </td>
+          <td><button class="btn btn-primary btn-sm">✓ Autorizar</button> <button class="btn btn-ghost btn-sm">✕</button></td>
+        </tr>
+        <tr>
+          <td>KTCX-11223344</td><td>NORTE · 0/0/5</td>
+          <td><span class="tag tag-kingtype">KingType C-ONU</span></td>
+          <td class="td-muted">hace 12 min</td>
+          <td>
+            <select style="background:#111b2e;border:1px solid #1a2540;color:#c4d4e8;border-radius:5px;padding:3px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;outline:none;">
+              <option>Plan 50 Mbps PPPoE</option>
+            </select>
+          </td>
+          <td><button class="btn btn-primary btn-sm">✓ Autorizar</button> <button class="btn btn-ghost btn-sm">✕</button></td>
+        </tr>
+        <tr>
+          <td>VSOL-EEFF0011</td><td>RURAL · 0/1/3</td>
+          <td><span class="tag tag-vsol">VSOL V-ONU</span></td>
+          <td class="td-muted">hace 31 min</td>
+          <td>
+            <select style="background:#111b2e;border:1px solid #1a2540;color:#c4d4e8;border-radius:5px;padding:3px 8px;font-size:11px;font-family:'IBM Plex Mono',monospace;outline:none;">
+              <option>Plan 30 Mbps PPPoE</option>
+            </select>
+          </td>
+          <td><button class="btn btn-primary btn-sm">✓ Autorizar</button> <button class="btn btn-ghost btn-sm">✕</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- SECTION 5: FEATURES MATRIX -->
+  <div class="section-label">⑤ Funcionalidades completas por marca de OLT</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:24px;">
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Módulos del sistema</span></div>
+      <div style="padding:12px 16px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00d4ff;">📡 Gestión multi-OLT unificada</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00d4ff;">⚡ ZTP en &lt;10 segundos</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00ff94;">📊 Señal RX/TX histórica</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00ff94;">🌡 Temperatura ONT</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00ff94;">📏 Distancia fibra (OTDR)</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #00ff94;">⚠ Predicción fallas (±3dB)</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #a855f7;">🗺 Mapa GPS + StreetView</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #a855f7;">📱 Triple Play (TV+Voz+Data)</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #ff6b35;">🖥 Terminal CLI en browser</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #ff6b35;">⚙ TR-069 / ACS server</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #ff3b5c;">📧 Alertas email + SMS</div>
+          <div style="background:#0d1526;border-radius:6px;padding:8px 10px;border-left:3px solid #ff3b5c;">🔒 RBAC (Admin/NOC/Viewer)</div>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="panel-header"><span class="panel-title">Compatibilidad por marca</span></div>
+      <div style="overflow-x:auto;">
+        <table class="table">
+          <thead><tr>
+            <th>Función</th>
+            <th><span class="tag tag-huawei">Huawei</span></th>
+            <th><span class="tag tag-kingtype">KingType</span></th>
+            <th><span class="tag tag-vsol">VSOL</span></th>
+          </tr></thead>
+          <tbody>
+            <tr><td>ZTP / Provisión</td><td style="color:#00ff94">✓ SNMP+CLI</td><td style="color:#00ff94">✓ SNMP</td><td style="color:#00ff94">✓ SSH</td></tr>
+            <tr><td>Señal RX/TX</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td></tr>
+            <tr><td>Reboot remoto</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td></tr>
+            <tr><td>Config VLAN</td><td style="color:#00ff94">✓ Telnet/CLI</td><td style="color:#00ff94">✓ SNMP</td><td style="color:#ff6b35">Parcial</td></tr>
+            <tr><td>Speed limiting</td><td style="color:#00ff94">✓ DBA</td><td style="color:#00ff94">✓ SNMP</td><td style="color:#ff6b35">Parcial</td></tr>
+            <tr><td>Terminal CLI</td><td style="color:#00ff94">✓ Telnet</td><td style="color:#3a5070">— SNMP only</td><td style="color:#00ff94">✓ SSH</td></tr>
+            <tr><td>DHCP Leases</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td><td style="color:#00ff94">✓</td></tr>
+            <tr><td>Triple Play</td><td style="color:#00ff94">✓ Completo</td><td style="color:#ff6b35">Parcial</td><td style="color:#ff6b35">Parcial</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- FOOTER NOTE -->
+  <div style="background:#0a0f1a;border:1px solid #1a2540;border-radius:10px;padding:20px 24px;display:flex;gap:24px;align-items:center;">
+    <div style="flex:1;">
+      <div style="font-size:14px;font-weight:700;color:#00d4ff;margin-bottom:6px;">¿Aprobás este diseño?</div>
+      <div style="font-size:13px;color:#6b8aaa;line-height:1.6;">
+        Si estás de acuerdo con la dirección visual y funcional, procedemos a escribir el plan de implementación completo para reconstruir todo el frontend con estas pantallas, incluyendo las 13 fases actualizadas para soportar SmartOLT-parity + KingType + VSOL.
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-shrink:0;">
+      <div style="background:#0d2040;border:2px solid #00d4ff;border-radius:10px;padding:12px 20px;text-align:center;cursor:pointer;" onclick="this.style.background='#00d4ff';this.style.color='#060b14'">
+        <div style="font-size:20px;margin-bottom:4px;">✓</div>
+        <div style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:inherit;">Aprobado</div>
+      </div>
+      <div style="background:#111b2e;border:1px solid #1a2540;border-radius:10px;padding:12px 20px;text-align:center;cursor:pointer;">
+        <div style="font-size:20px;margin-bottom:4px;">✎</div>
+        <div style="font-size:12px;font-weight:700;font-family:'IBM Plex Mono',monospace;color:#6b8aaa;">Cambios</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

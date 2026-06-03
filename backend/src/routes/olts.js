@@ -1,5 +1,6 @@
 const express = require('express');
 const ctrl = require('../controllers/oltController');
+const cfgCtrl = require('../controllers/oltConfigController');
 const { verifyToken, checkRole } = require('../middleware/auth');
 const { commands } = require('../middleware/rateLimiter');
 const router = express.Router();
@@ -15,5 +16,7 @@ router.get('/:id/ports', ctrl.getPorts);
 router.get('/:id/ports/:port/onts', ctrl.getPortONTs);
 router.post('/:id/scan', checkRole('noc'), ctrl.scanONTs);
 router.post('/:id/command', checkRole('noc'), commands, ctrl.sendCommand);
+router.get('/:id/config', checkRole('noc'), cfgCtrl.read);
+router.post('/:id/config', checkRole('noc'), cfgCtrl.write);
 
 module.exports = router;

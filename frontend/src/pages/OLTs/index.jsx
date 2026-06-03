@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { oltAPI } from '../../services/api';
 import BrandTag from '../../components/shared/BrandTag';
 import OLTTerminal from '../../components/olts/OLTTerminal';
@@ -7,7 +8,7 @@ import {
   IconPencil, IconRefresh, IconTrash, IconTerminal2,
   IconPlus, IconX, IconChevronDown, IconChevronRight,
   IconServer, IconWifi, IconWifiOff, IconAlertTriangle,
-  IconCpu, IconCloudDownload,
+  IconCpu, IconCloudDownload, IconSettings,
 } from '@tabler/icons-react';
 
 /* ─── Mock data (fallback when API unavailable) ─────────────────────────── */
@@ -206,6 +207,7 @@ function PortsSubTable({ oltId }) {
 /* ─── Main Page ──────────────────────────────────────────────────────────── */
 
 export default function OLTs() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [modalOlt, setModalOlt] = useState(null);   // null=closed, false=new, obj=edit
   const [expandedId, setExpandedId] = useState(null);
@@ -392,6 +394,14 @@ export default function OLTs() {
                     {/* Actions — no row-expand propagation */}
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          className="btn-icon tooltip"
+                          data-tip="Configurar OLT"
+                          onClick={(e) => { e.stopPropagation(); navigate(`/olts/${olt.id}/config`); }}
+                          style={{ color: 'var(--cyan)' }}
+                        >
+                          <IconSettings size={13} />
+                        </button>
                         <button
                           className="btn-icon tooltip"
                           data-tip="Editar"
