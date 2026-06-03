@@ -144,10 +144,11 @@ class VSOL {
         const portFilter = ponPort != null ? parseInt(port) === parseInt(ponPort) : true;
         if (!portFilter) return;
 
-        const mac = macByOnuId[onuId] || null;
+        // Try ifIdx first (correct for multi-port), then onuId as fallback
+        const mac = macByOnuId[ifIdx] || macByOnuId[onuId] || null;
         const serial = mac
-          ? `VSOL${mac.replace(/:/g, '').slice(-8)}`
-          : `VSOL-P${port.padStart(2, '0')}-${onuId.padStart(3, '0')}`;
+          ? `VSOL${mac.replace(/:/g, '')}`
+          : `VSOL-${this.olt.ip.replace(/\./g, '')}-P${port}-${onuId}`;
 
         onts.push({
           serial_number: serial,

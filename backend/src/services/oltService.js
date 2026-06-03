@@ -121,34 +121,51 @@ async function scanOLTOnts(id) {
   const saved = [];
   for (const ont of rawOnts) {
     if (!ont.serial_number) continue;
-    const existing = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number } });
+    // Scope lookup to this OLT — serials can repeat across different OLTs
+    const existing = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number, olt_id: id } });
     if (existing) {
       const updated = await prisma.oNT.update({
         where: { id: existing.id },
         data: {
+          olt_id: id,
           status: ont.status,
           rx_power: ont.rx_power ?? undefined,
           tx_power: ont.tx_power ?? undefined,
           mac: ont.mac ?? undefined,
+          description: ont.interface ?? undefined,
           last_seen: new Date(),
         },
       });
       saved.push(updated);
     } else {
-      const created = await prisma.oNT.create({
-        data: {
-          olt_id: id,
-          serial_number: ont.serial_number,
-          mac: ont.mac ?? null,
-          description: ont.interface ?? null,
-          status: ont.status || 'OFFLINE',
-          rx_power: ont.rx_power ?? null,
-          tx_power: ont.tx_power ?? null,
-          last_seen: new Date(),
-          protocol: 'GPON',
-        },
-      });
-      saved.push(created);
+      try {
+        const created = await prisma.oNT.create({
+          data: {
+            olt_id: id,
+            serial_number: ont.serial_number,
+            mac: ont.mac ?? null,
+            description: ont.interface ?? null,
+            status: ont.status || 'OFFLINE',
+            rx_power: ont.rx_power ?? null,
+            tx_power: ont.tx_power ?? null,
+            last_seen: new Date(),
+            protocol: 'GPON',
+          },
+        });
+        saved.push(created);
+      } catch (e) {
+        // Duplicate serial from another OLT — reassign to this OLT
+        if (e.code === 'P2002') {
+          const dup = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number } });
+          if (dup) {
+            const updated = await prisma.oNT.update({
+              where: { id: dup.id },
+              data: { olt_id: id, status: ont.status, mac: ont.mac ?? undefined, description: ont.interface ?? undefined, last_seen: new Date() },
+            });
+            saved.push(updated);
+          }
+        }
+      }
     }
   }
 

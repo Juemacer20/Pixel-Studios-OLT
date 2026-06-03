@@ -5,7 +5,7 @@ const logger = require('../middleware/logger');
 async function getAllONTs(filters = {}) {
   const where = {};
   if (filters.status) where.status = filters.status;
-  if (filters.oltId) where.olt_id = filters.oltId;
+  if (filters.oltId || filters.olt_id) where.olt_id = filters.oltId || filters.olt_id;
   if (filters.search) {
     where.OR = [
       { serial_number: { contains: filters.search, mode: 'insensitive' } },
