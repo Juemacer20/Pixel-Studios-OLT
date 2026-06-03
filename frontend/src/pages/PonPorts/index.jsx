@@ -85,7 +85,7 @@ export default function PonPorts() {
     queryFn: () => oltAPI.list().then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const olts = data || [];
+  const olts = oltsRaw || [];
 
   const { data: portsRaw } = useQuery({
     queryKey: ['olt-ports', selectedOLT],

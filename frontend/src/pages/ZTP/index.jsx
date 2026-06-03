@@ -6,9 +6,6 @@ import {
   IconClock, IconAlertTriangle, IconRefresh,
 } from '@tabler/icons-react';
 
-/* ─── Mock data ─────────────────────────────────────────────────────────── */
-
-
 const WAN_MODES = ['DHCP', 'PPPoE', 'Static'];
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */

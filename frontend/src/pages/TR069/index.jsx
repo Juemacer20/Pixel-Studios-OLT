@@ -7,18 +7,6 @@ import {
 } from '@tabler/icons-react';
 import StatusBadge from '../../components/shared/StatusBadge';
 
-  id: i + 1,
-  serial: `HWTC${String(i * 7 + 1000000).padStart(8, '0')}`,
-  model:  ['HG8545M', 'HG8310M', 'EG8145V5', 'C300-ONT'][i % 4],
-  ip:     `192.168.${100 + i}.1`,
-  firmware:  `V300R019C10SPC200`,
-  fw_new:    i % 3 === 0 ? 'V300R019C10SPC300' : null,
-  last_conn: new Date(Date.now() - i * 600000).toISOString(),
-  status:    i % 5 === 3 ? 'offline' : 'online',
-  tasks:     i % 4 === 0 ? 1 : 0,
-}));
-
-
 function ParamTree({ data, depth = 0 }) {
   const [open, setOpen] = useState(depth < 2);
   if (typeof data === 'string') {
@@ -173,7 +161,7 @@ export default function TR069() {
     queryFn: () => tr069API.devices().then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const allDevices = data || [];
+  const allDevices = devicesRaw || [];
 
   const devices = allDevices.filter(d =>
     !search || d.serial.toLowerCase().includes(search.toLowerCase()) ||

@@ -8,21 +8,6 @@ import {
   IconActivity, IconGauge, IconChevronRight,
 } from '@tabler/icons-react';
 
-/* ─── Mock data ─────────────────────────────────────────────────────────── */
-  id: i + 1,
-  name: `Cliente ${i + 1}`,
-  email: `cliente${i + 1}@mail.com`,
-  phone: `0351-${String(i * 7 + 1000000).slice(0, 7)}`,
-  status: i % 5 === 0 ? 'inactive' : 'active',
-  ont: i % 4 === 0 ? null : {
-    serial_number: `HWTC0000${String(i).padStart(4, '0')}`,
-    status: ['online', 'online', 'offline'][i % 3],
-    rx_power: -(18 + (i % 8)),
-  },
-  address: `Calle ${i + 1} N° ${100 + i}`,
-  notes: i % 3 === 0 ? `Cliente desde hace ${i + 1} meses. Sin incidentes.` : '',
-}));
-
 /* ─── Mock alerts (per client) ───────────────────────────────────────────── */
 function mockAlerts(clientId) {
   const base = clientId % 4;

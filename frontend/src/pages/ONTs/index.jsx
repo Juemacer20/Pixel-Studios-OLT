@@ -15,46 +15,6 @@ import SignalValue from '../../components/shared/SignalValue';
 import BrandTag from '../../components/shared/BrandTag';
 import toast from 'react-hot-toast';
 
-/* ─── Mock data ─────────────────────────────────────────────────────────── */
-  id: i + 1,
-  serial_number: `HWTC${String(i * 7 + 1234567).padStart(8, '0')}`,
-  mac_address: `00:1A:${String(i).padStart(2, '0')}:FF:${String(i * 3).padStart(2, '0')}:AB`,
-  status: ['online', 'online', 'online', 'offline', 'los'][i % 5],
-  rx_power: -(18 + (i % 10)),
-  tx_power: -(2 + (i % 3)),
-  distance: 1000 + i * 200,
-  last_seen: new Date(Date.now() - i * 60000).toISOString(),
-  olt: {
-    id: (i % 4) + 1,
-    name: `OLT-${(i % 4) + 1}`,
-    brand: ['Huawei', 'KingType', 'VSOL', 'Huawei'][i % 4],
-  },
-  pon_port: `0/${Math.floor(i / 8)}/${i % 8}`,
-  client: i % 3 === 0 ? null : { id: i, name: `Cliente ${i + 1}` },
-  model: ['MA5800', 'C300', 'V2801', 'MA5680T'][i % 4],
-  firmware: `V800R021C10SPC300`,
-  uptime: `${Math.floor(i / 24)}d ${i % 24}h`,
-  ip_address: `192.168.${Math.floor(i / 254) + 1}.${(i % 254) + 1}`,
-}));
-
-  const pts = range === '7d' ? 84 : range === '30d' ? 120 : 48;
-  const now = Date.now();
-  const step = range === '7d' ? 2 * 3600000 : range === '30d' ? 6 * 3600000 : 1800000;
-  const base = -22;
-  return Array.from({ length: pts }, (_, i) => ({
-    timestamp: new Date(now - (pts - i) * step).toISOString(),
-    rx_power: base + (Math.random() * 2 - 1),
-    tx_power: -3 + (Math.random() * 1 - 0.5),
-  }));
-};
-
-  { id: 1, type: 'info',    message: 'ONT registrado exitosamente',     ts: new Date(Date.now() - 120000).toISOString() },
-  { id: 2, type: 'warning', message: 'Señal RX por debajo del umbral',  ts: new Date(Date.now() - 3600000).toISOString() },
-  { id: 3, type: 'error',   message: 'LOS detectado brevemente',        ts: new Date(Date.now() - 7200000).toISOString() },
-  { id: 4, type: 'info',    message: 'Reinicio completado',             ts: new Date(Date.now() - 86400000).toISOString() },
-  { id: 5, type: 'info',    message: 'Actualización de firmware',       ts: new Date(Date.now() - 172800000).toISOString() },
-];
-
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function getSignalMeta(value) {

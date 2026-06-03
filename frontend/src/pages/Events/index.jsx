@@ -11,31 +11,6 @@ const TYPES = ['LOS', 'LOS-OF', 'DYING_GASP', 'SIGNAL_DEGRADED', 'AUTH_FAIL', 'R
 const SEVERITIES = ['CRITICAL', 'WARNING', 'INFO'];
 const STATUSES = ['ACTIVE', 'RESOLVED', 'ACKNOWLEDGED'];
 
-function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-
-  const sev = rand(SEVERITIES);
-  const status = rand(STATUSES);
-  const olt = rand(OLTS);
-  const portIdx = randInt(0, 7);
-  const ontIdx = randInt(1, 32);
-  const ts = new Date(Date.now() - randInt(0, 7 * 24 * 3600 * 1000));
-  return {
-    id: i + 1,
-    timestamp: ts.toISOString(),
-    type: rand(TYPES),
-    severity: sev,
-    olt,
-    ont: `${olt}-P${portIdx}/ONT${ontIdx}`,
-    message: sev === 'CRITICAL'
-      ? `Pérdida de señal óptica detectada en puerto ${portIdx}/${ontIdx}`
-      : sev === 'WARNING'
-      ? `Señal degradada: RX ${-(randInt(24, 28))}.${randInt(0, 9)} dBm`
-      : `Evento informativo en dispositivo ${olt}`,
-    status,
-  };
-}).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function SevBadge({ sev }) {
   const map = {

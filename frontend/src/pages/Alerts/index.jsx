@@ -7,47 +7,9 @@ import {
 } from '@tabler/icons-react';
 import { alertAPI } from '../../services/api';
 
-// ── Mock data ─────────────────────────────────────────────────────────────────
+// ── Filter options ────────────────────────────────────────────────────────────
 const OLTS_LIST = ['OLT-NORTE', 'OLT-SUR', 'OLT-CENTRO', 'OLT-ESTE'];
-const ALERT_TYPES = ['LOS', 'LOS-OF', 'DYING_GASP', 'SIGNAL_DEGRADED', 'AUTH_FAIL', 'ROGUE_ONT', 'BOARD_TEMP', 'FAN_FAIL'];
 const SEVERITIES = ['CRITICAL', 'HIGH', 'WARNING', 'INFO'];
-
-function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
-function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
-
-const today = new Date();
-today.setHours(0, 0, 0, 0);
-
-let _id = 1;
-  const sev = rand(SEVERITIES);
-  const olt = rand(OLTS_LIST);
-  const portIdx = randInt(0, 7);
-  const ontIdx  = randInt(1, 32);
-  const isToday = i < 8;
-  const ts = isToday
-    ? new Date(Date.now() - randInt(0, 8 * 3600 * 1000))
-    : new Date(Date.now() - randInt(9 * 3600 * 1000, 5 * 24 * 3600 * 1000));
-  const resolved = i > 29;
-  const acknowledged = !resolved && i > 20;
-  return {
-    id: _id++,
-    timestamp: ts.toISOString(),
-    resolved_at: resolved ? new Date(ts.getTime() + randInt(300000, 3600000)).toISOString() : null,
-    type: rand(ALERT_TYPES),
-    severity: sev,
-    olt,
-    ont: `${olt}-P${portIdx}/ONT${ontIdx}`,
-    message: sev === 'CRITICAL'
-      ? `Pérdida de señal óptica en puerto ${portIdx}/${ontIdx}`
-      : sev === 'HIGH'
-      ? `Señal peligrosamente baja: RX -${randInt(28, 32)}.${randInt(0,9)} dBm`
-      : sev === 'WARNING'
-      ? `Señal degradada: RX -${randInt(24, 27)}.${randInt(0,9)} dBm`
-      : `Evento informativo en ${olt}`,
-    resolved,
-    acknowledged,
-  };
-}).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 function SevBadge({ sev }) {
@@ -102,7 +64,8 @@ export default function Alerts() {
   const active       = alerts.filter(a => !a.resolved).length;
   const critical     = alerts.filter(a => !a.resolved && (a.severity === 'CRITICAL' || a.severity === 'HIGH')).length;
   const warnings     = alerts.filter(a => !a.resolved && a.severity === 'WARNING').length;
-  const resolvedToday = alerts.filter(a => a.resolved && a.resolved_at && new Date(a.resolved_at) >= today).length;
+  const _startOfToday = new Date(); _startOfToday.setHours(0, 0, 0, 0);
+  const resolvedToday = alerts.filter(a => a.resolved && a.resolved_at && new Date(a.resolved_at) >= _startOfToday).length;
 
   // Filter by tab
   const byTab = alerts.filter(a => {

@@ -20,22 +20,6 @@ const BASE_LNG = -58.381592;
 function randF(a, b) { return parseFloat((Math.random() * (b - a) + a).toFixed(5)); }
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
-const STATUSES = ['ONLINE', 'ONLINE', 'ONLINE', 'ONLINE', 'OFFLINE', 'LOS', 'LOS'];
-
-  const status = rand(STATUSES);
-  const rx = status === 'ONLINE' ? parseFloat((-15 - Math.random() * 14).toFixed(1)) : null;
-  return {
-    id: i + 1,
-    serial_number: `HWTC${String(1000000 + i).slice(0, 8)}`,
-    status,
-    rx_power: rx,
-    description: `Cliente ${1000 + i}`,
-    latitude:  BASE_LAT + randF(-0.08, 0.08),
-    longitude: BASE_LNG + randF(-0.08, 0.08),
-  };
-});
-
-
 // ── Color helpers ─────────────────────────────────────────────────────────────
 function getOntColor(status, rx) {
   if (status === 'LOS' || status === 'DYING_GASP') return '#f85149';

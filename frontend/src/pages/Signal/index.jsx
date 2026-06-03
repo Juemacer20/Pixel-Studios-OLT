@@ -10,14 +10,6 @@ import { IconPlus, IconX, IconSearch } from '@tabler/icons-react';
 
 const COLORS = ['#3fb950','#79c0ff','#bc8cff','#d29922','#f85149'];
 
-  id: i + 1,
-  serial_number: `HWTC${String(i * 7 + 1234567).padStart(8, '0')}`,
-  client: i % 3 === 0 ? null : { name: `Cliente ${i + 1}` },
-  olt: { name: `OLT-${(i % 4) + 1}` },
-  rx_power: -(16 + (i * 3 % 14)),
-  tx_power: -(2 + i % 4),
-}));
-
 function buildHistory(ontId, range) {
   const now    = Date.now();
   const points = range === '7d' ? 84 : range === '30d' ? 60 : 48;
@@ -78,7 +70,7 @@ export default function Signal() {
     queryFn: () => ontAPI.list({ limit: 200 }).then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const allONTs = data || [];
+  const allONTs = ontsRaw || [];
 
   // Build merged chart data for selected ONTs
   const chartData = (() => {
