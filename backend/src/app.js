@@ -19,6 +19,7 @@ app.use(cors({
 app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+app.set('json replacer', (key, value) => typeof value === 'bigint' ? Number(value) : value);
 app.use(cookieParser());
 app.use(httpLogger);
 app.use('/api', general);

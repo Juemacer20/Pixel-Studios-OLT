@@ -1,5 +1,15 @@
 const { Client: SSHClient } = require('ssh2');
+const fs = require('fs');
+const os = require('os');
 const logger = require('../../middleware/logger');
+
+function loadSystemPrivateKey() {
+  const candidates = ['id_ed25519', 'id_rsa', 'id_ecdsa'].map(k => `${os.homedir()}/.ssh/${k}`);
+  for (const p of candidates) {
+    try { return fs.readFileSync(p); } catch {}
+  }
+  return null;
+}
 
 class VSOL {
   constructor(olt) {
@@ -14,30 +24,61 @@ class VSOL {
     const creds = this._getCredentials();
     return new Promise((resolve, reject) => {
       const conn = new SSHClient();
-      const timeout = setTimeout(() => reject(new Error('SSH timeout')), 20000);
+      const timeout = setTimeout(() => reject(new Error('SSH timeout')), 30000);
 
       conn.on('ready', () => {
-        clearTimeout(timeout);
         this.conn = conn;
-        conn.shell((err, stream) => {
-          if (err) return reject(err);
+        conn.shell({ term: 'vt100', cols: 220, rows: 50 }, (err, stream) => {
+          if (err) { clearTimeout(timeout); return reject(err); }
           this.stream = stream;
-          this.connected = true;
           stream.on('data', (d) => { this.buffer += d.toString(); });
           stream.stderr.on('data', (d) => { this.buffer += d.toString(); });
-          setTimeout(resolve, 1500);
+
+          // Handle double-auth: SSH key opens the channel, then OLT prompts Login/Password
+          const waitFor = (pattern, timeoutMs = 8000) => new Promise((res, rej) => {
+            const check = setInterval(() => {
+              if (pattern.test(this.buffer)) { clearInterval(check); res(); }
+            }, 100);
+            setTimeout(() => { clearInterval(check); rej(new Error(`Timeout waiting for ${pattern}`)); }, timeoutMs);
+          });
+
+          (async () => {
+            try {
+              await waitFor(/Login:/i);
+              this.buffer = '';
+              stream.write(`${creds.username || 'admin'}\n`);
+              await waitFor(/Password:/i);
+              this.buffer = '';
+              stream.write(`${creds.password || 'admin'}\n`);
+              // Wait for shell prompt (VSOL typically shows '>' or '#')
+              await waitFor(/[>#$]\s*$/, 8000);
+              this.buffer = '';
+              this.connected = true;
+              clearTimeout(timeout);
+              resolve();
+            } catch (e) {
+              clearTimeout(timeout);
+              reject(new Error(`VSOL auth failed: ${e.message}`));
+            }
+          })();
         });
       });
 
       conn.on('error', (err) => { clearTimeout(timeout); reject(err); });
 
+      const privateKey = loadSystemPrivateKey();
       conn.connect({
         host: this.olt.ip,
         port: 22,
-        username: creds.username || 'admin',
-        password: creds.password || 'admin',
+        username: 'admin',
+        ...(privateKey ? { privateKey } : {}),
         readyTimeout: 15000,
-        keepaliveInterval: 10000,
+        algorithms: {
+          kex: ['ecdh-sha2-nistp256', 'diffie-hellman-group14-sha256', 'diffie-hellman-group14-sha1'],
+          serverHostKey: ['ssh-ed25519', 'ssh-rsa'],
+          cipher: ['aes128-ctr', 'aes192-ctr', 'aes256-ctr', 'aes128-cbc'],
+          hmac: ['hmac-sha2-256', 'hmac-sha1'],
+        },
       });
     });
   }
@@ -67,11 +108,75 @@ class VSOL {
   }
 
   async listONTs(ponPort = null) {
+    // VSOL V1600G serial numbers are not exposed via SNMP standard MIBs.
+    // We discover ONTs via ifDescr (GPON0/X:Y) + ifOperStatus + MAC from vendor MIB.
     try {
-      const output = await this.sendCommand(`show gpon onu detail-info ${ponPort || '0'}`, 4000);
-      return this._parseONTs(output);
+      const snmp = require('net-snmp');
+      const session = snmp.createSession(this.olt.ip, this.olt.community || 'public', { timeout: 10000 });
+
+      const toVal = (v) => {
+        if (Buffer.isBuffer(v)) return v;
+        if (typeof v === 'object' && v !== null) return v.toString();
+        return v;
+      };
+      const walkOid = (oid) => new Promise((res, rej) => {
+        const rows = {};
+        session.subtree(oid, 20, (varbinds) => {
+          varbinds.forEach(v => { rows[v.oid] = toVal(v.value); });
+        }, (err) => { if (err) rej(err); else res(rows); });
+      });
+
+      const [descs, stats, macs] = await Promise.all([
+        walkOid('1.3.6.1.2.1.2.2.1.2'),    // ifDescr
+        walkOid('1.3.6.1.2.1.2.2.1.8'),    // ifOperStatus
+        walkOid('1.3.6.1.4.1.37950.1.1.5.10.3.2.1.3'), // VSOL ONU MAC table
+      ]);
+      session.close();
+
+      // Build MAC lookup: onuId (1-based) → MAC string
+      const macByOnuId = {};
+      Object.entries(macs).forEach(([oid, val]) => {
+        const idx = oid.split('.').pop();
+        if (Buffer.isBuffer(val) && val.length === 6) {
+          macByOnuId[idx] = Array.from(val).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
+        }
+      });
+
+      const onts = [];
+      Object.entries(descs).forEach(([oid, name]) => {
+        const nameStr = Buffer.isBuffer(name) ? name.toString() : String(name);
+        const m = nameStr.match(/^GPON(\d+)\/(\d+):(\d+)$/);
+        if (!m) return;
+
+        const [, , port, onuId] = m;
+        const ifIdx = oid.split('.').pop();
+        const statusOid = `1.3.6.1.2.1.2.2.1.8.${ifIdx}`;
+        const statusVal = stats[statusOid];
+        const up = statusVal === 1 || statusVal === '1';
+
+        const portFilter = ponPort != null ? parseInt(port) === parseInt(ponPort) : true;
+        if (!portFilter) return;
+
+        const mac = macByOnuId[onuId] || null;
+        const serial = mac
+          ? `VSOL${mac.replace(/:/g, '').slice(-8)}`
+          : `VSOL-P${port.padStart(2, '0')}-${onuId.padStart(3, '0')}`;
+
+        onts.push({
+          serial_number: serial,
+          mac,
+          pon_port: parseInt(port),
+          onu_id: parseInt(onuId),
+          interface: nameStr,
+          status: up ? 'ONLINE' : 'OFFLINE',
+          rx_power: null,
+          tx_power: null,
+        });
+      });
+
+      return onts;
     } catch (e) {
-      logger.error(`VSOL listONTs: ${e.message}`);
+      logger.error(`VSOL listONTs SNMP: ${e.message}`);
       return [];
     }
   }

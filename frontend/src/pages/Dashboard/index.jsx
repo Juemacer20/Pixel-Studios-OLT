@@ -389,7 +389,7 @@ export default function Dashboard() {
     refetchInterval: 60_000,
     retry: 1,
   });
-  const olts = oltsErr || !oltsRaw ? MOCK_OLTS : oltsRaw;
+  const olts = oltsErr || !oltsRaw ? [] : oltsRaw;
 
   // ── ONTs ──
   const { data: ontsRaw, isError: ontsErr } = useQuery({
@@ -399,16 +399,12 @@ export default function Dashboard() {
     retry: 1,
   });
   const onts = ontsErr || !ontsRaw
-    ? MOCK_ONTS
-    : Array.isArray(ontsRaw) ? ontsRaw : ontsRaw.data ?? MOCK_ONTS;
+    ? []
+    : Array.isArray(ontsRaw) ? ontsRaw : ontsRaw.data ?? [];
 
   // ── Recent events from alert store ──
   const activeAlerts = useAlertStore((s) => s.activeAlerts);
-  const events = useMemo(() => {
-    // Use real alerts if available, otherwise use mock
-    if (activeAlerts && activeAlerts.length > 0) return activeAlerts.slice(0, 10);
-    return MOCK_EVENTS;
-  }, [activeAlerts]);
+  const events = useMemo(() => activeAlerts.slice(0, 10), [activeAlerts]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>

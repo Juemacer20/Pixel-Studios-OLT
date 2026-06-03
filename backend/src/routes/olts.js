@@ -13,6 +13,7 @@ router.delete('/:id', checkRole('admin'), ctrl.remove);
 router.get('/:id/status', ctrl.getStatus);
 router.get('/:id/ports', ctrl.getPorts);
 router.get('/:id/ports/:port/onts', ctrl.getPortONTs);
+router.post('/:id/scan', checkRole('noc'), ctrl.scanONTs);
 router.post('/:id/command', checkRole('noc'), commands, ctrl.sendCommand);
 
 module.exports = router;

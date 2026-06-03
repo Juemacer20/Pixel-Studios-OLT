@@ -7,23 +7,28 @@ router.use(verifyToken);
 
 router.get('/summary', async (req, res, next) => {
   try {
-    const [totalOLTs, totalONTs, activeAlerts, losAlerts, onlineONTs] = await Promise.all([
+    const [totalOLTs, onlineOLTs, totalONTs, activeAlerts, losAlerts, onlineONTs, ztpPending] = await Promise.all([
       prisma.oLT.count(),
+      prisma.oLT.count({ where: { status: 'ONLINE' } }),
       prisma.oNT.count(),
       prisma.alert.count({ where: { resolved: false } }),
       prisma.alert.count({ where: { resolved: false, type: 'LOS' } }),
       prisma.oNT.count({ where: { status: 'ONLINE' } }),
+      prisma.oNT.count({ where: { status: 'PENDING' } }),
     ]);
 
     res.json({
       data: {
         totalOLTs,
+        onlineOLTs,
         totalONTs,
-        activeAlerts,
-        losCount: losAlerts,
-        onlinePercent: totalONTs > 0 ? Math.round((onlineONTs / totalONTs) * 100) : 0,
         onlineONTs,
         offlineONTs: totalONTs - onlineONTs,
+        activeAlerts,
+        losONTs: losAlerts,
+        losCount: losAlerts,
+        ztpPending,
+        onlinePercent: totalONTs > 0 ? Math.round((onlineONTs / totalONTs) * 100) : 0,
       },
     });
   } catch (err) { next(err); }

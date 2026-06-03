@@ -30,17 +30,25 @@ const BRANDS = ['Huawei', 'KingType', 'VSOL', 'ZTE', 'Nokia'];
 /* ─── Sub-components ─────────────────────────────────────────────────────── */
 
 function StatusDotOLT({ status }) {
-  const isOnline = status === 'online';
+  const s = (status || '').toUpperCase();
+  const isOnline = s === 'ONLINE';
+  const isDegraded = s === 'DEGRADED';
+  const color = isOnline ? 'var(--green)' : isDegraded ? 'var(--orange)' : 'var(--text-muted)';
+  const label = isOnline ? 'Online' : isDegraded ? 'Degraded' : 'Offline';
   return (
     <span className="inline-flex items-center gap-1.5">
-      <span
-        className={isOnline ? 'status-dot status-online' : 'status-dot status-offline'}
-      />
-      <span style={{ fontSize: 11, color: isOnline ? 'var(--green)' : 'var(--text-muted)' }}>
-        {isOnline ? 'Online' : 'Offline'}
-      </span>
+      <span className={`status-dot ${isOnline ? 'status-online' : isDegraded ? 'status-warning' : 'status-offline'}`} />
+      <span style={{ fontSize: 11, color }}>{label}</span>
     </span>
   );
+}
+
+function formatUptime(seconds) {
+  if (!seconds && seconds !== 0) return '—';
+  const s = Number(seconds);
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  return `${d}d ${h}h`;
 }
 
 function CpuBar({ value }) {
@@ -58,11 +66,12 @@ function CpuBar({ value }) {
 function OLTModal({ olt, onClose, onSave }) {
   const [form, setForm] = useState({
     name: olt?.name || '',
-    host: olt?.host || '',
-    snmp_port: olt?.snmp_port || 161,
-    snmp_community: olt?.snmp_community || 'public',
+    ip: olt?.ip || '',
+    port: olt?.port || 161,
+    community: olt?.community || 'public',
     brand: olt?.brand || 'Huawei',
     model: olt?.model || '',
+    location: olt?.location || '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -106,17 +115,17 @@ function OLTModal({ olt, onClose, onSave }) {
             <input className="input-base" value={form.name} onChange={e => set('name', e.target.value)} placeholder="OLT-NORTE" />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Host / IP *</label>
-            <input className="input-base" value={form.host} onChange={e => set('host', e.target.value)} placeholder="192.168.1.10" />
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>IP *</label>
+            <input className="input-base" value={form.ip} onChange={e => set('ip', e.target.value)} placeholder="192.168.1.10" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Puerto SNMP</label>
-              <input className="input-base" type="number" value={form.snmp_port} onChange={e => set('snmp_port', +e.target.value)} />
+              <input className="input-base" type="number" value={form.port} onChange={e => set('port', +e.target.value)} />
             </div>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Comunidad SNMP</label>
-              <input className="input-base" value={form.snmp_community} onChange={e => set('snmp_community', e.target.value)} />
+              <input className="input-base" value={form.community} onChange={e => set('community', e.target.value)} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -131,6 +140,10 @@ function OLTModal({ olt, onClose, onSave }) {
               <input className="input-base" value={form.model} onChange={e => set('model', e.target.value)} placeholder="MA5800-X7" />
             </div>
           </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Ubicación</label>
+            <input className="input-base" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Data Center Principal" />
+          </div>
         </div>
 
         {/* Actions */}
@@ -139,8 +152,8 @@ function OLTModal({ olt, onClose, onSave }) {
           <button
             className="btn btn-primary"
             onClick={handleSave}
-            disabled={saving || !form.name.trim() || !form.host.trim()}
-            style={{ opacity: saving || !form.name.trim() || !form.host.trim() ? 0.6 : 1 }}
+            disabled={saving || !form.name.trim() || !form.ip.trim()}
+            style={{ opacity: saving || !form.name.trim() || !form.ip.trim() ? 0.6 : 1 }}
           >
             {saving ? 'Guardando...' : 'Guardar OLT'}
           </button>
@@ -237,10 +250,10 @@ export default function OLTs() {
 
   /* ── Stats ── */
   const total   = olts.length;
-  const online  = olts.filter(o => o.status === 'online').length;
-  const offline = olts.filter(o => o.status === 'offline').length;
+  const online  = olts.filter(o => (o.status || '').toUpperCase() === 'ONLINE').length;
+  const offline = olts.filter(o => (o.status || '').toUpperCase() === 'OFFLINE').length;
   const alerts  = olts.filter(o => o.cpu_usage > 70).length;
-  const totalONTs = olts.reduce((s, o) => s + (o.ont_count || 0), 0);
+  const totalONTs = olts.reduce((s, o) => s + (o._count?.onts || o.ont_count || 0), 0);
 
   /* ── Handlers ── */
   const handleSave = async (form) => {
@@ -350,7 +363,7 @@ export default function OLTs() {
                       <span className="mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{olt.name}</span>
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
-                      <span className="mono" style={{ color: 'var(--text-secondary)' }}>{olt.host}</span>
+                      <span className="mono" style={{ color: 'var(--text-secondary)' }}>{olt.ip || olt.host}</span>
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
                       <BrandTag brand={olt.brand} />
@@ -359,16 +372,16 @@ export default function OLTs() {
                       <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.model}</span>
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
-                      <span style={{ color: 'var(--cyan)', fontFamily: 'monospace', fontSize: 12 }}>{olt.pon_ports}</span>
+                      <span style={{ color: 'var(--cyan)', fontFamily: 'monospace', fontSize: 12 }}>{olt._count?.ponPorts ?? olt.pon_ports ?? 0}</span>
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
-                      <span style={{ color: 'var(--purple)', fontFamily: 'monospace', fontSize: 12 }}>{olt.ont_count}</span>
+                      <span style={{ color: 'var(--purple)', fontFamily: 'monospace', fontSize: 12 }}>{olt._count?.onts ?? olt.ont_count ?? 0}</span>
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
                       <CpuBar value={olt.cpu_usage || 0} />
                     </td>
                     <td onClick={() => toggleExpand(olt.id)}>
-                      <span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{olt.uptime}</span>
+                      <span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{formatUptime(olt.uptime)}</span>
                     </td>
                     {/* Actions — no row-expand propagation */}
                     <td>

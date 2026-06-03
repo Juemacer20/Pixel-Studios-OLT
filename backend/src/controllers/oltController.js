@@ -68,4 +68,11 @@ async function sendCommand(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, create, update, remove, getStatus, getPorts, getPortONTs, sendCommand };
+async function scanONTs(req, res, next) {
+  try {
+    const result = await oltService.scanOLTOnts(req.params.id);
+    res.json({ data: result });
+  } catch (err) { next(err); }
+}
+
+module.exports = { list, getOne, create, update, remove, getStatus, getPorts, getPortONTs, sendCommand, scanONTs };

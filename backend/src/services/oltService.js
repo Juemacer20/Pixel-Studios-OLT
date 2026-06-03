@@ -108,4 +108,52 @@ async function sendOLTCommand(id, cmd, userId) {
   return { output, cmd };
 }
 
-module.exports = { getAllOLTs, getOLTById, createOLT, updateOLT, deleteOLT, getOLTStatus, getOLTPorts, getPortONTs, sendOLTCommand };
+async function scanOLTOnts(id) {
+  const olt = await prisma.oLT.findUnique({ where: { id } });
+  if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
+
+  const adapter = getAdapter(olt);
+  // connect() is best-effort — SNMP-based adapters (VSOL) discover without SSH
+  try { await adapter.connect(); } catch (e) { logger.warn(`scanOLTOnts connect: ${e.message}`); }
+  const rawOnts = await adapter.listONTs();
+  try { await adapter.disconnect(); } catch {}
+
+  const saved = [];
+  for (const ont of rawOnts) {
+    if (!ont.serial_number) continue;
+    const existing = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number } });
+    if (existing) {
+      const updated = await prisma.oNT.update({
+        where: { id: existing.id },
+        data: {
+          status: ont.status,
+          rx_power: ont.rx_power ?? undefined,
+          tx_power: ont.tx_power ?? undefined,
+          mac: ont.mac ?? undefined,
+          last_seen: new Date(),
+        },
+      });
+      saved.push(updated);
+    } else {
+      const created = await prisma.oNT.create({
+        data: {
+          olt_id: id,
+          serial_number: ont.serial_number,
+          mac: ont.mac ?? null,
+          description: ont.interface ?? null,
+          status: ont.status || 'OFFLINE',
+          rx_power: ont.rx_power ?? null,
+          tx_power: ont.tx_power ?? null,
+          last_seen: new Date(),
+          protocol: 'GPON',
+        },
+      });
+      saved.push(created);
+    }
+  }
+
+  await prisma.oLT.update({ where: { id }, data: { status: 'ONLINE' } });
+  return { scanned: rawOnts.length, saved: saved.length, onts: saved };
+}
+
+module.exports = { getAllOLTs, getOLTById, createOLT, updateOLT, deleteOLT, getOLTStatus, getOLTPorts, getPortONTs, sendOLTCommand, scanOLTOnts };

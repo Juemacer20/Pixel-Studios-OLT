@@ -13,13 +13,13 @@ import { dashboardAPI } from '../../services/api';
 
 // ─── Mock data used when the API is unavailable ─────────────────────────────
 const MOCK_SUMMARY = {
-  totalOLTs:    12,
-  onlineOLTs:   10,
-  totalONTs:    847,
-  onlineONTs:   801,
-  losONTs:       18,
-  ztpPending:     5,
-  activeAlerts:   7,
+  totalOLTs:    0,
+  onlineOLTs:   0,
+  totalONTs:    0,
+  onlineONTs:   0,
+  losONTs:      0,
+  ztpPending:   0,
+  activeAlerts: 0,
 };
 
 // ─── Individual KPI card ─────────────────────────────────────────────────────
