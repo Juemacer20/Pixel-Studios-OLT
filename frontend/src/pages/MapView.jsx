@@ -22,7 +22,6 @@ function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 
 const STATUSES = ['ONLINE', 'ONLINE', 'ONLINE', 'ONLINE', 'OFFLINE', 'LOS', 'LOS'];
 
-const MOCK_ONTS = Array.from({ length: 80 }, (_, i) => {
   const status = rand(STATUSES);
   const rx = status === 'ONLINE' ? parseFloat((-15 - Math.random() * 14).toFixed(1)) : null;
   return {
@@ -36,12 +35,6 @@ const MOCK_ONTS = Array.from({ length: 80 }, (_, i) => {
   };
 });
 
-const MOCK_OLTS = [
-  { id: 1, name: 'OLT-NORTE',  latitude: BASE_LAT + 0.06, longitude: BASE_LNG + 0.02 },
-  { id: 2, name: 'OLT-SUR',    latitude: BASE_LAT - 0.06, longitude: BASE_LNG - 0.02 },
-  { id: 3, name: 'OLT-CENTRO', latitude: BASE_LAT,        longitude: BASE_LNG },
-  { id: 4, name: 'OLT-ESTE',   latitude: BASE_LAT + 0.02, longitude: BASE_LNG + 0.06 },
-];
 
 // ── Color helpers ─────────────────────────────────────────────────────────────
 function getOntColor(status, rx) {
@@ -120,8 +113,8 @@ export default function MapView() {
     refetchInterval: 120000,
   });
 
-  const onts = (ontsRaw.length ? ontsRaw : MOCK_ONTS).filter(o => o.latitude && o.longitude);
-  const olts = (oltsRaw.length ? oltsRaw : MOCK_OLTS).filter(o => o.latitude && o.longitude);
+  const onts = (ontsRaw || []).filter(o => o.latitude && o.longitude);
+  const olts = (oltsRaw || []).filter(o => o.latitude && o.longitude);
 
   const center = onts.length > 0 ? [onts[0].latitude, onts[0].longitude] : [BASE_LAT, BASE_LNG];
 

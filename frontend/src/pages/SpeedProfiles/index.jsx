@@ -7,12 +7,6 @@ import {
 } from '@tabler/icons-react';
 
 /* ─── Mock data ─────────────────────────────────────────────────────────── */
-const MOCK_PROFILES = [
-  { id: 1, name: 'Plan 10M',  download: 10,  upload: 5,   burst: 2, ont_count: 45 },
-  { id: 2, name: 'Plan 30M',  download: 30,  upload: 15,  burst: 2, ont_count: 89 },
-  { id: 3, name: 'Plan 100M', download: 100, upload: 50,  burst: 4, ont_count: 23 },
-  { id: 4, name: 'Plan 200M', download: 200, upload: 100, burst: 4, ont_count: 12 },
-];
 
 const BURST_OPTIONS = [
   { value: 1, label: '1× (sin burst)' },
@@ -193,11 +187,11 @@ export default function SpeedProfiles() {
     queryFn: () =>
       api.get('/speed-profiles')
         .then(r => r.data?.data || r.data)
-        .catch(() => MOCK_PROFILES),
+        ,
     staleTime: 60000,
   });
 
-  const profiles = data || (isLoading ? [] : MOCK_PROFILES);
+  const profiles = data || [];
   const maxSpeed = profiles.reduce((m, p) => Math.max(m, p.download || 0), 1);
 
   /* ── Mutations ── */

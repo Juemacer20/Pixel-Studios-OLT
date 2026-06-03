@@ -11,19 +11,7 @@ import {
 } from '@tabler/icons-react';
 
 /* ─── Mock data (fallback when API unavailable) ─────────────────────────── */
-const MOCK_OLTS = [
-  { id: 1, name: 'OLT-NORTE', host: '192.168.1.10', brand: 'Huawei',   model: 'MA5800-X7', pon_ports: 16, ont_count: 124, cpu_usage: 23, uptime: '45d 12h', status: 'online'  },
-  { id: 2, name: 'OLT-SUR',   host: '192.168.1.11', brand: 'KingType', model: 'C300',       pon_ports: 8,  ont_count: 67,  cpu_usage: 18, uptime: '12d 3h',  status: 'online'  },
-  { id: 3, name: 'OLT-ESTE',  host: '192.168.1.12', brand: 'VSOL',     model: 'V2801',      pon_ports: 4,  ont_count: 23,  cpu_usage: 5,  uptime: '3d 7h',   status: 'offline' },
-  { id: 4, name: 'OLT-OESTE', host: '192.168.1.13', brand: 'Huawei',   model: 'MA5680T',    pon_ports: 16, ont_count: 89,  cpu_usage: 31, uptime: '60d 1h',  status: 'online'  },
-];
 
-const MOCK_PORTS = [
-  { id: 1, port_number: '0/0/0', ont_count: 32, status: 'online' },
-  { id: 2, port_number: '0/0/1', ont_count: 28, status: 'online' },
-  { id: 3, port_number: '0/0/2', ont_count: 19, status: 'online' },
-  { id: 4, port_number: '0/0/3', ont_count: 0,  status: 'offline' },
-];
 
 const BRANDS = ['Huawei', 'KingType', 'VSOL', 'ZTE', 'Nokia'];
 
@@ -166,11 +154,11 @@ function OLTModal({ olt, onClose, onSave }) {
 function PortsSubTable({ oltId }) {
   const { data, isLoading } = useQuery({
     queryKey: ['olt-ports', oltId],
-    queryFn: () => oltAPI.ports(oltId).then(r => r.data?.data || r.data).catch(() => MOCK_PORTS),
+    queryFn: () => oltAPI.ports(oltId).then(r => r.data?.data || r.data),
     staleTime: 30000,
   });
 
-  const ports = data || (isLoading ? [] : MOCK_PORTS);
+  const ports = data || [];
 
   return (
     <tr>
@@ -229,10 +217,10 @@ export default function OLTs() {
   /* ── Data fetching ── */
   const { data, isLoading } = useQuery({
     queryKey: ['olts'],
-    queryFn: () => oltAPI.list().then(r => r.data?.data || r.data).catch(() => MOCK_OLTS),
+    queryFn: () => oltAPI.list().then(r => r.data?.data || r.data),
     staleTime: 30000,
   });
-  const olts = data || (isLoading ? [] : MOCK_OLTS);
+  const olts = data || [];
 
   /* ── Mutations ── */
   const createMut = useMutation({

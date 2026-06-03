@@ -10,7 +10,6 @@ import { IconPlus, IconX, IconSearch } from '@tabler/icons-react';
 
 const COLORS = ['#3fb950','#79c0ff','#bc8cff','#d29922','#f85149'];
 
-const MOCK_ONTS = Array.from({ length: 50 }, (_, i) => ({
   id: i + 1,
   serial_number: `HWTC${String(i * 7 + 1234567).padStart(8, '0')}`,
   client: i % 3 === 0 ? null : { name: `Cliente ${i + 1}` },
@@ -79,7 +78,7 @@ export default function Signal() {
     queryFn: () => ontAPI.list({ limit: 200 }).then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const allONTs = ontsRaw?.length ? ontsRaw : MOCK_ONTS;
+  const allONTs = data || [];
 
   // Build merged chart data for selected ONTs
   const chartData = (() => {

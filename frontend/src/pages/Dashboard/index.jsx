@@ -29,33 +29,7 @@ import Drawer         from '../../components/shared/Drawer';
 import { useAlerts }  from '../../hooks/useAlerts';
 import { useAlertStore } from '../../store/alertStore';
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_OLTS = [
-  { id: '1', name: 'OLT-CORE-01', brand: 'Huawei',   status: 'online',  _count: { onts: 128, ponPorts: 8 }, cpu_usage: 34 },
-  { id: '2', name: 'OLT-DIST-02', brand: 'ZTE',      status: 'online',  _count: { onts: 96,  ponPorts: 4 }, cpu_usage: 61 },
-  { id: '3', name: 'OLT-ACC-03',  brand: 'KingType', status: 'offline', _count: { onts: 72,  ponPorts: 4 }, cpu_usage: 0  },
-  { id: '4', name: 'OLT-BKUP-04', brand: 'VSOL',     status: 'online',  _count: { onts: 54,  ponPorts: 2 }, cpu_usage: 22 },
-];
 
-const MOCK_ONTS = [
-  { id: '1', serial_number: 'HWTC1A2B3C4D', status: 'online',  rx_power: -21.3, tx_power: -8.1, client: { name: 'Acme Corp.' },      olt: { name: 'OLT-CORE-01' } },
-  { id: '2', serial_number: 'ZTEG0001ABCD', status: 'online',  rx_power: -19.8, tx_power: -7.9, client: { name: 'Beta S.R.L.' },      olt: { name: 'OLT-DIST-02' } },
-  { id: '3', serial_number: 'VSOL99887766', status: 'los',     rx_power: -29.4, tx_power: -8.5, client: { name: 'Gamma & Hijos' },    olt: { name: 'OLT-ACC-03'  } },
-  { id: '4', serial_number: 'KTYP12345678', status: 'online',  rx_power: -22.7, tx_power: -8.2, client: { name: 'Delta Telecom' },    olt: { name: 'OLT-CORE-01' } },
-  { id: '5', serial_number: 'HWTCAABB1234', status: 'pending', rx_power:  null, tx_power:  null, client: null,                         olt: { name: 'OLT-DIST-02' } },
-  { id: '6', serial_number: 'ZTEG9876EFGH', status: 'online',  rx_power: -18.5, tx_power: -7.7, client: { name: 'Epsilon Redes' },    olt: { name: 'OLT-CORE-01' } },
-  { id: '7', serial_number: 'VSOL11223344', status: 'online',  rx_power: -23.1, tx_power: -8.3, client: { name: 'Zeta ISP' },         olt: { name: 'OLT-BKUP-04' } },
-  { id: '8', serial_number: 'HWTCDEADBEEF', status: 'offline', rx_power:  null, tx_power:  null, client: { name: 'Eta Networks' },     olt: { name: 'OLT-ACC-03'  } },
-];
-
-const MOCK_EVENTS = [
-  { id: 'e1', type: 'ONT_OFFLINE', severity: 'HIGH',     message: 'VSOL99887766 perdió señal (LOS)',       created_at: new Date(Date.now() - 4  * 60_000).toISOString() },
-  { id: 'e2', type: 'CPU_HIGH',    severity: 'MEDIUM',   message: 'OLT-DIST-02 CPU al 61%',                created_at: new Date(Date.now() - 12 * 60_000).toISOString() },
-  { id: 'e3', type: 'LOS',         severity: 'CRITICAL', message: 'Puerto PON 3/0/1 sin clientes activos', created_at: new Date(Date.now() - 28 * 60_000).toISOString() },
-  { id: 'e4', type: 'ZTP',         severity: 'INFO',     message: 'ONT HWTCAABB1234 en espera de perfil',  created_at: new Date(Date.now() - 45 * 60_000).toISOString() },
-  { id: 'e5', type: 'ONT_OFFLINE', severity: 'MEDIUM',   message: 'HWTCDEADBEEF desconectado',             created_at: new Date(Date.now() -  2 * 3600_000).toISOString() },
-  { id: 'e6', type: 'HIGH_SIGNAL', severity: 'LOW',      message: 'ZTEG9876EFGH señal por encima de umbral', created_at: new Date(Date.now() - 3 * 3600_000).toISOString() },
-];
 
 // ─── Signal distribution buckets (dBm) ────────────────────────────────────────
 const SIGNAL_BUCKETS = [

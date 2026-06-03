@@ -19,7 +19,6 @@ const today = new Date();
 today.setHours(0, 0, 0, 0);
 
 let _id = 1;
-const MOCK_ALERTS = Array.from({ length: 40 }, (_, i) => {
   const sev = rand(SEVERITIES);
   const olt = rand(OLTS_LIST);
   const portIdx = randInt(0, 7);
@@ -80,7 +79,7 @@ export default function Alerts() {
   const [tab, setTab]           = useState('active'); // active | acknowledged | resolved
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [alerts, setAlerts]     = useState(MOCK_ALERTS);
+  const [alerts, setAlerts]     = useState([]);
   const intervalRef = useRef(null);
 
   useEffect(() => {

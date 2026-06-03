@@ -7,18 +7,7 @@ import {
 } from '@tabler/icons-react';
 
 /* ─── Mock data ─────────────────────────────────────────────────────────── */
-const MOCK_PENDING = [
-  { id: 1, serial_number: 'HWTC00000001', mac: 'AA:BB:CC:00:00:01', olt: 'OLT-NORTE', port: '0/1/0', first_seen: new Date(Date.now() - 3600000).toISOString() },
-  { id: 2, serial_number: 'HWTC00000002', mac: 'AA:BB:CC:00:00:02', olt: 'OLT-SUR',   port: '0/0/3', first_seen: new Date(Date.now() - 7200000).toISOString() },
-  { id: 3, serial_number: 'KTCP12345678', mac: 'AA:BB:CC:00:00:03', olt: 'OLT-NORTE', port: '0/1/4', first_seen: new Date(Date.now() - 1800000).toISOString() },
-];
 
-const MOCK_PROFILES = [
-  { id: 1, name: 'Plan 10M',  download: 10,  upload: 5   },
-  { id: 2, name: 'Plan 30M',  download: 30,  upload: 15  },
-  { id: 3, name: 'Plan 100M', download: 100, upload: 50  },
-  { id: 4, name: 'Plan 200M', download: 200, upload: 100 },
-];
 
 const WAN_MODES = ['DHCP', 'PPPoE', 'Static'];
 
@@ -221,19 +210,19 @@ export default function ZTP() {
   /* ── Data ── */
   const { data: pendingRaw, isLoading: loadingPending } = useQuery({
     queryKey: ['ztp-pending'],
-    queryFn: () => ztpAPI.pending().then(r => r.data?.data || r.data).catch(() => MOCK_PENDING),
+    queryFn: () => ztpAPI.pending().then(r => r.data?.data || r.data),
     refetchInterval: 20000,
     staleTime: 10000,
   });
 
   const { data: profilesRaw } = useQuery({
     queryKey: ['ztp-profiles'],
-    queryFn: () => ztpAPI.profiles().then(r => r.data?.data || r.data).catch(() => MOCK_PROFILES),
+    queryFn: () => ztpAPI.profiles().then(r => r.data?.data || r.data),
     staleTime: 60000,
   });
 
-  const pending  = pendingRaw  || (loadingPending ? [] : MOCK_PENDING);
-  const profiles = profilesRaw || MOCK_PROFILES;
+  const pending  = pendingRaw  || [];
+  const profiles = profilesRaw || [];
 
   // Filter out locally rejected
   const visiblePending = pending.filter(o => !rejected.has(o.id));

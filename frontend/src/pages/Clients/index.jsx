@@ -9,7 +9,6 @@ import {
 } from '@tabler/icons-react';
 
 /* ─── Mock data ─────────────────────────────────────────────────────────── */
-const MOCK_CLIENTS = Array.from({ length: 30 }, (_, i) => ({
   id: i + 1,
   name: `Cliente ${i + 1}`,
   email: `cliente${i + 1}@mail.com`,
@@ -362,12 +361,12 @@ export default function Clients() {
     queryFn: () =>
       clientAPI.list({ search, limit: 200 })
         .then(r => r.data?.data || r.data)
-        .catch(() => MOCK_CLIENTS),
+        ,
     staleTime: 30000,
     refetchOnWindowFocus: false,
   });
 
-  const allClients = data || (isLoading ? [] : MOCK_CLIENTS);
+  const allClients = data || [];
 
   /* ── Filtered ── */
   const clients = useMemo(() => {

@@ -16,7 +16,6 @@ import BrandTag from '../../components/shared/BrandTag';
 import toast from 'react-hot-toast';
 
 /* ─── Mock data ─────────────────────────────────────────────────────────── */
-const MOCK_ONTS = Array.from({ length: 50 }, (_, i) => ({
   id: i + 1,
   serial_number: `HWTC${String(i * 7 + 1234567).padStart(8, '0')}`,
   mac_address: `00:1A:${String(i).padStart(2, '0')}:FF:${String(i * 3).padStart(2, '0')}:AB`,
@@ -38,11 +37,10 @@ const MOCK_ONTS = Array.from({ length: 50 }, (_, i) => ({
   ip_address: `192.168.${Math.floor(i / 254) + 1}.${(i % 254) + 1}`,
 }));
 
-const MOCK_SIGNAL_HISTORY = (ontId, range) => {
   const pts = range === '7d' ? 84 : range === '30d' ? 120 : 48;
   const now = Date.now();
   const step = range === '7d' ? 2 * 3600000 : range === '30d' ? 6 * 3600000 : 1800000;
-  const base = MOCK_ONTS.find(o => o.id === ontId)?.rx_power ?? -22;
+  const base = -22;
   return Array.from({ length: pts }, (_, i) => ({
     timestamp: new Date(now - (pts - i) * step).toISOString(),
     rx_power: base + (Math.random() * 2 - 1),
@@ -50,7 +48,6 @@ const MOCK_SIGNAL_HISTORY = (ontId, range) => {
   }));
 };
 
-const MOCK_EVENTS = () => [
   { id: 1, type: 'info',    message: 'ONT registrado exitosamente',     ts: new Date(Date.now() - 120000).toISOString() },
   { id: 2, type: 'warning', message: 'Señal RX por debajo del umbral',  ts: new Date(Date.now() - 3600000).toISOString() },
   { id: 3, type: 'error',   message: 'LOS detectado brevemente',        ts: new Date(Date.now() - 7200000).toISOString() },
@@ -58,10 +55,6 @@ const MOCK_EVENTS = () => [
   { id: 5, type: 'info',    message: 'Actualización de firmware',       ts: new Date(Date.now() - 172800000).toISOString() },
 ];
 
-const MOCK_DHCP = [
-  { id: 1, mac: '00:1A:2B:3C:4D:5E', ip: '192.168.10.101', hostname: 'PC-SALA',  expires: new Date(Date.now() + 3600000).toISOString() },
-  { id: 2, mac: 'AA:BB:CC:DD:EE:FF', ip: '192.168.10.102', hostname: 'SmartTV',  expires: new Date(Date.now() + 7200000).toISOString() },
-];
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function getSignalMeta(value) {
@@ -133,7 +126,7 @@ function MiniSignalChart({ ontId, height = 160 }) {
     queryFn: () =>
       ontAPI.signalHistory(ontId, '24h')
         .then(r => r.data?.data || r.data || [])
-        .catch(() => MOCK_SIGNAL_HISTORY(ontId, '24h')),
+        .catch(() => []),
     enabled: !!ontId,
     staleTime: 60000,
   });
@@ -199,7 +192,7 @@ function SignalTabContent({ ontId }) {
     queryFn: () =>
       ontAPI.signalHistory(ontId, range)
         .then(r => r.data?.data || r.data || [])
-        .catch(() => MOCK_SIGNAL_HISTORY(ontId, range)),
+        .catch(() => []),
     enabled: !!ontId,
     staleTime: 60000,
   });
@@ -343,14 +336,14 @@ function ONTDrawer({ ont, onClose }) {
     queryFn: () =>
       ontAPI.dhcpLeases(ont.id)
         .then(r => r.data?.data || r.data || [])
-        .catch(() => MOCK_DHCP),
+        ,
     enabled: !!ont?.id && tab === 4,
     staleTime: 60000,
   });
 
   if (!ont) return null;
 
-  const events = MOCK_EVENTS();
+  const events = [];
   const EVENT_COLOR  = { info: 'var(--cyan)', warning: 'var(--orange)', error: 'var(--red)' };
   const EVENT_BADGE  = { info: 'badge-blue',  warning: 'badge-orange',  error: 'badge-red' };
 
@@ -663,7 +656,7 @@ export default function ONTs() {
     queryFn: () =>
       ontAPI.list({ limit: 500 })
         .then(r => r.data?.data || r.data?.results || r.data || [])
-        .catch(() => MOCK_ONTS),
+        ,
     refetchInterval: 30000,
     retry: 1,
   });
@@ -679,7 +672,7 @@ export default function ONTs() {
 
   const rawONTs = useMemo(() => {
     const list = Array.isArray(ontsResp) ? ontsResp : [];
-    return list.length > 0 ? list : MOCK_ONTS;
+    return list;
   }, [ontsResp]);
 
   const olts = useMemo(() => {

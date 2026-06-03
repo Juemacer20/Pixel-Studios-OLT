@@ -11,18 +11,6 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { dashboardAPI } from '../../services/api';
 
-// ─── Mock data used when the API is unavailable ─────────────────────────────
-const MOCK_SUMMARY = {
-  totalOLTs:    0,
-  onlineOLTs:   0,
-  totalONTs:    0,
-  onlineONTs:   0,
-  losONTs:      0,
-  ztpPending:   0,
-  activeAlerts: 0,
-};
-
-// ─── Individual KPI card ─────────────────────────────────────────────────────
 function KPICard({ label, value, sub, color, Icon }) {
   return (
     <div
@@ -60,8 +48,7 @@ export default function KPICards() {
     retry: 1,
   });
 
-  // Fall back to mock when the API is unavailable
-  const d = isError || !data ? MOCK_SUMMARY : data;
+  const d = data || {};
 
   const oltOnlinePct  = d.totalOLTs ? Math.round((d.onlineOLTs  / d.totalOLTs)  * 100) : 0;
   const ontOnlinePct  = d.totalONTs ? Math.round((d.onlineONTs  / d.totalONTs)  * 100) : 0;

@@ -5,12 +5,6 @@ import SignalValue from '../../components/shared/SignalValue';
 import StatusBadge from '../../components/shared/StatusBadge';
 import { IconChevronRight, IconAntenna, IconX, IconServer } from '@tabler/icons-react';
 
-const MOCK_OLTS = [
-  { id: 1, name: 'OLT-NORTE', brand: 'Huawei' },
-  { id: 2, name: 'OLT-SUR',   brand: 'KingType' },
-  { id: 3, name: 'OLT-ESTE',  brand: 'VSOL' },
-  { id: 4, name: 'OLT-OESTE', brand: 'Huawei' },
-];
 
 function buildMockPorts(oltId) {
   return Array.from({ length: 8 }, (_, i) => ({
@@ -91,7 +85,7 @@ export default function PonPorts() {
     queryFn: () => oltAPI.list().then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const olts = oltsRaw?.length ? oltsRaw : MOCK_OLTS;
+  const olts = data || [];
 
   const { data: portsRaw } = useQuery({
     queryKey: ['olt-ports', selectedOLT],

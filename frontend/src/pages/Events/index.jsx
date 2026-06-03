@@ -14,7 +14,6 @@ const STATUSES = ['ACTIVE', 'RESOLVED', 'ACKNOWLEDGED'];
 function rand(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function randInt(a, b) { return Math.floor(Math.random() * (b - a + 1)) + a; }
 
-const MOCK_EVENTS = Array.from({ length: 50 }, (_, i) => {
   const sev = rand(SEVERITIES);
   const status = rand(STATUSES);
   const olt = rand(OLTS);
@@ -74,7 +73,7 @@ export default function Events() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
-  const [events, setEvents] = useState(MOCK_EVENTS);
+  const [events, setEvents] = useState([]);
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState(null);
   const intervalRef = useRef(null);

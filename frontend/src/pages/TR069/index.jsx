@@ -7,7 +7,6 @@ import {
 } from '@tabler/icons-react';
 import StatusBadge from '../../components/shared/StatusBadge';
 
-const MOCK_DEVICES = Array.from({ length: 15 }, (_, i) => ({
   id: i + 1,
   serial: `HWTC${String(i * 7 + 1000000).padStart(8, '0')}`,
   model:  ['HG8545M', 'HG8310M', 'EG8145V5', 'C300-ONT'][i % 4],
@@ -19,37 +18,6 @@ const MOCK_DEVICES = Array.from({ length: 15 }, (_, i) => ({
   tasks:     i % 4 === 0 ? 1 : 0,
 }));
 
-const MOCK_PARAMS = {
-  'InternetGatewayDevice': {
-    'DeviceInfo': {
-      'Manufacturer':          'Huawei Technologies Co., Ltd.',
-      'ManufacturerOUI':       '00E0FC',
-      'ModelName':             'HG8545M',
-      'Description':           'GPON ONT',
-      'ProductClass':          'HG8545M',
-      'SerialNumber':          'HWTC00000000',
-      'HardwareVersion':       'VER.A',
-      'SoftwareVersion':       'V300R019C10SPC200',
-      'UpTime':                '345600',
-    },
-    'WANDevice': {
-      '1': {
-        'WANConnectionDevice': {
-          '1': {
-            'WANIPConnection': {
-              '1': {
-                'ExternalIPAddress': '181.47.100.1',
-                'SubnetMask':        '255.255.255.0',
-                'DefaultGateway':    '181.47.100.254',
-                'DNSServers':        '8.8.8.8,8.8.4.4',
-              },
-            },
-          },
-        },
-      },
-    },
-  },
-};
 
 function ParamTree({ data, depth = 0 }) {
   const [open, setOpen] = useState(depth < 2);
@@ -130,7 +98,7 @@ function DeviceDrawer({ device, onClose }) {
                 Árbol de parámetros ACS (InternetGatewayDevice.*)
               </div>
               <div style={{ background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: 12 }}>
-                <ParamTree data={MOCK_PARAMS} />
+                <ParamTree data={{}} />
               </div>
             </div>
           )}
@@ -205,7 +173,7 @@ export default function TR069() {
     queryFn: () => tr069API.devices().then(r => r.data?.data ?? r.data),
     retry: 1,
   });
-  const allDevices = devicesRaw?.length ? devicesRaw : MOCK_DEVICES;
+  const allDevices = data || [];
 
   const devices = allDevices.filter(d =>
     !search || d.serial.toLowerCase().includes(search.toLowerCase()) ||
