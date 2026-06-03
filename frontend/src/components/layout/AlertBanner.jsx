@@ -12,7 +12,7 @@ export default function AlertBanner() {
   const latest = criticalAlerts[0];
 
   return (
-    <div className="flex items-center gap-3 px-4 py-2 text-sm" style={{ background: 'rgba(255,59,92,0.1)', borderBottom: '1px solid rgba(255,59,92,0.3)' }}>
+    <div className="flex items-center gap-3 px-4 py-2 text-sm" style={{ background: 'rgba(248,81,73,0.08)', borderBottom: '1px solid rgba(248,81,73,0.25)' }}>
       <IconAlertTriangle size={14} style={{ color: '#FF3B5C', flexShrink: 0 }} className="animate-pulse" />
       <span className="font-mono text-xs" style={{ color: '#FF3B5C' }}>[CRÍTICO]</span>
       <span className="flex-1 text-gray-300 text-xs truncate">{latest.message}</span>

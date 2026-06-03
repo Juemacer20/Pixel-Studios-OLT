@@ -1,14 +1,40 @@
 import React, { useState } from 'react';
-import { IconSearch, IconRefresh, IconBell } from '@tabler/icons-react';
+import {
+  IconRefresh, IconBell, IconTerminal2, IconChevronRight,
+  IconRouter,
+} from '@tabler/icons-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAlertStore } from '../../store/alertStore';
+import { useOLTStore } from '../../store/oltStore';
+import { useLocation } from 'react-router-dom';
+
+const BREADCRUMBS = {
+  '/dashboard':      ['Dashboard'],
+  '/olts':           ['OLTs'],
+  '/onts':           ['ONTs'],
+  '/pon-ports':      ['Puertos PON'],
+  '/signal':         ['Señal'],
+  '/map':            ['Mapa GPS'],
+  '/clients':        ['Clientes'],
+  '/ztp':            ['ZTP'],
+  '/speed-profiles': ['Velocidades'],
+  '/tr069':          ['TR-069'],
+  '/events':         ['Eventos'],
+  '/alerts':         ['Alertas'],
+  '/reports':        ['Reportes'],
+  '/users':          ['Usuarios'],
+  '/settings':       ['Configuración'],
+};
 
 export default function Topbar() {
-  const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const qc = useQueryClient();
+  const qc         = useQueryClient();
   const alertCount = useAlertStore(s => s.alertCount);
   const criticalCount = useAlertStore(s => s.criticalCount);
+  const { olts, selectedOLT, selectOLT } = useOLTStore();
+  const location   = useLocation();
+
+  const crumbs = BREADCRUMBS[location.pathname] || [location.pathname.slice(1)];
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -17,44 +43,91 @@ export default function Topbar() {
   };
 
   return (
-    <header className="flex items-center gap-4 px-4 py-2.5 border-b" style={{ background: '#111827', borderColor: '#1E2D45', minHeight: '48px' }}>
-      <div className="flex items-center gap-2 flex-1 max-w-sm">
-        <div className="relative w-full">
-          <IconSearch size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-          <input
-            type="text"
-            placeholder="Buscar ONT, cliente, IP..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 text-sm rounded-md outline-none"
-            style={{ background: '#1F2D44', border: '1px solid #1E2D45', color: '#E2E8F0' }}
-          />
-        </div>
+    <header
+      className="flex items-center gap-3 px-4"
+      style={{
+        background: 'var(--sidebar-bg)',
+        borderBottom: '1px solid var(--border)',
+        minHeight: '48px',
+        flexShrink: 0,
+      }}
+    >
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1 flex-1" style={{ color: 'var(--text-secondary)', fontSize: '13px' }}>
+        <span style={{ color: 'var(--text-muted)' }}>Pixel Studios</span>
+        <IconChevronRight size={12} style={{ color: 'var(--text-muted)' }} />
+        {crumbs.map((c, i) => (
+          <React.Fragment key={i}>
+            <span style={{ color: i === crumbs.length - 1 ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+              {c}
+            </span>
+            {i < crumbs.length - 1 && <IconChevronRight size={12} style={{ color: 'var(--text-muted)' }} />}
+          </React.Fragment>
+        ))}
       </div>
 
-      <div className="flex items-center gap-2 ml-auto">
-        <button
-          onClick={handleRefresh}
-          className="p-1.5 rounded-md text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
-        >
-          <IconRefresh size={15} className={refreshing ? 'animate-spin' : ''} />
+      {/* OLT Selector */}
+      {olts && olts.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <IconRouter size={13} style={{ color: 'var(--text-muted)' }} />
+          <select
+            className="select-base text-xs"
+            style={{ padding: '3px 6px', fontSize: '12px' }}
+            value={selectedOLT?.id || ''}
+            onChange={e => {
+              const olt = olts.find(o => String(o.id) === e.target.value);
+              selectOLT(olt || null);
+            }}
+          >
+            <option value="">Todas las OLTs</option>
+            {olts.map(o => (
+              <option key={o.id} value={o.id}>{o.name || o.host}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Polling indicator */}
+      <div className="flex items-center gap-1.5" style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+        <div className="polling-dot" />
+        <span>Live</span>
+      </div>
+
+      {/* Refresh */}
+      <button
+        onClick={handleRefresh}
+        className="btn-icon"
+        title="Refrescar datos"
+      >
+        <IconRefresh size={14} className={refreshing ? 'animate-spin' : ''} />
+      </button>
+
+      {/* Alerts bell */}
+      <div className="relative">
+        <button className="btn-icon" title="Alertas activas">
+          <IconBell size={14} />
         </button>
+        {alertCount > 0 && (
+          <span
+            className="absolute -top-1 -right-1 text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-mono"
+            style={{
+              background: criticalCount > 0 ? 'var(--red)' : 'var(--orange)',
+              color: '#fff',
+            }}
+          >
+            {alertCount > 9 ? '9+' : alertCount}
+          </span>
+        )}
+      </div>
 
-        <div className="relative">
-          <button className="p-1.5 rounded-md text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors">
-            <IconBell size={15} />
-          </button>
-          {alertCount > 0 && (
-            <span className="absolute -top-1 -right-1 text-[9px] w-4 h-4 flex items-center justify-center rounded-full font-mono"
-              style={{ background: criticalCount > 0 ? '#FF3B5C' : '#FF6B35', color: '#fff' }}>
-              {alertCount > 9 ? '9+' : alertCount}
-            </span>
-          )}
-        </div>
+      {/* Terminal */}
+      <button className="btn-icon" title="Terminal CLI">
+        <IconTerminal2 size={14} />
+      </button>
 
-        <div className="text-[10px] font-mono text-gray-600 pl-2 border-l border-gray-800">
-          {new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-        </div>
+      {/* Clock */}
+      <div className="font-mono" style={{ fontSize: '11px', color: 'var(--text-muted)', paddingLeft: '8px', borderLeft: '1px solid var(--border)' }}>
+        {new Date().toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
       </div>
     </header>
   );

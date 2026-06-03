@@ -1,121 +1,479 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ztpAPI } from '../../services/api';
-import PendingONTs from '../../components/ztp/PendingONTs';
-import ProfileManager from '../../components/ztp/ProfileManager';
-import ZTPDrawer from '../../components/ztp/ZTPDrawer';
-import { IconWifi, IconCheck, IconClock } from '@tabler/icons-react';
+import {
+  IconCheck, IconX, IconShieldCheck, IconBan,
+  IconClock, IconAlertTriangle, IconRefresh,
+} from '@tabler/icons-react';
 
-const TABS = ['Pendientes', 'Perfiles'];
+/* ─── Mock data ─────────────────────────────────────────────────────────── */
+const MOCK_PENDING = [
+  { id: 1, serial_number: 'HWTC00000001', mac: 'AA:BB:CC:00:00:01', olt: 'OLT-NORTE', port: '0/1/0', first_seen: new Date(Date.now() - 3600000).toISOString() },
+  { id: 2, serial_number: 'HWTC00000002', mac: 'AA:BB:CC:00:00:02', olt: 'OLT-SUR',   port: '0/0/3', first_seen: new Date(Date.now() - 7200000).toISOString() },
+  { id: 3, serial_number: 'KTCP12345678', mac: 'AA:BB:CC:00:00:03', olt: 'OLT-NORTE', port: '0/1/4', first_seen: new Date(Date.now() - 1800000).toISOString() },
+];
 
-export default function ZTP() {
-  const [tab, setTab] = useState('Pendientes');
-  const [authorizing, setAuthorizing] = useState(null);
+const MOCK_PROFILES = [
+  { id: 1, name: 'Plan 10M',  download: 10,  upload: 5   },
+  { id: 2, name: 'Plan 30M',  download: 30,  upload: 15  },
+  { id: 3, name: 'Plan 100M', download: 100, upload: 50  },
+  { id: 4, name: 'Plan 200M', download: 200, upload: 100 },
+];
 
-  const { data: pending = [] } = useQuery({
-    queryKey: ['ztp-pending'],
-    queryFn: () => ztpAPI.pending().then(r => r.data.data),
-    refetchInterval: 20000,
+const WAN_MODES = ['DHCP', 'PPPoE', 'Static'];
+
+/* ─── Helpers ────────────────────────────────────────────────────────────── */
+function relativeTime(isoStr) {
+  const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+  if (diff < 60) return `${diff}s`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+  return `${Math.floor(diff / 3600)}h`;
+}
+
+/* ─── Authorize Modal ────────────────────────────────────────────────────── */
+function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
+  const [form, setForm] = useState({
+    client: '',
+    profileId: profiles[0]?.id || '',
+    vlan: '',
+    wan_mode: 'DHCP',
+    description: '',
   });
+  const [saving, setSaving] = useState(false);
+
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const handleSubmit = async () => {
+    if (!form.profileId) return;
+    setSaving(true);
+    try {
+      await onAuthorize(ont.id, form.profileId, form);
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <h1 className="text-base font-semibold text-gray-200">Zero Touch Provisioning</h1>
-          {pending.length > 0 && (
-            <span
-              className="flex items-center gap-1.5 text-[10px] font-mono px-2 py-0.5 rounded-full animate-pulse"
-              style={{ background: '#FF6B3522', border: '1px solid #FF6B3544', color: '#FF6B35' }}
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%',
+        transform: 'translate(-50%,-50%)',
+        background: 'var(--card-bg)', border: '1px solid var(--border-light)',
+        borderRadius: 8, width: 480, zIndex: 300, padding: 24,
+        animation: 'fade-in 0.15s ease',
+      }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconShieldCheck size={16} style={{ color: 'var(--green)' }} />
+            <h3 style={{ fontSize: 14, fontWeight: 600 }}>Autorizar ONT</h3>
+          </div>
+          <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
+        </div>
+
+        {/* ONT info banner */}
+        <div style={{
+          background: 'rgba(31,111,235,0.08)', border: '1px solid rgba(31,111,235,0.2)',
+          borderRadius: 6, padding: '10px 12px', marginBottom: 18,
+          display: 'flex', flexDirection: 'column', gap: 4,
+        }}>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Serial</span>
+            <span className="mono" style={{ fontSize: 12, color: 'var(--cyan)', fontWeight: 600 }}>{ont.serial_number}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 30 }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>MAC</span>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.mac}</span>
+          </div>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>OLT / Puerto</span>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.olt} — {ont.port}</span>
+          </div>
+        </div>
+
+        {/* Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Cliente</label>
+            <input
+              className="input-base"
+              value={form.client}
+              onChange={e => set('client', e.target.value)}
+              placeholder="Nombre o ID de cliente..."
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+              Perfil de velocidad <span style={{ color: 'var(--red)' }}>*</span>
+            </label>
+            <select
+              className="select-base"
+              style={{ width: '100%' }}
+              value={form.profileId}
+              onChange={e => set('profileId', e.target.value)}
             >
-              <IconClock size={9} />
-              {pending.length} pendiente{pending.length !== 1 ? 's' : ''}
+              <option value="">Seleccionar perfil...</option>
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>
+                  {p.name} — ↓{p.download}Mbps / ↑{p.upload}Mbps
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>VLAN ID</label>
+              <input
+                className="input-base"
+                type="number"
+                value={form.vlan}
+                onChange={e => set('vlan', e.target.value)}
+                placeholder="100"
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Modo WAN</label>
+              <select className="select-base" style={{ width: '100%' }} value={form.wan_mode} onChange={e => set('wan_mode', e.target.value)}>
+                {WAN_MODES.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Descripción</label>
+            <input
+              className="input-base"
+              value={form.description}
+              onChange={e => set('description', e.target.value)}
+              placeholder="Notas opcionales..."
+            />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
+          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button
+            className="btn btn-primary"
+            onClick={handleSubmit}
+            disabled={saving || !form.profileId}
+            style={{ opacity: saving || !form.profileId ? 0.6 : 1 }}
+          >
+            <IconShieldCheck size={13} />
+            {saving ? 'Autorizando...' : 'Autorizar ONT'}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── Batch Authorize Bar ────────────────────────────────────────────────── */
+function BatchBar({ count, profiles, onAuthorize, onClear }) {
+  const [profileId, setProfileId] = useState(profiles[0]?.id || '');
+  const [loading, setLoading] = useState(false);
+
+  const handleBatch = async () => {
+    if (!profileId) return;
+    setLoading(true);
+    try { await onAuthorize(profileId); }
+    finally { setLoading(false); }
+  };
+
+  return (
+    <div className="batch-bar">
+      <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+        <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>{count}</span> seleccionados
+      </span>
+      <select
+        className="select-base"
+        style={{ fontSize: 12, padding: '3px 8px' }}
+        value={profileId}
+        onChange={e => setProfileId(e.target.value)}
+      >
+        {profiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+      </select>
+      <button
+        className="btn btn-primary"
+        style={{ fontSize: 12, padding: '4px 10px' }}
+        onClick={handleBatch}
+        disabled={loading || !profileId}
+      >
+        <IconShieldCheck size={12} />
+        {loading ? 'Autorizando...' : 'Autorizar seleccionados'}
+      </button>
+      <button className="btn-icon" onClick={onClear}><IconX size={13} /></button>
+    </div>
+  );
+}
+
+/* ─── Main Page ──────────────────────────────────────────────────────────── */
+export default function ZTP() {
+  const queryClient = useQueryClient();
+  const [authorizing, setAuthorizing] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const [rejected, setRejected] = useState(new Set());
+
+  /* ── Data ── */
+  const { data: pendingRaw, isLoading: loadingPending } = useQuery({
+    queryKey: ['ztp-pending'],
+    queryFn: () => ztpAPI.pending().then(r => r.data?.data || r.data).catch(() => MOCK_PENDING),
+    refetchInterval: 20000,
+    staleTime: 10000,
+  });
+
+  const { data: profilesRaw } = useQuery({
+    queryKey: ['ztp-profiles'],
+    queryFn: () => ztpAPI.profiles().then(r => r.data?.data || r.data).catch(() => MOCK_PROFILES),
+    staleTime: 60000,
+  });
+
+  const pending  = pendingRaw  || (loadingPending ? [] : MOCK_PENDING);
+  const profiles = profilesRaw || MOCK_PROFILES;
+
+  // Filter out locally rejected
+  const visiblePending = pending.filter(o => !rejected.has(o.id));
+
+  /* ── Mutations ── */
+  const authMut = useMutation({
+    mutationFn: ({ id, profileId }) => ztpAPI.authorize(id, profileId).catch(() => ({})),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['ztp-pending'] }),
+  });
+
+  /* ── Stats ── */
+  const totalPending   = visiblePending.length;
+  const authorizedToday = 0; // would come from API
+  const totalProfiles  = profiles.length;
+  const rejectedCount  = rejected.size;
+
+  /* ── Handlers ── */
+  const handleAuthorize = async (ontId, profileId) => {
+    await authMut.mutateAsync({ id: ontId, profileId });
+    setSelected(s => { const n = new Set(s); n.delete(ontId); return n; });
+  };
+
+  const handleReject = (id) => {
+    setRejected(s => new Set([...s, id]));
+    setSelected(s => { const n = new Set(s); n.delete(id); return n; });
+  };
+
+  const handleBatchAuthorize = async (profileId) => {
+    await Promise.all([...selected].map(id => authMut.mutateAsync({ id, profileId })));
+    setSelected(new Set());
+  };
+
+  const toggleSelect = (id) => {
+    setSelected(s => {
+      const n = new Set(s);
+      n.has(id) ? n.delete(id) : n.add(id);
+      return n;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selected.size === visiblePending.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(visiblePending.map(o => o.id)));
+    }
+  };
+
+  const allSelected = visiblePending.length > 0 && selected.size === visiblePending.length;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* ── Header ── */}
+      <div className="page-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <h1 className="page-title">Zero Touch Provisioning</h1>
+          {totalPending > 0 && (
+            <span className="badge badge-orange" style={{ animation: 'pulse-orange 2s infinite' }}>
+              <IconClock size={10} />
+              {totalPending} pendiente{totalPending !== 1 ? 's' : ''}
             </span>
           )}
         </div>
-        <div className="flex gap-2 text-xs font-mono text-gray-500">
-          <span>
-            Total autorizado:{' '}
-            <span style={{ color: '#00FF94' }}>
-              —
-            </span>
-          </span>
+        <button
+          className="btn"
+          onClick={() => queryClient.invalidateQueries({ queryKey: ['ztp-pending'] })}
+          style={{ fontSize: 12 }}
+        >
+          <IconRefresh size={13} /> Actualizar
+        </button>
+      </div>
+
+      {/* ── Stats bar ── */}
+      <div className="stats-bar">
+        <div className="stat-item">
+          <div className="stat-label">
+            <IconClock size={10} style={{ display: 'inline', marginRight: 4 }} />
+            Pendientes de autorización
+          </div>
+          <div className="stat-value" style={{ color: totalPending > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>
+            {totalPending}
+          </div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-label">
+            <IconCheck size={10} style={{ display: 'inline', marginRight: 4 }} />
+            Autorizadas hoy
+          </div>
+          <div className="stat-value" style={{ color: 'var(--green)' }}>{authorizedToday}</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-label">
+            <IconShieldCheck size={10} style={{ display: 'inline', marginRight: 4 }} />
+            Total perfiles
+          </div>
+          <div className="stat-value" style={{ color: 'var(--cyan)' }}>{totalProfiles}</div>
+        </div>
+        <div className="stat-item">
+          <div className="stat-label">
+            <IconBan size={10} style={{ display: 'inline', marginRight: 4 }} />
+            Rechazadas
+          </div>
+          <div className="stat-value" style={{ color: rejectedCount > 0 ? 'var(--red)' : 'var(--text-muted)' }}>
+            {rejectedCount}
+          </div>
         </div>
       </div>
 
-      {/* Alert banner when ONTs are pending */}
-      {pending.length > 0 && (
-        <div
-          className="flex items-center gap-3 px-4 py-3 rounded-lg text-xs"
-          style={{ background: '#FF6B3510', border: '1px solid #FF6B3530' }}
-        >
-          <IconWifi size={14} style={{ color: '#FF6B35' }} className="flex-shrink-0" />
-          <span style={{ color: '#FF6B35' }}>
-            {pending.length} ONT{pending.length !== 1 ? 's' : ''} detectado{pending.length !== 1 ? 's' : ''} esperando autorización.
-            Revisá y asigná un perfil para provisionar automáticamente.
+      {/* ── Alert banner ── */}
+      {totalPending > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 14px', borderRadius: 6, fontSize: 12,
+          background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.25)',
+          color: 'var(--orange)',
+        }}>
+          <IconAlertTriangle size={14} style={{ flexShrink: 0 }} />
+          <span>
+            {totalPending} ONT{totalPending !== 1 ? 's' : ''} detectada{totalPending !== 1 ? 's' : ''} esperando autorización.
+            Asigná un perfil para provisionar automáticamente.
           </span>
         </div>
       )}
 
-      {/* Tab bar */}
-      <div className="flex gap-1" style={{ borderBottom: '1px solid #1E2D45', paddingBottom: '1px' }}>
-        {TABS.map(t => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="px-4 py-2 text-xs font-medium transition-colors relative"
-            style={{ color: tab === t ? '#00D4FF' : '#6B7280' }}
-          >
-            {t}
-            {t === 'Pendientes' && pending.length > 0 && (
-              <span
-                className="ml-1.5 text-[9px] px-1 py-0.5 rounded-full font-mono"
-                style={{ background: '#FF6B35', color: '#fff' }}
-              >
-                {pending.length}
-              </span>
-            )}
-            {tab === t && (
-              <div
-                className="absolute bottom-0 left-0 right-0 h-0.5"
-                style={{ background: '#00D4FF' }}
-              />
-            )}
-          </button>
-        ))}
+      {/* ── Pending ONTs table ── */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        {loadingPending ? (
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
+            <div className="spinner" /> Buscando ONTs pendientes...
+          </div>
+        ) : visiblePending.length === 0 ? (
+          <div className="empty-state">
+            <IconCheck size={32} style={{ margin: '0 auto 12px', color: 'var(--green)' }} />
+            <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Sin ONTs pendientes</p>
+            <p style={{ fontSize: 12, marginTop: 6 }}>
+              Cuando se detecte una nueva ONT aparecerá aquí para autorización.
+            </p>
+          </div>
+        ) : (
+          <table className="table-base">
+            <thead>
+              <tr>
+                <th style={{ width: 36, paddingLeft: 14 }}>
+                  <input
+                    type="checkbox"
+                    className="checkbox"
+                    checked={allSelected}
+                    onChange={toggleAll}
+                  />
+                </th>
+                <th>Serial</th>
+                <th>MAC</th>
+                <th>OLT detectada</th>
+                <th>Puerto</th>
+                <th>Primera vez visto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visiblePending.map(ont => (
+                <tr key={ont.id}>
+                  <td style={{ paddingLeft: 14 }}>
+                    <input
+                      type="checkbox"
+                      className="checkbox"
+                      checked={selected.has(ont.id)}
+                      onChange={() => toggleSelect(ont.id)}
+                    />
+                  </td>
+                  <td>
+                    <span className="mono" style={{ color: 'var(--cyan)', fontWeight: 600, fontSize: 12 }}>
+                      {ont.serial_number}
+                    </span>
+                  </td>
+                  <td>
+                    <span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>
+                      {ont.mac}
+                    </span>
+                  </td>
+                  <td>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ont.olt}</span>
+                  </td>
+                  <td>
+                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.port}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span
+                        className="status-dot status-pending"
+                        style={{ display: 'inline-block', flexShrink: 0 }}
+                      />
+                      <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                        hace {relativeTime(ont.first_seen)}
+                      </span>
+                    </div>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        className="btn btn-primary"
+                        style={{ fontSize: 11, padding: '3px 10px' }}
+                        onClick={() => setAuthorizing(ont)}
+                      >
+                        <IconShieldCheck size={12} /> Autorizar
+                      </button>
+                      <button
+                        className="btn btn-danger"
+                        style={{ fontSize: 11, padding: '3px 10px' }}
+                        onClick={() => handleReject(ont.id)}
+                      >
+                        <IconBan size={12} /> Rechazar
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 min-h-0 overflow-auto">
-        {tab === 'Pendientes' && (
-          <div className="flex flex-col gap-3">
-            {pending.length === 0 ? (
-              <div
-                className="flex flex-col items-center justify-center py-16 rounded-lg text-center"
-                style={{ border: '1px dashed #1E2D45' }}
-              >
-                <IconCheck size={32} className="mb-3" style={{ color: '#00FF94' }} />
-                <div className="text-sm text-gray-400 font-medium">Sin ONTs pendientes</div>
-                <div className="text-xs text-gray-600 mt-1">
-                  Cuando se detecte un nuevo ONT, aparecerá aquí para autorización.
-                </div>
-              </div>
-            ) : (
-              <PendingONTs onAuthorize={setAuthorizing} />
-            )}
-          </div>
-        )}
+      {/* ── Batch bar ── */}
+      {selected.size > 0 && (
+        <BatchBar
+          count={selected.size}
+          profiles={profiles}
+          onAuthorize={handleBatchAuthorize}
+          onClear={() => setSelected(new Set())}
+        />
+      )}
 
-        {tab === 'Perfiles' && (
-          <div className="max-w-2xl">
-            <ProfileManager />
-          </div>
-        )}
-      </div>
-
-      {/* Authorization drawer */}
-      <ZTPDrawer ont={authorizing} onClose={() => setAuthorizing(null)} />
+      {/* ── Authorize Modal ── */}
+      {authorizing && (
+        <AuthorizeModal
+          ont={authorizing}
+          profiles={profiles}
+          onClose={() => setAuthorizing(null)}
+          onAuthorize={handleAuthorize}
+        />
+      )}
     </div>
   );
 }

@@ -4,11 +4,11 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 export default function Login() {
-  const [email, setEmail] = useState('admin@pixel-studios.com');
+  const [email,    setEmail]    = useState('admin@pixel-studios.com');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  const setAuth = useAuthStore(s => s.setAuth);
+  const [error,    setError]    = useState('');
+  const [loading,  setLoading]  = useState(false);
+  const setAuth  = useAuthStore(s => s.setAuth);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -20,64 +20,133 @@ export default function Login() {
       setAuth(data.user, data.accessToken);
       navigate('/dashboard', { replace: true });
     } catch (err) {
-      setError(err.response?.data?.error || 'Error al iniciar sesión');
+      setError(err.response?.data?.error || 'Credenciales inválidas');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#0A0E1A', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'DM Sans', sans-serif" }}>
-      <div style={{ background: '#0F1623', border: '1px solid #1E2D45', borderRadius: '12px', padding: '40px', width: '100%', maxWidth: '400px' }}>
+    <div style={{
+      minHeight: '100vh',
+      background: 'var(--content-bg)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+    }}>
+      <div style={{ width: '100%', maxWidth: '360px', padding: '0 16px' }}>
+        {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ color: '#00D4FF', fontSize: '22px', fontWeight: 700, fontFamily: "'IBM Plex Mono', monospace", letterSpacing: '0.05em' }}>
-            PIXEL STUDIOS
+          <div style={{
+            width: '48px', height: '48px',
+            background: 'var(--accent)',
+            borderRadius: '10px',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 16px',
+            fontSize: '18px', fontWeight: 700, color: '#fff',
+            fontFamily: 'monospace',
+          }}>
+            PS
           </div>
-          <div style={{ color: '#64748B', fontSize: '13px', marginTop: '4px' }}>OLT Management Platform</div>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Pixel Studios OLT
+          </div>
+          <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+            Plataforma de gestión de red
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', color: '#94A3B8', fontSize: '12px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              required
-              style={{ width: '100%', background: '#1A2235', border: '1px solid #1E2D45', borderRadius: '8px', padding: '10px 12px', color: '#E2E8F0', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', color: '#94A3B8', fontSize: '12px', fontWeight: 600, marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Contraseña
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              required
-              autoFocus
-              style={{ width: '100%', background: '#1A2235', border: '1px solid #1E2D45', borderRadius: '8px', padding: '10px 12px', color: '#E2E8F0', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-            />
-          </div>
-
-          {error && (
-            <div style={{ background: 'rgba(255,59,92,0.1)', border: '1px solid rgba(255,59,92,0.3)', borderRadius: '8px', padding: '10px 12px', color: '#FF3B5C', fontSize: '13px', marginBottom: '16px' }}>
-              {error}
+        {/* Card */}
+        <div style={{
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border)',
+          borderRadius: '8px',
+          padding: '24px',
+        }}>
+          <form onSubmit={handleSubmit}>
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                marginBottom: '6px',
+              }}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
+                className="input-base"
+                style={{ fontSize: '14px', padding: '8px 12px' }}
+                placeholder="usuario@empresa.com"
+              />
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{ width: '100%', background: loading ? '#1E2D45' : '#00D4FF', color: loading ? '#64748B' : '#0A0E1A', border: 'none', borderRadius: '8px', padding: '12px', fontSize: '14px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: "'IBM Plex Mono', monospace', letterSpacing: '0.05em" }}
-          >
-            {loading ? 'Ingresando...' : 'INGRESAR'}
-          </button>
-        </form>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: 'var(--text-secondary)',
+                marginBottom: '6px',
+              }}>
+                Contraseña
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                required
+                autoFocus
+                className="input-base"
+                style={{ fontSize: '14px', padding: '8px 12px' }}
+                placeholder="••••••••"
+              />
+            </div>
+
+            {error && (
+              <div style={{
+                background: 'rgba(248,81,73,0.1)',
+                border: '1px solid rgba(248,81,73,0.3)',
+                borderRadius: '6px',
+                padding: '8px 12px',
+                color: 'var(--red)',
+                fontSize: '13px',
+                marginBottom: '16px',
+              }}>
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn btn-primary"
+              style={{
+                width: '100%',
+                justifyContent: 'center',
+                padding: '9px',
+                fontSize: '14px',
+                opacity: loading ? 0.7 : 1,
+                cursor: loading ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {loading ? (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span className="spinner" style={{ width: '12px', height: '12px' }} />
+                  Ingresando...
+                </span>
+              ) : 'Iniciar sesión'}
+            </button>
+          </form>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
+          Pixel Studios &copy; 2025 · OLT Manager v2
+        </div>
       </div>
     </div>
   );
