@@ -10,10 +10,8 @@ class MA5800 {
   }
 
   async connect() {
+    // SNMP-only for polling — Telnet is used exclusively in listONTs/_listONTsDirectTelnet
     this.snmp.connect();
-    try { await this.telnet.connect(); } catch (e) {
-      logger.warn(`MA5800 Telnet failed ${this.olt.ip}: ${e.message}`);
-    }
     return this;
   }
 
@@ -45,60 +43,87 @@ class MA5800 {
     logger.info(`MA5800 _listONTsDirectTelnet ${this.olt.ip} user=${creds.username} hasPwd=${!!creds.password}`);
     if (!creds.password) return [];
 
-    return new Promise((resolve) => {
-      const sock = new net.Socket();
-      let buf = '';
-      let done = false;
-      const finish = (onts) => {
-        if (!done) {
-          done = true;
-          sock.destroy();
-          logger.info(`MA5800 direct telnet ${this.olt.ip}: parsed ${onts.length} ONTs`);
-          resolve(onts);
-        }
-      };
-      const globalTimeout = setTimeout(() => { logger.warn(`MA5800 direct telnet GLOBAL TIMEOUT`); finish(this._parseOntInfoOutput(buf)); }, 90000);
+    const PROMPT = /MA5800[^#>\r\n]*#/;
+    const MORE = /---- More|More \( Press/;
+    const CR_PROMPT = /\{ <cr>/;
 
-      sock.connect(23, this.olt.ip);
-      sock.on('data', d => {
-        for (const b of d) { if (b < 0xf0) buf += String.fromCharCode(b); }
-      });
-      sock.on('error', (e) => { logger.error(`MA5800 direct sock error: ${e.message}`); finish([]); });
-      sock.on('close', () => { if (!done) finish(this._parseOntInfoOutput(buf)); });
+    const sock = new net.Socket();
+    let buf = '';
+    sock.on('data', d => { for (const b of d) { if (b < 0xf0) buf += String.fromCharCode(b); } });
 
-      const sleep = ms => new Promise(r => setTimeout(r, ms));
-      const send = async (cmd, ms = 400) => { sock.write(cmd + '\r\n'); await sleep(ms); };
-
-      (async () => {
-        await sleep(2000);                    // wait for banner
-        await send(creds.username || 'admin', 2000);
-        await send(creds.password, 3000);
-        await send('enable', 1500);
-        buf = '';   // clear buffer before issuing display command
-        sock.write('display ont info 0 all\r\n');
-        await sleep(800);
-
-        // Collect output — Huawei needs Enter for "{ <cr> }" prompt,
-        // Space for "---- More ----" pagination
-        let pages = 0;
-        while (pages++ < 60) {
-          await sleep(1000);
-          if (buf.includes('{ <cr>')) {
-            // Confirm command parameter prompt
-            buf = buf.replace(/\{[^}]*<cr>[^}]*\}/g, '');
-            sock.write('\r\n');
-          } else if (buf.includes('---- More ----')) {
-            buf = buf.replace(/----\s*More\s*----/g, '');
-            sock.write(' ');
-          } else if (buf.includes('MA5800-X15#') || buf.includes('MA5800#')) {
-            break;
-          }
-        }
-
-        clearTimeout(globalTimeout);
-        finish(this._parseOntInfoOutput(buf));
-      })();
+    // Wait until buffer matches one of the regexes, or timeout. Returns matched regex (or null).
+    const waitFor = (regexes, timeoutMs) => new Promise((resolve) => {
+      const start = Date.now();
+      const iv = setInterval(() => {
+        const hit = regexes.find(r => r.test(buf));
+        if (hit) { clearInterval(iv); resolve(hit); }
+        else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(null); }
+      }, 80);
     });
+
+    try {
+      await new Promise((res, rej) => {
+        const to = setTimeout(() => rej(new Error('connect timeout')), 15000);
+        sock.once('error', e => { clearTimeout(to); rej(e); });
+        sock.connect(23, this.olt.ip, () => { clearTimeout(to); res(); });
+      });
+
+      // Login
+      await waitFor([/User name:|Username:|Login:/i], 10000);
+      buf = ''; sock.write((creds.username || 'admin') + '\r\n');
+      await waitFor([/User password:|Password:/i], 8000);
+      buf = ''; sock.write(creds.password + '\r\n');
+      await waitFor([/MA5800[^#>\r\n]*>/], 10000);
+      buf = ''; sock.write('enable\r\n');
+      await waitFor([PROMPT], 6000);
+
+      // Run a command and collect every page (handles { <cr> } confirm + More pagination)
+      const collect = async (cmd, pageTimeout = 8000) => {
+        buf = '';
+        sock.write(cmd + '\r\n');
+        let out = '';
+        // First response: either { <cr> } confirm prompt, More, or directly the prompt
+        let hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+        while (true) {
+          out += buf; buf = '';
+          if (hit === CR_PROMPT) {
+            sock.write('\r\n');
+          } else if (hit === MORE) {
+            sock.write(' ');
+          } else {
+            break; // PROMPT or timeout(null) → done
+          }
+          hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+          if (hit === null) { out += buf; buf = ''; break; }
+        }
+        return out;
+      };
+
+      // Discover GPON boards (H9xxGPxx, H9xxGPBx, etc.)
+      const boardOut = await collect('display board 0');
+      const gponSlots = [...new Set(
+        [...boardOut.matchAll(/^\s*(\d+)\s+H\d+[A-Z]*GP[A-Z0-9]*\s+\w/gim)].map(m => m[1])
+      )];
+      logger.info(`MA5800 ${this.olt.ip}: GPON slots = ${gponSlots.join(',') || '(none)'}`);
+      const slots = gponSlots.length ? gponSlots : ['1'];
+
+      // Collect ONTs per slot
+      let allOnts = [];
+      for (const slot of slots) {
+        const slotOut = await collect(`display ont info 0 ${slot} all`, 10000);
+        const parsed = this._parseOntInfoOutput(slotOut);
+        allOnts = allOnts.concat(parsed);
+        logger.info(`MA5800 ${this.olt.ip}: slot ${slot} → ${parsed.length} ONTs (total ${allOnts.length})`);
+      }
+
+      sock.destroy();
+      logger.info(`MA5800 ${this.olt.ip}: total parsed ${allOnts.length} ONTs`);
+      return allOnts;
+    } catch (e) {
+      logger.error(`MA5800 direct telnet ${this.olt.ip}: ${e.message}`);
+      try { sock.destroy(); } catch {}
+      return [];
+    }
   }
 
   _parseOntInfoOutput(raw) {

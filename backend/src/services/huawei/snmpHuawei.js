@@ -2,12 +2,18 @@ const snmpConfig = require('../../config/snmp');
 const { parseCounter, parseDbm } = require('../../utils/snmpParser');
 const logger = require('../../middleware/logger');
 
+function median(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2);
+}
+
 const OIDS = {
   sysDescr: '1.3.6.1.2.1.1.1.0',
   sysUpTime: '1.3.6.1.2.1.1.3.0',
   sysName: '1.3.6.1.2.1.1.5.0',
-  hwCpuDevUsage: '1.3.6.1.4.1.2011.6.3.4.1.4',
-  hwOpticalTemperature: '1.3.6.1.4.1.2011.6.3.8.1.5',
+  hwCpuDevUsage: '1.3.6.1.4.1.2011.2.6.7.1.1.2.1.5',
+  hwOpticalTemperature: '1.3.6.1.4.1.2011.2.6.7.1.1.2.1.6',
   hwGponOntSn: '1.3.6.1.4.1.2011.6.128.1.1.2.1',
   hwGponOntOperState: '1.3.6.1.4.1.2011.6.128.1.1.2.10',
   hwGponOntDescription: '1.3.6.1.4.1.2011.6.128.1.1.2.7',
@@ -54,10 +60,14 @@ class SNMPHuawei {
   async getCPUUsage() {
     if (!this.session) this.connect();
     try {
+      // net-snmp walk over-returns past the column — clip to the exact OID prefix
+      const prefix = OIDS.hwCpuDevUsage + '.';
       const vbs = await snmpConfig.walk(this.session, OIDS.hwCpuDevUsage);
-      if (!vbs.length) return null;
-      const values = vbs.map(vb => parseCounter(vb)).filter(v => v > 0);
-      return values.length ? values.reduce((a, b) => a + b, 0) / values.length : null;
+      const values = vbs
+        .filter(vb => vb.oid.startsWith(prefix) && typeof vb.value === 'number')
+        .map(vb => vb.value)
+        .filter(v => v >= 0 && v < 100);
+      return values.length ? median(values) : null;
     } catch (err) {
       return null;
     }
@@ -66,8 +76,13 @@ class SNMPHuawei {
   async getTemperature() {
     if (!this.session) this.connect();
     try {
+      const prefix = OIDS.hwOpticalTemperature + '.';
       const vbs = await snmpConfig.walk(this.session, OIDS.hwOpticalTemperature);
-      return vbs.length ? parseCounter(vbs[0]) : null;
+      const values = vbs
+        .filter(vb => vb.oid.startsWith(prefix) && typeof vb.value === 'number')
+        .map(vb => vb.value)
+        .filter(v => v > 0 && v < 100);
+      return values.length ? median(values) : null;
     } catch (err) {
       return null;
     }
