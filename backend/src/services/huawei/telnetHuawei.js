@@ -30,10 +30,10 @@ class TelnetHuawei {
       socket.on('error', (err) => { clearTimeout(timeout); reject(err); });
       socket.on('close', () => { this.connected = false; });
 
-      // Login sequence: wait for username prompt → send user → wait for password → send pass → wait for shell
-      this._waitFor(/[Uu]ser[Nn]ame:|[Ll]ogin:/i, 12000)
-        .then(() => { socket.write(creds.username + '\r\n'); return this._waitFor(/[Pp]assword:/i, 8000); })
-        .then(() => { socket.write(creds.password + '\r\n'); return this._waitFor(/[>#]\s*$/m, 10000); })
+      // Login sequence — Huawei MA5800 uses ">>User name:" (with space)
+      this._waitFor(/[Uu]ser\s*[Nn]ame:|[Ll]ogin:/i, 12000)
+        .then(() => { socket.write(creds.username + '\r\n'); return this._waitFor(/[Uu]ser\s*[Pp]assword:|[Pp]assword:/i, 8000); })
+        .then(() => { socket.write(creds.password + '\r\n'); return this._waitFor(/[>#$]\s*$/m, 10000); })
         .then(() => { clearTimeout(timeout); this.connected = true; resolve(); })
         .catch((err) => { clearTimeout(timeout); socket.destroy(); reject(err); });
     });
