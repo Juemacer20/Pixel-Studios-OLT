@@ -78,7 +78,7 @@ function OLTModal({ olt, onClose, onSave }) {
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
   const handleSave = async () => {
-    if (!form.name.trim() || !form.host.trim()) return;
+    if (!form.name.trim() || !form.ip.trim()) return;
     setSaving(true);
     try {
       await onSave(form);
