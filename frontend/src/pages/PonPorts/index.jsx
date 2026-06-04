@@ -127,7 +127,7 @@ export default function PonPorts() {
           <div className="stat-value" style={{ color: 'var(--cyan)', fontSize: 16 }}>{ports.length}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label">Activos</div>
+          <div className="stat-label">Active</div>
           <div className="stat-value" style={{ color: 'var(--green)', fontSize: 16 }}>{onlinePorts}</div>
         </div>
         <div className="stat-item">
@@ -135,7 +135,7 @@ export default function PonPorts() {
           <div className="stat-value" style={{ color: 'var(--text-primary)', fontSize: 16 }}>{totalONTs}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label">Ocupación</div>
+          <div className="stat-label">Usage</div>
           <div className="stat-value" style={{ color: 'var(--orange)', fontSize: 16 }}>
             {ports.length ? Math.round((totalONTs / (ports.length * 32)) * 100) : 0}%
           </div>
@@ -195,9 +195,9 @@ export default function PonPorts() {
                 <thead>
                   <tr>
                     <th>Serial</th>
-                    <th>Cliente</th>
+                    <th>Name</th>
                     <th>RX</th>
-                    <th>Estado</th>
+                    <th>Status</th>
                   </tr>
                 </thead>
                 <tbody>

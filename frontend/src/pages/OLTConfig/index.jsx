@@ -125,7 +125,7 @@ function SystemTab({ oltId, notify }) {
       </div>
 
       <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>Guardar configuración</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>Save configuration</h3>
         <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12 }}>Escribe la running-config a la startup-config del equipo.</p>
         <button className="btn btn-primary" disabled={mut.isPending} onClick={() => mut.mutate({ action: 'save', params: {} })}>
           <IconDeviceFloppy size={13} /> Guardar en OLT (write)
@@ -171,7 +171,7 @@ function VlansTab({ oltId, notify }) {
           </p>
         ) : (
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Nombre</th><th>Estado</th><th>Puertos</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Puertos</th><th></th></tr></thead>
             <tbody>
               {vlans.map(v => (
                 <tr key={v.id}>
@@ -196,14 +196,14 @@ function VlansTab({ oltId, notify }) {
       </div>
 
       <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Agregar VLAN</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Add VLAN</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div>
             <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>ID *</label>
             <input className="input-base" style={{ width: 100 }} type="number" placeholder="100" value={form.vlan_id} onChange={e => setForm(f => ({ ...f, vlan_id: e.target.value }))} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Nombre</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Name</label>
             <input className="input-base" style={{ width: 180 }} placeholder="Management" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           </div>
           <button className="btn btn-primary" disabled={!form.vlan_id || mut.isPending}
@@ -272,7 +272,7 @@ function RoutesTab({ oltId, notify }) {
       </div>
 
       <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Agregar ruta</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Add route</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {[['Destino', 'dest', '0.0.0.0', 120], ['Máscara', 'mask', '255.255.255.0', 140], ['Gateway', 'gateway', '192.168.1.1', 140]].map(([lbl, key, ph, w]) => (
             <div key={key}>
@@ -375,7 +375,7 @@ function PonTab({ oltId, notify }) {
           <p style={{ padding: 24, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>No se encontraron ONUs. Ver output CLI.</p>
         ) : (
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Serial</th><th>Estado</th><th>RX (dBm)</th><th>Acciones</th></tr></thead>
+            <thead><tr><th>ID</th><th>Serial</th><th>Status</th><th>RX (dBm)</th><th>Actions</th></tr></thead>
             <tbody>
               {portData.onus.map(o => (
                 <tr key={o.id}>
@@ -439,7 +439,7 @@ function ProfilesTab({ oltId, notify }) {
           <p style={{ padding: 24, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>No se encontraron perfiles DBA. Ver output CLI.</p>
         ) : (
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Nombre</th><th>Tipo</th><th>Máx. (kbps)</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Tipo</th><th>Máx. (kbps)</th><th></th></tr></thead>
             <tbody>
               {(data.dba || []).map(p => (
                 <tr key={p.id}>
@@ -462,7 +462,7 @@ function ProfilesTab({ oltId, notify }) {
       </div>
 
       <div className="card" style={{ padding: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>Nuevo perfil DBA</h3>
+        <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>New DBA profile</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           {[['ID', 'id', '10', 60], ['Nombre', 'name', '10Mbps', 140], ['Máx. kbps', 'max_kbps', '10000', 100]].map(([lbl, key, ph, w]) => (
             <div key={key}>
@@ -489,7 +489,7 @@ function ProfilesTab({ oltId, notify }) {
             <span style={{ fontSize: 13, fontWeight: 600 }}>Perfiles de Servicio ({data.srv.length})</span>
           </div>
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Nombre</th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th></tr></thead>
             <tbody>{data.srv.map(p => <tr key={p.id}><td><span className="mono" style={{ color: 'var(--cyan)', fontSize: 12 }}>{p.id}</span></td><td><span style={{ fontSize: 12 }}>{p.name}</span></td></tr>)}</tbody>
           </table>
           <RawOutput raw={data?.rawSrv} />

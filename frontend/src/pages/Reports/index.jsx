@@ -109,7 +109,7 @@ function AvailabilityTab() {
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Detalle por día</div>
         <div style={{ overflowX: 'auto' }}>
           <table className="table-base">
-            <thead><tr><th>Fecha</th><th>Disponibilidad</th><th>Downtime (min)</th><th>Estado SLA</th></tr></thead>
+            <thead><tr><th>Date</th><th>Disponibilidad</th><th>Downtime (min)</th><th>SLA status</th></tr></thead>
             <tbody>
               {data.slice(-10).reverse().map((row, i) => (
                 <tr key={i}>
@@ -163,7 +163,7 @@ function EventsTab() {
   const data = buildEventsReport();
   return (
     <div className="card" style={{ padding: '14px 16px' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Eventos por severidad (diario)</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Events by severity (daily)</div>
       <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
@@ -183,7 +183,7 @@ function ClientsTab() {
   const data = buildClientsReport();
   return (
     <div className="card" style={{ padding: '14px 16px' }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Clientes activos y nuevos</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 10 }}>Active and new clients</div>
       <ResponsiveContainer width="100%" height={250}>
         <LineChart data={data} margin={{ top: 5, right: 5, bottom: 0, left: -15 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />

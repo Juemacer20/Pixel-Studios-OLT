@@ -280,7 +280,7 @@ export default function Users() {
               <th>Role</th>
               <th>Last access</th>
               <th>Active</th>
-              <th>Acciones</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>

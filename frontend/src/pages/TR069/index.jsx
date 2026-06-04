@@ -203,7 +203,7 @@ export default function TR069() {
               <th>IP</th>
               <th>Current firmware</th>
               <th>New FW</th>
-              <th>Última conexión</th>
+              <th>Last connection</th>
               <th>Status</th>
               <th></th>
             </tr>

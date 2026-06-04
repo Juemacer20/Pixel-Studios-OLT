@@ -138,11 +138,11 @@ export default function Events() {
           />
         </div>
         <select className="select-base" value={severity} onChange={e => setSeverity(e.target.value)}>
-          <option value="">Severidad</option>
+          <option value="">Severity</option>
           {SEVERITIES.map(s => <option key={s}>{s}</option>)}
         </select>
         <select className="select-base" value={olt} onChange={e => setOlt(e.target.value)}>
-          <option value="">Todas las OLTs</option>
+          <option value="">All OLTs</option>
           {OLTS.map(o => <option key={o}>{o}</option>)}
         </select>
         <input className="input-base" type="date" style={{ width: 140 }} value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
@@ -165,13 +165,13 @@ export default function Events() {
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Tipo</th>
-                <th>Severidad</th>
+                <th>Type</th>
+                <th>Severity</th>
                 <th>OLT</th>
                 <th>ONT</th>
-                <th>Mensaje</th>
+                <th>Message</th>
                 <th>Status</th>
-                <th>Acciones</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -245,7 +245,7 @@ export default function Events() {
               ))}
             </div>
             <div style={{ marginTop: 10, background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px' }}>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Mensaje</div>
+              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4 }}>Message</div>
               <p style={{ fontSize: 13 }}>{selectedEvent.message}</p>
             </div>
           </div>

@@ -19,8 +19,8 @@ function SevBadge({ sev }) {
 
 function StateBadge({ resolved, acknowledged }) {
   if (resolved)     return <span className="badge badge-green">Resuelto</span>;
-  if (acknowledged) return <span className="badge badge-orange">Reconocido</span>;
-  return <span className="badge badge-red">Activo</span>;
+  if (acknowledged) return <span className="badge badge-orange">Acknowledged</span>;
+  return <span className="badge badge-red">Active</span>;
 }
 
 function SevIcon({ sev }) {
@@ -147,17 +147,17 @@ export default function Alerts() {
           <input
             className="input-base"
             style={{ paddingLeft: 28 }}
-            placeholder="Buscar tipo, mensaje, ONT..."
+            placeholder="Search type, message, ONU…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
         <select className="select-base" value={severity} onChange={e => setSeverity(e.target.value)}>
-          <option value="">Severidad</option>
+          <option value="">Severity</option>
           {SEVERITIES.map(s => <option key={s}>{s}</option>)}
         </select>
         <select className="select-base" value={olt} onChange={e => setOlt(e.target.value)}>
-          <option value="">Todas las OLTs</option>
+          <option value="">All OLTs</option>
           {OLTS_LIST.map(o => <option key={o}>{o}</option>)}
         </select>
         {(search || severity || olt) && (
@@ -177,13 +177,13 @@ export default function Alerts() {
             <thead>
               <tr>
                 <th>Timestamp</th>
-                <th>Tipo</th>
-                <th>Severidad</th>
+                <th>Type</th>
+                <th>Severity</th>
                 <th>OLT</th>
                 <th>ONT</th>
-                <th>Mensaje</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>Message</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>

@@ -19,12 +19,12 @@ import toast from 'react-hot-toast';
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
 function getSignalMeta(value) {
-  if (value == null) return { cls: 'signal-unknown',  label: 'Desconocido', key: 'unknown',  badgeClass: 'badge-gray' };
+  if (value == null) return { cls: 'signal-unknown',  label: 'Unknown', key: 'unknown',  badgeClass: 'badge-gray' };
   if (value >= -15)  return { cls: 'signal-high',     label: 'High',        key: 'high',     badgeClass: 'badge-purple' };
-  if (value > -20)   return { cls: 'signal-optimal',  label: 'Óptimo',      key: 'optimal',  badgeClass: 'badge-green' };
+  if (value > -20)   return { cls: 'signal-optimal',  label: 'Optimal',      key: 'optimal',  badgeClass: 'badge-green' };
   if (value > -25)   return { cls: 'signal-normal',   label: 'Normal',      key: 'normal',   badgeClass: 'badge-blue' };
-  if (value > -27)   return { cls: 'signal-warn',     label: 'Advertencia', key: 'warn',     badgeClass: 'badge-orange' };
-  return              { cls: 'signal-critical', label: 'Crítico',      key: 'critical', badgeClass: 'badge-red' };
+  if (value > -27)   return { cls: 'signal-warn',     label: 'Warning', key: 'warn',     badgeClass: 'badge-orange' };
+  return              { cls: 'signal-critical', label: 'Critical',      key: 'critical', badgeClass: 'badge-red' };
 }
 
 function getSignalCssColor(cls) {
@@ -43,12 +43,12 @@ function formatRelative(iso) {
   if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 60)  return `hace ${s}s`;
+  if (s < 60)  return `${s}s ago`;
   const m = Math.floor(s / 60);
-  if (m < 60)  return `hace ${m}m`;
+  if (m < 60)  return `${m}m ago`;
   const h = Math.floor(m / 60);
-  if (h < 24)  return `hace ${h}h`;
-  return `hace ${Math.floor(h / 24)}d`;
+  if (h < 24)  return `${h}h ago`;
+  return `${Math.floor(h / 24)}d ago`;
 }
 
 function formatDist(m) {
@@ -102,7 +102,7 @@ function MiniSignalChart({ ontId, height = 160 }) {
   return (
     <div style={{ background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Señal — últimas 24h</span>
+        <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Signal — last 24h</span>
       </div>
       {isLoading ? (
         <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -471,9 +471,9 @@ function ONTDrawer({ ont, onClose }) {
                   <thead>
                     <tr>
                       <th>VLAN ID</th>
-                      <th>Nombre</th>
+                      <th>Name</th>
                       <th>Tipo</th>
-                      <th>Estado</th>
+                      <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -540,7 +540,7 @@ function ONTDrawer({ ont, onClose }) {
               {dhcpLoading ? (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}><span className="spinner" /></div>
               ) : dhcpLeases.length === 0 ? (
-                <div className="empty-state">Sin leases DHCP activos</div>
+                <div className="empty-state">No active DHCP leases</div>
               ) : (
                 <table className="table-base">
                   <thead>

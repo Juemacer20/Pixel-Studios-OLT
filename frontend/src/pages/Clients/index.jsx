@@ -91,7 +91,7 @@ function EditClientModal({ client, onClose, onSave }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <IconPencil size={15} style={{ color: 'var(--accent)' }} />
-            <h3 style={{ fontSize: 14, fontWeight: 600 }}>Editar cliente</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 600 }}>Edit client</h3>
           </div>
           <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
         </div>
@@ -101,7 +101,7 @@ function EditClientModal({ client, onClose, onSave }) {
             <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
               Nombre <span style={{ color: 'var(--red)' }}>*</span>
             </label>
-            <input className="input-base" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Nombre completo" />
+            <input className="input-base" value={form.name} onChange={e => set('name', e.target.value)} placeholder="Full name" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
@@ -109,7 +109,7 @@ function EditClientModal({ client, onClose, onSave }) {
               <input className="input-base" value={form.email} onChange={e => set('email', e.target.value)} placeholder="correo@ejemplo.com" />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Teléfono</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Phone</label>
               <input className="input-base" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="0351-1234567" />
             </div>
           </div>
@@ -131,7 +131,7 @@ function EditClientModal({ client, onClose, onSave }) {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancel</button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
@@ -407,7 +407,7 @@ export default function Clients() {
           className="input-base"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por nombre, email, teléfono o serial ONT..."
+          placeholder="Search by name, email, phone or ONU serial…"
           style={{ paddingLeft: 32, fontSize: 13, maxWidth: 480 }}
         />
         {search && (
@@ -442,7 +442,7 @@ export default function Clients() {
           <div className="stat-value" style={{ color: 'var(--green)' }}>{active}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label">Inactivos</div>
+          <div className="stat-label">Inactive</div>
           <div className="stat-value" style={{ color: inactive > 0 ? 'var(--text-muted)' : 'var(--text-muted)' }}>{inactive}</div>
         </div>
         <div className="stat-item">
@@ -469,12 +469,12 @@ export default function Clients() {
           <table className="table-base">
             <thead>
               <tr>
-                <th>Nombre</th>
+                <th>Name</th>
                 <th>Email</th>
-                <th>Teléfono</th>
+                <th>Phone</th>
                 <th>ONT vinculada</th>
-                <th>Estado</th>
-                <th>Acciones</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -509,7 +509,7 @@ export default function Clients() {
                         <ONTStatusBadge status={c.ont.status} />
                       </div>
                     ) : (
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sin ONT</span>
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>No ONU</span>
                     )}
                   </td>
                   <td>
