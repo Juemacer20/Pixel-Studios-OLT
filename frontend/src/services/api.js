@@ -49,6 +49,7 @@ export const oltAPI = {
   ports: (id) => api.get(`/olts/${id}/ports`),
   portONTs: (id, port) => api.get(`/olts/${id}/ports/${port}/onts`),
   scan: (id) => api.post(`/olts/${id}/scan`),
+  testConnection: (id) => api.get(`/olts/${id}/test-connection`),
   command: (id, cmd) => api.post(`/olts/${id}/command`, { cmd }),
   config: (id, section) => api.get(`/olts/${id}/config`, { params: { section } }),
   configWrite: (id, section, action, params) => api.post(`/olts/${id}/config`, { section, action, params }),

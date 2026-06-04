@@ -5,3 +5,4 @@ build/
 *.log
 .DS_Store
 backend/data/real-data.json
+backend/data/olt-communities.json

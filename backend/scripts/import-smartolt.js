@@ -33,11 +33,12 @@ async function main() {
   for (const v of VSOL_OLTS) {
     await prisma.oLT.upsert({
       where: { name: v.name },
-      update: { brand: 'VSOL', model: v.model, status: 'ONLINE', hw_version: `VSOL-${v.model}`, sw_version: 'V2.0', tcp_port: 23, udp_port: 161 },
+      update: { brand: 'VSOL', model: v.model, status: 'ONLINE', hw_version: `VSOL-${v.model}`, sw_version: 'V2.0', tcp_port: 23, udp_port: 161, telnet_user: 'admin', pon_type: 'GPON', snmp_read: 'public', snmp_write: 'private' },
       create: {
         name: v.name, brand: 'VSOL', model: v.model, ip: v.ip, community: 'public', port: 161,
         location: v.location, status: 'ONLINE', tcp_port: 23, udp_port: 161,
         hw_version: `VSOL-${v.model}`, sw_version: 'V2.0',
+        snmp_read: 'public', snmp_write: 'private', telnet_user: 'admin', pon_type: 'GPON',
         uptime: BigInt(Math.floor(Math.random() * 5000000) + 86400),
         cpu_usage: Math.round(10 + Math.random() * 30), temperature: Math.round(33 + Math.random() * 12),
       },
@@ -58,19 +59,29 @@ async function main() {
     await prisma.oNT.deleteMany({ where: { olt_id: { in: huaweiIds } } }); // cascade signalHistory/dhcpLease
   }
 
+  // Communities SNMP reales por OLT (relevadas de SmartOLT) si existen
+  let comms = {};
+  try { comms = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'olt-communities.json'), 'utf8')); } catch {}
+
   const oltByNum = {};
   for (const row of d.olts) {
     const numId = row[1], name = row[3], ip = row[4] || `0.0.0.${numId}`;
-    const tcp = parseInt(row[5]) || null, udp = parseInt(row[6]) || null;
-    const hw = (row[7] || 'Huawei-MA5800-X15').trim(), sw = (row[8] || '').trim() || null;
+    const cm = comms[numId] || {};
+    const tcp = parseInt(cm.telnet_tcp) || parseInt(row[5]) || null;
+    const udp = parseInt(cm.snmp_udp) || parseInt(row[6]) || null;
+    const hw = (row[7] || 'Huawei-MA5800-X15').trim(), sw = (cm.sw || row[8] || '').replace(/\s*\(Detected\)/i, '').trim() || null;
     const model = hw.replace(/^Huawei-?/, '');
+    const snmpFields = {
+      snmp_read: cm.snmp_read || null, snmp_write: cm.snmp_write || null,
+      telnet_user: cm.telnet_user || null, pon_type: 'GPON',
+    };
     const created = await prisma.oLT.upsert({
       where: { name },
-      update: { brand: 'Huawei', model, ip, status: 'ONLINE', tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw },
+      update: { brand: 'Huawei', model, ip, status: 'ONLINE', tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw, ...snmpFields },
       create: {
-        name, brand: 'Huawei', model, ip, community: 'public', port: 161,
+        name, brand: 'Huawei', model, ip, community: cm.snmp_read || 'public', port: 161,
         location: name.replace(/^Itelsa-?/, ''), status: 'ONLINE',
-        tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw,
+        tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw, ...snmpFields,
         uptime: BigInt(Math.floor(Math.random() * 8000000) + 86400),
         cpu_usage: Math.round(15 + Math.random() * 35), temperature: Math.round(35 + Math.random() * 15),
       },

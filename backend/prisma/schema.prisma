@@ -73,6 +73,14 @@ model OLT {
   udp_port              Int?
   hw_version            String?
   sw_version            String?
+  snmp_read             String?
+  snmp_write            String?
+  telnet_user           String?
+  telnet_pass           String?
+  pon_type              String?   @default("GPON")
+  iptv_enabled          Boolean   @default(false)
+  latitude              Float?
+  longitude             Float?
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
 
