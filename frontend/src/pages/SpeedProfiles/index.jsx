@@ -67,7 +67,7 @@ function ProfileModal({ profile, onClose, onSave }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <IconBolt size={15} style={{ color: 'var(--accent)' }} />
             <h3 style={{ fontSize: 14, fontWeight: 600 }}>
-              {profile ? 'Editar perfil' : 'Nuevo perfil de velocidad'}
+              {profile ? 'Editar perfil' : 'Add speed profile de velocidad'}
             </h3>
           </div>
           <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
@@ -240,7 +240,7 @@ export default function SpeedProfiles() {
       <div className="page-header">
         <h1 className="page-title">Speed profiles</h1>
         <button className="btn btn-primary" onClick={() => setModalProfile(false)}>
-          <IconPlus size={14} /> Nuevo perfil
+          <IconPlus size={14} /> Add speed profile
         </button>
       </div>
 
@@ -249,21 +249,21 @@ export default function SpeedProfiles() {
         <div className="stat-item">
           <div className="stat-label">
             <IconChartBar size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Total perfiles
+            Total profiles
           </div>
           <div className="stat-value" style={{ color: 'var(--cyan)' }}>{totalProfiles}</div>
         </div>
         <div className="stat-item">
           <div className="stat-label">
             <IconActivity size={10} style={{ display: 'inline', marginRight: 4 }} />
-            En uso
+            In use
           </div>
           <div className="stat-value" style={{ color: 'var(--green)' }}>{inUse}</div>
         </div>
         <div className="stat-item">
           <div className="stat-label">
             <IconBolt size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Sin usar
+            Unused
           </div>
           <div className="stat-value" style={{ color: unused > 0 ? 'var(--text-muted)' : 'var(--text-muted)' }}>{unused}</div>
         </div>
@@ -292,7 +292,7 @@ export default function SpeedProfiles() {
                 <th>Upload (Mbps)</th>
                 <th>Burst</th>
                 <th>ONUs using</th>
-                <th>Acciones</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>

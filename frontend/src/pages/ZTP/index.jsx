@@ -74,15 +74,15 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
             <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.mac}</span>
           </div>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>OLT / Puerto</span>
-            <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.olt} — {ont.port}</span>
+            <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>OLT / Port</span>
+            <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.olt?.name ?? ont.olt} — {ont.port}</span>
           </div>
         </div>
 
         {/* Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Cliente</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Client</label>
             <input
               className="input-base"
               value={form.client}
@@ -93,7 +93,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
 
           <div>
             <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-              Perfil de velocidad <span style={{ color: 'var(--red)' }}>*</span>
+              Speed profile <span style={{ color: 'var(--red)' }}>*</span>
             </label>
             <select
               className="select-base"
@@ -122,7 +122,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
               />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Modo WAN</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>WAN mode</label>
               <select className="select-base" style={{ width: '100%' }} value={form.wan_mode} onChange={e => set('wan_mode', e.target.value)}>
                 {WAN_MODES.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
@@ -130,12 +130,12 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
           </div>
 
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Descripción</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Description</label>
             <input
               className="input-base"
               value={form.description}
               onChange={e => set('description', e.target.value)}
-              placeholder="Notas opcionales..."
+              placeholder="Optional notes…"
             />
           </div>
         </div>
@@ -150,7 +150,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
             style={{ opacity: saving || !form.profileId ? 0.6 : 1 }}
           >
             <IconShieldCheck size={13} />
-            {saving ? 'Autorizando...' : 'Autorizar ONT'}
+            {saving ? 'Authorizing…' : 'Authorize ONU'}
           </button>
         </div>
       </div>
@@ -173,7 +173,7 @@ function BatchBar({ count, profiles, onAuthorize, onClear }) {
   return (
     <div className="batch-bar">
       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-        <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>{count}</span> seleccionados
+        <span style={{ color: 'var(--cyan)', fontWeight: 700 }}>{count}</span> selected
       </span>
       <select
         className="select-base"
@@ -190,7 +190,7 @@ function BatchBar({ count, profiles, onAuthorize, onClear }) {
         disabled={loading || !profileId}
       >
         <IconShieldCheck size={12} />
-        {loading ? 'Autorizando...' : 'Autorizar seleccionados'}
+        {loading ? 'Authorizing…' : 'Authorize selected'}
       </button>
       <button className="btn-icon" onClick={onClear}><IconX size={13} /></button>
     </div>
@@ -279,7 +279,7 @@ export default function ZTP() {
           {totalPending > 0 && (
             <span className="badge badge-orange" style={{ animation: 'pulse-orange 2s infinite' }}>
               <IconClock size={10} />
-              {totalPending} pendiente{totalPending !== 1 ? 's' : ''}
+              {totalPending} pending
             </span>
           )}
         </div>
@@ -288,7 +288,7 @@ export default function ZTP() {
           onClick={() => queryClient.invalidateQueries({ queryKey: ['ztp-pending'] })}
           style={{ fontSize: 12 }}
         >
-          <IconRefresh size={13} /> Actualizar
+          <IconRefresh size={13} /> Refresh
         </button>
       </div>
 
@@ -297,7 +297,7 @@ export default function ZTP() {
         <div className="stat-item">
           <div className="stat-label">
             <IconClock size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Pendientes de autorización
+            Pending authorization
           </div>
           <div className="stat-value" style={{ color: totalPending > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>
             {totalPending}
@@ -306,21 +306,21 @@ export default function ZTP() {
         <div className="stat-item">
           <div className="stat-label">
             <IconCheck size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Autorizadas hoy
+            Authorized today
           </div>
           <div className="stat-value" style={{ color: 'var(--green)' }}>{authorizedToday}</div>
         </div>
         <div className="stat-item">
           <div className="stat-label">
             <IconShieldCheck size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Total perfiles
+            Total profiles
           </div>
           <div className="stat-value" style={{ color: 'var(--cyan)' }}>{totalProfiles}</div>
         </div>
         <div className="stat-item">
           <div className="stat-label">
             <IconBan size={10} style={{ display: 'inline', marginRight: 4 }} />
-            Rechazadas
+            Rejected
           </div>
           <div className="stat-value" style={{ color: rejectedCount > 0 ? 'var(--red)' : 'var(--text-muted)' }}>
             {rejectedCount}
@@ -338,8 +338,8 @@ export default function ZTP() {
         }}>
           <IconAlertTriangle size={14} style={{ flexShrink: 0 }} />
           <span>
-            {totalPending} ONT{totalPending !== 1 ? 's' : ''} detectada{totalPending !== 1 ? 's' : ''} esperando autorización.
-            Asigná un perfil para provisionar automáticamente.
+            {totalPending} unconfigured ONU{totalPending !== 1 ? 's' : ''} detected waiting for authorization.
+            Assign a profile to auto-provision.
           </span>
         </div>
       )}
@@ -348,7 +348,7 @@ export default function ZTP() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {loadingPending ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
-            <div className="spinner" /> Buscando ONTs pendientes...
+            <div className="spinner" /> Buscando unconfigured ONUs...
           </div>
         ) : visiblePending.length === 0 ? (
           <div className="empty-state">
@@ -373,9 +373,9 @@ export default function ZTP() {
                 <th>Serial</th>
                 <th>MAC</th>
                 <th>Detected OLT</th>
-                <th>Puerto</th>
-                <th>Primera vez visto</th>
-                <th>Acciones</th>
+                <th>Port</th>
+                <th>First seen</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -400,7 +400,7 @@ export default function ZTP() {
                     </span>
                   </td>
                   <td>
-                    <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ont.olt}</span>
+                    <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ont.olt?.name ?? ont.olt}</span>
                   </td>
                   <td>
                     <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.port}</span>
@@ -423,7 +423,7 @@ export default function ZTP() {
                         style={{ fontSize: 11, padding: '3px 10px' }}
                         onClick={() => setAuthorizing(ont)}
                       >
-                        <IconShieldCheck size={12} /> Autorizar
+                        <IconShieldCheck size={12} /> Authorize
                       </button>
                       <button
                         className="btn btn-danger"
