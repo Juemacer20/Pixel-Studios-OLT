@@ -256,8 +256,10 @@ class MA5800 {
   _parseOpticalInfoTable(raw, slot, port) {
     const results = [];
     for (const line of raw.split('\n')) {
+      // Columns: ONT_ID  Rx  Tx  OLT_Rx  Temp  Voltage  Current  [Distance]
+      // Distance is present on some firmware variants (Santa Ana) and absent on others (Feliciano).
       const m = line.match(
-        /^\s*(\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+)\s+(\d+)\s*$/
+        /^\s*(\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+)(?:\s+(\d+))?\s*$/
       );
       if (!m) continue;
       const [, ontId, rx, tx, oltRx, temp, volt, curr, dist] = m;
@@ -271,7 +273,7 @@ class MA5800 {
         temperature:  parseFloat(temp),
         voltage:      parseFloat(volt),
         bias_current: parseFloat(curr),
-        distance:     parseInt(dist),
+        distance:     dist != null ? parseInt(dist) : undefined,
       });
     }
     return results;
