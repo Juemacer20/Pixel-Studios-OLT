@@ -82,7 +82,8 @@ async function main() {
     };
     const created = await prisma.oLT.upsert({
       where: { name },
-      update: { brand: 'Huawei', model, ip, status: 'ONLINE', tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw, ...snmpFields },
+      // NO se pisan ip/tcp_port/udp_port en update: son gestionados por el usuario (IPs internas).
+      update: { brand: 'Huawei', model, status: 'ONLINE', hw_version: hw, sw_version: sw, ...snmpFields },
       create: {
         name, brand: 'Huawei', model, ip, community: cm.snmp_read || 'public', port: 161,
         location: name.replace(/^Itelsa-?/, ''), status: 'ONLINE',
