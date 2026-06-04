@@ -92,7 +92,7 @@ function OLTModal({ olt, onClose, onSave }) {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-            {olt ? 'Editar OLT' : 'Nueva OLT'}
+            {olt ? 'Edit OLT' : 'Add OLT'}
           </h3>
           <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
         </div>
@@ -100,7 +100,7 @@ function OLTModal({ olt, onClose, onSave }) {
         {/* Form */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Nombre *</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Name *</label>
             <input className="input-base" value={form.name} onChange={e => set('name', e.target.value)} placeholder="OLT-NORTE" />
           </div>
           <div>
@@ -109,35 +109,35 @@ function OLTModal({ olt, onClose, onSave }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Puerto SNMP</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>SNMP Port</label>
               <input className="input-base" type="number" value={form.port} onChange={e => set('port', +e.target.value)} />
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Comunidad SNMP</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>SNMP Community</label>
               <input className="input-base" value={form.community} onChange={e => set('community', e.target.value)} />
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Marca</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Brand</label>
               <select className="select-base" style={{ width: '100%' }} value={form.brand} onChange={e => set('brand', e.target.value)}>
                 {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Modelo</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Model</label>
               <input className="input-base" value={form.model} onChange={e => set('model', e.target.value)} placeholder="MA5800-X7" />
             </div>
           </div>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Ubicación</label>
-            <input className="input-base" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Data Center Principal" />
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Location</label>
+            <input className="input-base" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Main Data Center" />
           </div>
         </div>
 
         {/* Actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancel</button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
@@ -170,15 +170,15 @@ function PortsSubTable({ oltId }) {
           </p>
           {isLoading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)', fontSize: 12 }}>
-              <div className="spinner" style={{ width: 12, height: 12 }} /> Cargando puertos...
+              <div className="spinner" style={{ width: 12, height: 12 }} /> Loading ports...
             </div>
           ) : (
             <table className="table-base" style={{ maxWidth: 600 }}>
               <thead>
                 <tr>
-                  <th>Puerto</th>
-                  <th>Estado</th>
-                  <th>ONTs</th>
+                  <th>Port</th>
+                  <th>Status</th>
+                  <th>ONUs</th>
                 </tr>
               </thead>
               <tbody>
@@ -293,9 +293,9 @@ export default function OLTs() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Header ── */}
       <div className="page-header">
-        <h1 className="page-title">Gestión de OLTs</h1>
+        <h1 className="page-title">OLTs</h1>
         <button className="btn btn-primary" onClick={() => setModalOlt(false)}>
-          <IconPlus size={14} /> Nueva OLT
+          <IconPlus size={14} /> Add OLT
         </button>
       </div>
 
@@ -314,11 +314,11 @@ export default function OLTs() {
           <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{offline}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label"><IconAlertTriangle size={10} style={{ display: 'inline', marginRight: 4 }} />Con alertas</div>
+          <div className="stat-label"><IconAlertTriangle size={10} style={{ display: 'inline', marginRight: 4 }} />With alerts</div>
           <div className="stat-value" style={{ color: alerts > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>{alerts}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label"><IconCpu size={10} style={{ display: 'inline', marginRight: 4 }} />ONTs gestionadas</div>
+          <div className="stat-label"><IconCpu size={10} style={{ display: 'inline', marginRight: 4 }} />Managed ONUs</div>
           <div className="stat-value" style={{ color: 'var(--purple)' }}>{totalONTs}</div>
         </div>
       </div>
@@ -327,14 +327,14 @@ export default function OLTs() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         {isLoading ? (
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
-            <div className="spinner" /> Cargando OLTs...
+            <div className="spinner" /> Loading OLTs...
           </div>
         ) : olts.length === 0 ? (
           <div className="empty-state">
             <IconServer size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
-            <p>No hay OLTs registradas</p>
+            <p>No OLTs registered</p>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOlt(false)}>
-              <IconPlus size={13} /> Agregar primera OLT
+              <IconPlus size={13} /> Add first OLT
             </button>
           </div>
         ) : (
@@ -342,16 +342,16 @@ export default function OLTs() {
             <thead>
               <tr>
                 <th style={{ width: 24 }} />
-                <th>Estado</th>
-                <th>Nombre</th>
-                <th>IP / Host</th>
-                <th>Marca</th>
-                <th>Modelo</th>
-                <th>Puertos PON</th>
-                <th>ONTs</th>
+                <th>Status</th>
+                <th>Name</th>
+                <th>OLT IP</th>
+                <th>Brand</th>
+                <th>Model</th>
+                <th>PON ports</th>
+                <th>ONUs</th>
                 <th>CPU</th>
                 <th>Uptime</th>
-                <th>Acciones</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
