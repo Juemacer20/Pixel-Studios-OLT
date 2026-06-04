@@ -472,7 +472,7 @@ function ONTDrawer({ ont, onClose }) {
                     <tr>
                       <th>VLAN ID</th>
                       <th>Name</th>
-                      <th>Tipo</th>
+                      <th>Type</th>
                       <th>Status</th>
                     </tr>
                   </thead>

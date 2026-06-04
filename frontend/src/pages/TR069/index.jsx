@@ -199,7 +199,7 @@ export default function TR069() {
           <thead>
             <tr>
               <th>Serial</th>
-              <th>Modelo</th>
+              <th>Model</th>
               <th>IP</th>
               <th>Current firmware</th>
               <th>New FW</th>

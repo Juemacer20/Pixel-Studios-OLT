@@ -171,7 +171,7 @@ function VlansTab({ oltId, notify }) {
           </p>
         ) : (
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Puertos</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Status</th><th>Ports</th><th></th></tr></thead>
             <tbody>
               {vlans.map(v => (
                 <tr key={v.id}>
@@ -439,7 +439,7 @@ function ProfilesTab({ oltId, notify }) {
           <p style={{ padding: 24, color: 'var(--text-muted)', fontSize: 12, textAlign: 'center' }}>No se encontraron perfiles DBA. Ver output CLI.</p>
         ) : (
           <table className="table-base">
-            <thead><tr><th>ID</th><th>Name</th><th>Tipo</th><th>Máx. (kbps)</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Name</th><th>Type</th><th>Max (kbps)</th><th></th></tr></thead>
             <tbody>
               {(data.dba || []).map(p => (
                 <tr key={p.id}>
