@@ -99,7 +99,7 @@ function SaveButton({ onSave, saved }) {
       onClick={onSave}
       style={{ minWidth: 120 }}
     >
-      {saved ? <><IconCheck size={13} /> Guardado</> : <><IconDeviceFloppy size={13} /> Guardar</>}
+      {saved ? <><IconCheck size={13} /> Saved</> : <><IconDeviceFloppy size={13} /> Save</>}
     </button>
   );
 }
@@ -117,13 +117,13 @@ function GeneralTab({ data, onChange }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-          Información de la Empresa
+          Company information
         </div>
-        <FieldRow label="Nombre de empresa">
+        <FieldRow label="Company name">
           <input className="input-base" value={data.company} style={{ maxWidth: 320 }}
             onChange={e => onChange({ ...data, company: e.target.value })} />
         </FieldRow>
-        <FieldRow label="Zona horaria">
+        <FieldRow label="Timezone">
           <select className="select-base" style={{ maxWidth: 320 }} value={data.timezone}
             onChange={e => onChange({ ...data, timezone: e.target.value })}>
             <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires (UTC-3)</option>
@@ -132,7 +132,7 @@ function GeneralTab({ data, onChange }) {
             <option value="UTC">UTC</option>
           </select>
         </FieldRow>
-        <FieldRow label="Idioma">
+        <FieldRow label="Language">
           <select className="select-base" style={{ maxWidth: 180 }} value={data.language}
             onChange={e => onChange({ ...data, language: e.target.value })}>
             <option value="es">Español</option>
@@ -140,7 +140,7 @@ function GeneralTab({ data, onChange }) {
             <option value="pt">Português</option>
           </select>
         </FieldRow>
-        <FieldRow label="URL de logo" hint="Opcional. Se muestra en la barra lateral.">
+        <FieldRow label="Logo URL" hint="Optional. Shown in the top bar.">
           <input className="input-base" value={data.logo_url} style={{ maxWidth: 380 }}
             placeholder="https://..." onChange={e => onChange({ ...data, logo_url: e.target.value })} />
         </FieldRow>
@@ -159,21 +159,21 @@ function PollingTab({ data, onChange }) {
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-        Configuración de Polling SNMP
+        SNMP polling configuration
       </div>
-      <FieldRow label="Intervalo de polling" hint="Frecuencia con la que se consultan los dispositivos.">
-        <NumberInput value={data.interval} min={1} max={60} unit="minutos"
+      <FieldRow label="Polling interval" hint="How often devices are polled.">
+        <NumberInput value={data.interval} min={1} max={60} unit="minutes"
           onChange={v => onChange({ ...data, interval: v })} />
       </FieldRow>
       <FieldRow label="SNMP Timeout">
-        <NumberInput value={data.snmp_timeout} min={1} max={30} unit="segundos"
+        <NumberInput value={data.snmp_timeout} min={1} max={30} unit="seconds"
           onChange={v => onChange({ ...data, snmp_timeout: v })} />
       </FieldRow>
-      <FieldRow label="Reintentos SNMP">
+      <FieldRow label="SNMP retries">
         <NumberInput value={data.snmp_retries} min={0} max={10}
           onChange={v => onChange({ ...data, snmp_retries: v })} />
       </FieldRow>
-      <FieldRow label="Versión SNMP">
+      <FieldRow label="SNMP version">
         <select className="select-base" style={{ width: 120 }} value={data.snmp_version}
           onChange={e => onChange({ ...data, snmp_version: e.target.value })}>
           <option value="1">v1</option>
@@ -201,7 +201,7 @@ function ThresholdsTab({ data, onChange }) {
       {/* Visual threshold diagram */}
       <div className="card">
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-          Umbrales de Señal RX (dBm)
+          RX signal thresholds (dBm)
         </div>
         <div style={{ display: 'flex', gap: 6, marginBottom: 16, alignItems: 'center', fontSize: 11 }}>
           <div style={{ flex: 1, height: 18, background: 'rgba(188,140,255,0.3)', borderRadius: '4px 0 0 4px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--purple)', fontWeight: 600 }}>High &gt;-15</div>
@@ -212,23 +212,23 @@ function ThresholdsTab({ data, onChange }) {
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-          <FieldRow label="RX Óptimo — mínimo (dBm)">
+          <FieldRow label="RX Optimal — min (dBm)">
             <NumberInput value={data.rx_optimal_min} min={-40} max={0} step={0.5} unit="dBm"
               onChange={v => onChange({ ...data, rx_optimal_min: v })} />
           </FieldRow>
-          <FieldRow label="RX Óptimo — máximo (dBm)">
+          <FieldRow label="RX Optimal — max (dBm)">
             <NumberInput value={data.rx_optimal_max} min={-40} max={0} step={0.5} unit="dBm"
               onChange={v => onChange({ ...data, rx_optimal_max: v })} />
           </FieldRow>
-          <FieldRow label="RX Warning — mínimo (dBm)">
+          <FieldRow label="RX Warning — min (dBm)">
             <NumberInput value={data.rx_warning_min} min={-40} max={0} step={0.5} unit="dBm"
               onChange={v => onChange({ ...data, rx_warning_min: v })} />
           </FieldRow>
-          <FieldRow label="RX Warning — máximo (dBm)">
+          <FieldRow label="RX Warning — max (dBm)">
             <NumberInput value={data.rx_warning_max} min={-40} max={0} step={0.5} unit="dBm"
               onChange={v => onChange({ ...data, rx_warning_max: v })} />
           </FieldRow>
-          <FieldRow label="RX Crítico — umbral (dBm)" hint="Señal por debajo de este valor se considera crítica.">
+          <FieldRow label="RX Critical — threshold (dBm)" hint="Signal below this value is considered critical.">
             <NumberInput value={data.rx_critical_max} min={-50} max={-20} step={0.5} unit="dBm"
               onChange={v => onChange({ ...data, rx_critical_max: v })} />
           </FieldRow>
@@ -259,12 +259,12 @@ function NotificationsTab({ data, onChange }) {
         </div>
         {data.email_enabled && (
           <>
-            <FieldRow label="Destinatario">
+            <FieldRow label="Recipient">
               <input className="input-base" value={data.email_to} style={{ maxWidth: 320 }}
                 placeholder="noc@empresa.com" onChange={e => onChange({ ...data, email_to: e.target.value })} />
             </FieldRow>
             <div style={{ display: 'flex', gap: 16 }}>
-              <Toggle checked={data.email_critical} onChange={v => onChange({ ...data, email_critical: v })} label="Alertas Críticas" />
+              <Toggle checked={data.email_critical} onChange={v => onChange({ ...data, email_critical: v })} label="Critical alerts" />
               <Toggle checked={data.email_warning} onChange={v => onChange({ ...data, email_warning: v })} label="Warnings" />
             </div>
           </>
@@ -278,7 +278,7 @@ function NotificationsTab({ data, onChange }) {
           <Toggle checked={data.sms_enabled} onChange={v => onChange({ ...data, sms_enabled: v })} />
         </div>
         {data.sms_enabled && (
-          <FieldRow label="Número de teléfono">
+          <FieldRow label="Phone number">
             <input className="input-base" value={data.sms_number} style={{ maxWidth: 220 }}
               placeholder="+54 9 11 1234-5678" onChange={e => onChange({ ...data, sms_number: e.target.value })} />
           </FieldRow>
@@ -295,7 +295,7 @@ function NotificationsTab({ data, onChange }) {
           <Toggle checked={data.webhook_enabled} onChange={v => onChange({ ...data, webhook_enabled: v })} />
         </div>
         {data.webhook_enabled && (
-          <FieldRow label="URL del webhook" hint="Se enviará un POST con JSON al dispararse una alerta.">
+          <FieldRow label="Webhook URL" hint="A JSON POST will be sent when an alert fires.">
             <input className="input-base" value={data.webhook_url}
               placeholder="https://hooks.slack.com/..." onChange={e => onChange({ ...data, webhook_url: e.target.value })} />
           </FieldRow>
@@ -328,12 +328,12 @@ function BackupTab({ data, onChange }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 600, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-          Backup automático
+          Automatic backup
         </div>
-        <Toggle checked={data.auto_backup} onChange={v => onChange({ ...data, auto_backup: v })} label="Habilitar backup automático" />
+        <Toggle checked={data.auto_backup} onChange={v => onChange({ ...data, auto_backup: v })} label="Enable automatic backup" />
         {data.auto_backup && (
           <>
-            <FieldRow label="Frecuencia">
+            <FieldRow label="Frequency">
               <select className="select-base" style={{ width: 160 }} value={data.backup_interval}
                 onChange={e => onChange({ ...data, backup_interval: e.target.value })}>
                 <option value="hourly">Cada hora</option>
@@ -341,7 +341,7 @@ function BackupTab({ data, onChange }) {
                 <option value="weekly">Semanal</option>
               </select>
             </FieldRow>
-            <FieldRow label="Retención (días)" hint="Cantidad de backups a conservar.">
+            <FieldRow label="Retention (days)" hint="Number of backups to keep.">
               <NumberInput value={data.backup_retain} min={1} max={90} unit="días"
                 onChange={v => onChange({ ...data, backup_retain: v })} />
             </FieldRow>
@@ -349,7 +349,7 @@ function BackupTab({ data, onChange }) {
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            Último backup: {data.last_backup ? new Date(data.last_backup).toLocaleString('es-AR') : 'Nunca'}
+            Last backup: {data.last_backup ? new Date(data.last_backup).toLocaleString() : 'Never'}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
@@ -360,14 +360,14 @@ function BackupTab({ data, onChange }) {
           >
             {backingUp ? <><IconRefresh size={13} style={{ animation: 'spin 1s linear infinite' }} /> Creando...</>
               : backupDone ? <><IconCheck size={13} /> Backup creado</>
-              : <><IconDatabase size={13} /> Crear backup ahora</>}
+              : <><IconDatabase size={13} /> Create backup now</>}
           </button>
           <button
             className="btn"
             onClick={() => { setRestoring(true); setTimeout(() => setRestoring(false), 2000); }}
             disabled={restoring}
           >
-            {restoring ? 'Restaurando...' : 'Restaurar backup...'}
+            {restoring ? 'Restaurando...' : 'Restore backup…'}
           </button>
         </div>
       </div>
