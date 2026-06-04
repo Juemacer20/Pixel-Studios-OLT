@@ -490,7 +490,7 @@
       "name": "Caja 5 Fibra 15 Troncal 4",
       "zone": "Barrio Santa Rosa",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 6 Fibra 13 Troncal 6",
@@ -628,6 +628,114 @@
       "name": "Caja 7 Fibra 29 Troncal 1",
       "zone": "Barrio Pinar",
       "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 7 Fibra 121 Troncal 3",
+      "zone": "Barrio Centro",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 3 Troncal 5",
+      "zone": "Barrio Estacion",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 8 Troncal 14",
+      "zone": "Barrio Parque",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 120 Troncal 3",
+      "zone": "Barrio Centro",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 32 Troncal 3",
+      "zone": "Barrio Verde",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 81 Troncal 12",
+      "zone": "Barrio Tropezon",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 14 Troncal 1",
+      "zone": "Barrio Tropezon",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 38 Troncal 2",
+      "zone": "Barrio Tague",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 30 Troncal 1",
+      "zone": "Barrio Pinar",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 30 Troncal 1",
+      "zone": "Barrio Pinar",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 7 Fibra 32 Troncal 1",
+      "zone": "Barrio Pinar",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 38 Troncal 12",
+      "zone": "Barrio 1 de Mayo",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 2 Troncal 1",
+      "zone": "Barrio Chispa",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 15 Troncal 2",
+      "zone": "Barrio Trifolios",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 5 Troncal 7",
+      "zone": "LAS 14",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 3 Troncal 5",
+      "zone": "Barrio Estacion",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 62 Troncal 3",
+      "zone": "Barrio La Tablada",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 42 Troncal 12",
+      "zone": "Barrio 1 de Mayo",
+      "ports": 8,
       "onus": 1
     },
     {
@@ -652,7 +760,7 @@
       "name": "Caja 5 Fibra 7 Troncal 1 SA",
       "zone": "Santa Ana",
       "ports": 8,
-      "onus": 1
+      "onus": 3
     },
     {
       "name": "Caja 1 Fibra 3 Troncal 3 SANTA ANA",
@@ -670,7 +778,7 @@
       "name": "Caja 4 Fibra 3 Troncal 2 SA",
       "zone": "Santa Ana",
       "ports": 8,
-      "onus": 2
+      "onus": 4
     },
     {
       "name": "Caja 6 Fibra 11 Troncal 1 SA",
@@ -682,7 +790,7 @@
       "name": "Caja 4 Fibra 1 Troncal 2 SA",
       "zone": "Santa Ana",
       "ports": 8,
-      "onus": 2
+      "onus": 3
     },
     {
       "name": "Caja 1 Fibra 10 Troncal 3 Santa Ana",
@@ -736,7 +844,7 @@
       "name": "Caja 4 Fibra 7 Troncal 1 SA",
       "zone": "Santa Ana",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 2 Fibra 3 Troncal 3 SANTA ANA",
@@ -772,7 +880,7 @@
       "name": "Caja 5 Fibra 5 Troncal 2 SA",
       "zone": "Santa Ana Camping Municipal",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 7 Fibra 3 Troncal 3 SANTA ANA",
@@ -808,7 +916,7 @@
       "name": "Caja 7 Fibra 9 Troncal 1 SA",
       "zone": "Santa Ana",
       "ports": 8,
-      "onus": 2
+      "onus": 3
     },
     {
       "name": "Caja 7 Fibra 1 TRONCAL 3 SANTA ANA",
@@ -838,7 +946,7 @@
       "name": "None",
       "zone": "Barrio",
       "ports": 8,
-      "onus": 3
+      "onus": 4
     },
     {
       "name": "Caja 1 Fibra 9 Troncal 1 SA",
@@ -878,6 +986,72 @@
     },
     {
       "name": "Caja 4 Fibra 11 Troncal 1 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 5 Troncal 2 SA",
+      "zone": "Santa Ana Camping Municipal",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 3 Troncal 2 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 5 Troncal 2 SA",
+      "zone": "Santa Ana Camping Municipal",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 7 Troncal 1 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 10 Troncal 3 Santa Ana",
+      "zone": "Santa Ana Camping Municipal",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 1 TRONCAL 3 SANTA ANA",
+      "zone": "Ruta 2 entre vica y santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 11 Troncal 1 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 9 Troncal 1 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 7 Troncal 1 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 3 Troncal 2 SA",
+      "zone": "Santa Ana",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 7 Troncal 1 SA",
       "zone": "Santa Ana",
       "ports": 8,
       "onus": 1
@@ -970,7 +1144,7 @@
       "name": "Caja 3 Fibra 4 Troncal 3 FELI",
       "zone": "Feliciano Etapa 3",
       "ports": 8,
-      "onus": 3
+      "onus": 4
     },
     {
       "name": "Caja 1 Fibra 31 Troncal 1 FELI",
@@ -1197,6 +1371,108 @@
     {
       "name": "Caja 3 Fibra 26 Troncal 2 FELI",
       "zone": "Feliciano Etapa 2",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 3 Fibra 6 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 30 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 7 Troncal 2 FELI",
+      "zone": "Feliciano Etapa 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 7 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 18 Troncal 4 FELI",
+      "zone": "Feliciano Etapa 4",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 1 Fibra 30 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 37 Troncal 2 FELI",
+      "zone": "Feliciano Etapa 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 8 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 21 Troncal 4 FELI",
+      "zone": "Feliciano Etapa 4",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 27 Troncal 4 FELI",
+      "zone": "Feliciano Etapa 4",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 23 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 17 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 14 Troncal 4 FELI",
+      "zone": "Feliciano Etapa 4",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 7 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 16 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 33 Troncal 4 FELI",
+      "zone": "Feliciano Etapa 4",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 30 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
       "ports": 8,
       "onus": 1
     },
@@ -1450,7 +1726,7 @@
       "name": "Caja 2 Fibra 24 TRONCAL 3 FEDERAL",
       "zone": "FEDERAL ETAPA 3",
       "ports": 8,
-      "onus": 1
+      "onus": 3
     },
     {
       "name": "Caja 3 Fibra 34 Troncal 2 FEDERAL",
@@ -1525,6 +1801,90 @@
       "onus": 1
     },
     {
+      "name": "Caja 6 Fibra 10 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 29 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 8 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 3
+    },
+    {
+      "name": "Caja 3 Fibra 24 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 29 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 21 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 7 Fibra 16 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 43 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 6 Fibra 44 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 2 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 3
+    },
+    {
+      "name": "Caja 5 Fibra 3 Troncal 1 FEDERAL",
+      "zone": "Federal Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 20 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 20 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 7 Fibra 25 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
       "name": "Caja 1 Fibra 14 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
       "ports": 8,
@@ -1540,7 +1900,7 @@
       "name": "Caja 2 Fibra 4 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 3 Fibra 1 Troncal 4 MOCORETA",
@@ -1552,7 +1912,7 @@
       "name": "Caja 1 Fibra 5 Troncal 4 MOCORETA",
       "zone": "Barrio Zona Norte Mocoreta",
       "ports": 8,
-      "onus": 2
+      "onus": 3
     },
     {
       "name": "Caja 1 Fibra 11 Troncal 4 MOCORETA",
@@ -1582,7 +1942,7 @@
       "name": "Caja 1 Fibra 5 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 3 Fibra 4 Troncal 1 MOCORETA",
@@ -1618,7 +1978,7 @@
       "name": "Caja 3 Fibra 4 Troncal 4 MOCORETA",
       "zone": "Barrio Zona Norte Mocoreta",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 4 Fibra 3 Troncal 1 MOCORETA",
@@ -1636,7 +1996,7 @@
       "name": "Caja 3 Fibra 33 Troncal 1 MOCORETA",
       "zone": "Barrio Parque Industrial",
       "ports": 8,
-      "onus": 2
+      "onus": 4
     },
     {
       "name": "Caja 1 Fibra 10 Troncal 1 MOCORETA",
@@ -1660,7 +2020,7 @@
       "name": "Caja 1 Fibra 7 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 2 Fibra 14 Troncal 4 MOCORETA",
@@ -1756,7 +2116,7 @@
       "name": "Caja 4 Fibra 5 Troncal 4 MOCORETA",
       "zone": "Barrio Zona Norte Mocoreta",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 4 Fibra 7 Troncal 1 MOCORETA",
@@ -1774,7 +2134,7 @@
       "name": "Caja 4 Fibra 31 Troncal 1 Mocoreta",
       "zone": "Barrio Parque Industrial",
       "ports": 8,
-      "onus": 1
+      "onus": 2
     },
     {
       "name": "Caja 4 Fibra 14 Troncal 1 MOCORETA",
@@ -1785,6 +2145,66 @@
     {
       "name": "Caja 2 Fibra 2 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 2 Fibra 12 Troncal 4 MOCORETA",
+      "zone": "Barrio Nodo Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 14 Troncal 1 MOCORETA",
+      "zone": "Barrio San Gregorio Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 36 Troncal 1 MOCORETA",
+      "zone": "Barrio Nodo Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 7 Troncal 1 MOCORETA",
+      "zone": "Barrio San Gregorio Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 31 Troncal 1 MOCORETA",
+      "zone": "Barrio Parque Industrial",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 3 Troncal 1 MOCORETA",
+      "zone": "Barrio San Gregorio Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 8 Troncal 1 MOCORETA",
+      "zone": "Barrio San Gregorio Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 3 Troncal 4 MOCORETA",
+      "zone": "Barrio Zona Norte Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 14 Troncal 4 MOCORETA",
+      "zone": "Barrio Zona Norte Mocoreta",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 13 Troncal 4 MOCORETA",
+      "zone": "Barrio Zona Norte Mocoreta",
       "ports": 8,
       "onus": 1
     },
@@ -1899,6 +2319,16 @@
   ],
   "onuTypes": [
     {
+      "name": "1126",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "No",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 1
+    },
+    {
       "name": "EG8147X6-10",
       "pon_type": "GPON",
       "channels": 1,
@@ -1906,7 +2336,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 47
+      "onus": 61
     },
     {
       "name": "EG8041X6-10",
@@ -1916,7 +2346,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 137
+      "onus": 174
     },
     {
       "name": "HG8546M",
@@ -1926,7 +2356,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 17
+      "onus": 19
     },
     {
       "name": "IC445ETRF",
@@ -1936,7 +2366,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 9
+      "onus": 10
     },
     {
       "name": "EG8145X6-10",
@@ -1946,7 +2376,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 32
+      "onus": 33
     },
     {
       "name": "EG8021V5",
@@ -1956,7 +2386,7 @@
       "wifi": "Yes",
       "voip_ports": 2,
       "catv": "No",
-      "onus": 11
+      "onus": 13
     },
     {
       "name": "BM342GAC4T",
@@ -1966,7 +2396,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 12
+      "onus": 16
     },
     {
       "name": "IC410WSG",
@@ -1986,7 +2416,17 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 31
+      "onus": 50
+    },
+    {
+      "name": "BM242GFAC4T",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "Yes",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 4
     },
     {
       "name": "HG8120C",
@@ -1999,16 +2439,6 @@
       "onus": 4
     },
     {
-      "name": "BM242GFAC4T",
-      "pon_type": "GPON",
-      "channels": 1,
-      "ethernet_ports": 4,
-      "wifi": "Yes",
-      "voip_ports": 0,
-      "catv": "No",
-      "onus": 2
-    },
-    {
       "name": "BM341GAC2",
       "pon_type": "GPON",
       "channels": 1,
@@ -2016,7 +2446,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 3
+      "onus": 4
     },
     {
       "name": "Vector5",
@@ -2026,7 +2456,27 @@
       "wifi": "No",
       "voip_ports": 2,
       "catv": "No",
-      "onus": 2
+      "onus": 3
+    },
+    {
+      "name": "BM341GWT",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "Yes",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 3
+    },
+    {
+      "name": "HG8240H",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "No",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 1
     },
     {
       "name": "IC435ETR",
@@ -2036,7 +2486,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 15
+      "onus": 17
     },
     {
       "name": "BM321GF",
@@ -2046,7 +2496,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 12
+      "onus": 19
     },
     {
       "name": "EG8041V5",
@@ -2056,7 +2506,27 @@
       "wifi": "Yes",
       "voip_ports": 2,
       "catv": "No",
-      "onus": 5
+      "onus": 7
+    },
+    {
+      "name": "STD-HGU",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "No",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 1
+    },
+    {
+      "name": "AG1729",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "No",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 2
     },
     {
       "name": "GP1704-2FC-S",
@@ -2079,16 +2549,6 @@
       "onus": 2
     },
     {
-      "name": "AG1729",
-      "pon_type": "GPON",
-      "channels": 1,
-      "ethernet_ports": 4,
-      "wifi": "No",
-      "voip_ports": 0,
-      "catv": "No",
-      "onus": 1
-    },
-    {
       "name": "GP1704-1G",
       "pon_type": "GPON",
       "channels": 1,
@@ -2107,16 +2567,6 @@
       "voip_ports": 2,
       "catv": "No",
       "onus": 1
-    },
-    {
-      "name": "BM341GWT",
-      "pon_type": "GPON",
-      "channels": 1,
-      "ethernet_ports": 4,
-      "wifi": "Yes",
-      "voip_ports": 0,
-      "catv": "No",
-      "onus": 2
     },
     {
       "name": "IC485WRF",
@@ -2459,5 +2909,5 @@
       "onus": 1744
     }
   ],
-  "generated_at": "2026-06-04T17:10:57.896Z"
+  "generated_at": "2026-06-04T17:30:33.131Z"
 }

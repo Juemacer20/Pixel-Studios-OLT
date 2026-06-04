@@ -1,73 +1,95 @@
-// Importa el inventario REAL de ITELSA (relevado de SmartOLT) a la DB de Pixel Studios OLT.
-// Fuente: /home/juan/relevamiento-smartolt/data/real-data.json (crawl autenticado de SmartOLT).
+// Importa/refresca el inventario REAL de ITELSA desde el crawl de SmartOLT.
+// Idempotente: refresca SOLO las OLTs Huawei (gestionadas por SmartOLT) y sus ONUs,
+// y preserva/asegura las OLTs VSOL (gestionadas fuera de SmartOLT).
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { PrismaClient } = require('@prisma/client');
 const fs = require('fs');
-const path = require('path');
 const prisma = new PrismaClient();
 
-const SRC = '/home/juan/relevamiento-smartolt/data/real-data.json';
+const SRC = path.join(__dirname, '..', 'data', 'real-data.json');
 const META_OUT = path.join(__dirname, '..', 'data', 'smartolt-meta.json');
+
+// OLTs VSOL (no están en SmartOLT; se gestionan por la red interna). Siempre presentes.
+const VSOL_OLTS = [
+  { name: 'OLT Bernardi', ip: '10.200.188.50', model: 'V1600G1', location: 'Bernardi' },
+  { name: 'OLT San Ramon', ip: '10.0.30.240', model: 'V1600G1', location: 'San Ramon' },
+  { name: 'OLT Vizcaya', ip: '10.0.128.250', model: 'V1600G1', location: 'Vizcaya' },
+];
 
 function num(s) { const m = String(s ?? '').match(/-?\d+(\.\d+)?/); return m ? parseFloat(m[0]) : null; }
 function parseClient(raw) {
-  // "55231___ACEVEDO_EVELYN" -> { contract:"55231", name:"ACEVEDO EVELYN" }
   const parts = String(raw || '').split('___');
   if (parts.length >= 2) return { contract: parts[0].trim() || null, name: parts.slice(1).join(' ').replace(/_/g, ' ').trim() };
   return { contract: null, name: String(raw || '').replace(/_/g, ' ').trim() || 'Sin nombre' };
 }
 
 async function main() {
+  if (!fs.existsSync(SRC)) { console.error('No existe', SRC, '— corré el crawler primero.'); process.exit(1); }
   const d = JSON.parse(fs.readFileSync(SRC, 'utf8'));
-  console.log(`Fuente: ${d.olts.length} OLTs, ${d.onus.length} ONUs, ${d.speedProfiles.length} perfiles, ${d.zones.length} zonas`);
+  console.log(`[${new Date().toISOString()}] Fuente: ${d.olts.length} OLTs, ${d.onus.length} ONUs, ${d.speedProfiles.length} perfiles, ${d.zones.length} zonas`);
 
-  // ── 1. Limpiar DB (orden de FKs) ──
-  console.log('Limpiando datos previos…');
-  await prisma.signalHistory.deleteMany({});
-  await prisma.dHCPLease.deleteMany({});
-  await prisma.tR069Device.deleteMany({});
-  await prisma.alert.deleteMany({});
-  await prisma.client.deleteMany({});
-  await prisma.oNT.deleteMany({});
-  await prisma.pONPort.deleteMany({});
-  await prisma.oLT.deleteMany({});
+  // ── 1. OLTs VSOL (upsert, nunca se borran) ──
+  for (const v of VSOL_OLTS) {
+    await prisma.oLT.upsert({
+      where: { name: v.name },
+      update: { brand: 'VSOL', model: v.model, status: 'ONLINE' },
+      create: {
+        name: v.name, brand: 'VSOL', model: v.model, ip: v.ip, community: 'public', port: 161,
+        location: v.location, status: 'ONLINE', uptime: BigInt(Math.floor(Math.random() * 5000000) + 86400),
+        cpu_usage: Math.round(10 + Math.random() * 30), temperature: Math.round(33 + Math.random() * 12),
+      },
+    });
+  }
+  console.log(`  VSOL OLTs aseguradas: ${VSOL_OLTS.length}`);
 
-  // ── 2. OLTs reales ──  fila: [View, id, status, name, ip, tcp, udp, hwver, swver, ...]
+  // ── 2. Refrescar OLTs Huawei (SmartOLT) ── fila: [View, id, status, name, ip, tcp, udp, hwver, swver]
+  // Borrar primero las ONUs Huawei existentes (preservando VSOL)
+  const huawei = await prisma.oLT.findMany({ where: { brand: 'Huawei' }, select: { id: true } });
+  const huaweiIds = huawei.map(o => o.id);
+  if (huaweiIds.length) {
+    const onts = await prisma.oNT.findMany({ where: { olt_id: { in: huaweiIds } }, select: { id: true } });
+    const ontIds = onts.map(o => o.id);
+    await prisma.client.deleteMany({ where: { ont_id: { in: ontIds } } });
+    await prisma.tR069Device.deleteMany({ where: { ont_id: { in: ontIds } } });
+    await prisma.alert.deleteMany({ where: { OR: [{ ont_id: { in: ontIds } }, { olt_id: { in: huaweiIds } }] } });
+    await prisma.oNT.deleteMany({ where: { olt_id: { in: huaweiIds } } }); // cascade signalHistory/dhcpLease
+  }
+
   const oltByNum = {};
   for (const row of d.olts) {
-    const numId = row[1];
-    const name = row[3];
-    const ip = row[4] || `0.0.0.${numId}`;
-    const hw = row[7] || 'MA5800-X15';
-    const created = await prisma.oLT.create({
-      data: {
-        name, brand: 'Huawei', model: hw.replace(/^Huawei-?/, ''), ip,
-        community: 'public', port: 161, location: name.replace(/^Itelsa-?/, ''),
-        status: 'ONLINE', uptime: BigInt(Math.floor(Math.random() * 8000000) + 86400),
+    const numId = row[1], name = row[3], ip = row[4] || `0.0.0.${numId}`, hw = row[7] || 'MA5800-X15';
+    const created = await prisma.oLT.upsert({
+      where: { name },
+      update: { brand: 'Huawei', model: hw.replace(/^Huawei-?/, ''), ip, status: 'ONLINE' },
+      create: {
+        name, brand: 'Huawei', model: hw.replace(/^Huawei-?/, ''), ip, community: 'public', port: 161,
+        location: name.replace(/^Itelsa-?/, ''), status: 'ONLINE',
+        uptime: BigInt(Math.floor(Math.random() * 8000000) + 86400),
         cpu_usage: Math.round(15 + Math.random() * 35), temperature: Math.round(35 + Math.random() * 15),
       },
     });
     oltByNum[String(numId)] = created.id;
-    console.log(`  OLT real: ${name} (${ip})`);
   }
   const firstOlt = Object.values(oltByNum)[0];
+  console.log(`  Huawei OLTs (SmartOLT): ${Object.keys(oltByNum).length}`);
 
-  // ── 3. Speed profiles reales ── fila: [name, for, prefix, "5496 kbps", type, default, count, ...]
+  // ── 3. Speed profiles (upsert) ──
   let spCount = 0;
   for (const row of d.speedProfiles) {
     const name = row[0]; if (!name) continue;
-    const kbps = num(row[3]) || 0; const mbps = Math.max(1, Math.round(kbps / 1000));
+    const mbps = Math.max(1, Math.round((num(row[3]) || 0) / 1000));
     try {
       await prisma.speedProfile.upsert({
         where: { name }, update: { download_mbps: mbps, upload_mbps: mbps },
         create: { name, download_mbps: mbps, upload_mbps: mbps, burst_down: Math.round(mbps * 1.2), burst_up: Math.round(mbps * 1.2) },
       });
       spCount++;
-    } catch (e) { /* dup */ }
+    } catch (e) {}
   }
   console.log(`  Speed profiles: ${spCount}`);
 
   // ── 4. ONUs + Clients reales ──
-  // cells: [chk, status, View, Name, SN, "N - OLT gpon-onu...", Zone, ODB, Signal, WAN, VLAN, VoIP, TV, Type, AuthDate]
   let ontCount = 0, cliCount = 0;
   const zoneAgg = {}, odbAgg = {}, typeAgg = {};
   const usedSN = new Set(), usedContract = new Set();
@@ -77,19 +99,13 @@ async function main() {
     const oltId = oltByNum[String(o.oltId)] || firstOlt;
     const ponMatch = (c[5] || '').match(/(gpon|epon)-onu_[\d/:]+/i);
     const pon = ponMatch ? ponMatch[0] : (c[5] || '').split(' ').pop();
-    const zone = (c[6] || '').trim();
-    const odb = (c[7] || '').trim();
-    const rx = num(c[8]);
-    const vlan = num(c[10]);
+    const zone = (c[6] || '').trim(), odb = (c[7] || '').trim(), rx = num(c[8]), vlan = num(c[10]);
     const type = (c[13] || '').trim() || null;
     const status = rx != null ? 'ONLINE' : 'OFFLINE';
     const { contract, name } = parseClient(c[3]);
-
-    // agregaciones para metadata
     if (zone) zoneAgg[zone] = (zoneAgg[zone] || 0) + 1;
-    if (odb) odbAgg[odb] = odbAgg[odb] || { zone, count: 0 }, odbAgg[odb].count++;
+    if (odb) { odbAgg[odb] = odbAgg[odb] || { zone, count: 0 }; odbAgg[odb].count++; }
     if (type) typeAgg[type] = (typeAgg[type] || 0) + 1;
-
     try {
       const ont = await prisma.oNT.create({
         data: {
@@ -102,15 +118,13 @@ async function main() {
       });
       ontCount++;
       let cn = contract; if (cn && usedContract.has(cn)) cn = `${cn}-${sn.slice(-4)}`; if (cn) usedContract.add(cn);
-      await prisma.client.create({
-        data: { ont_id: ont.id, name: name || 'Sin nombre', contract_number: cn, service_plan: type ? `Plan ${type}` : null },
-      });
+      await prisma.client.create({ data: { ont_id: ont.id, name: name || 'Sin nombre', contract_number: cn, service_plan: type ? `Plan ${type}` : null } });
       cliCount++;
     } catch (e) { if (!/Unique/.test(e.message)) console.log('  ONT err', sn, e.message.slice(0, 80)); }
   }
   console.log(`  ONTs: ${ontCount} | Clients: ${cliCount}`);
 
-  // ── 5. Metadata (zones/odbs/onu-types/speed-profiles) para endpoints del frontend ──
+  // ── 5. Metadata ──
   const meta = {
     zones: d.zones.map(z => ({ name: z.name, onus: parseInt(z.onus) || zoneAgg[z.name] || 0 })),
     odbs: Object.entries(odbAgg).map(([name, v]) => ({ name, zone: v.zone, ports: 8, onus: v.count })),
@@ -124,9 +138,8 @@ async function main() {
   };
   fs.mkdirSync(path.dirname(META_OUT), { recursive: true });
   fs.writeFileSync(META_OUT, JSON.stringify(meta, null, 2));
-  console.log(`  Metadata: ${meta.zones.length} zones, ${meta.odbs.length} ODBs, ${meta.onuTypes.length} ONU types → ${META_OUT}`);
-
-  console.log('✓ Importación completa.');
+  console.log(`  Metadata: ${meta.zones.length} zones, ${meta.odbs.length} ODBs, ${meta.onuTypes.length} ONU types`);
+  console.log('✓ Import OK.');
   await prisma.$disconnect();
 }
 main().catch(e => { console.error('FATAL', e); process.exit(1); });
