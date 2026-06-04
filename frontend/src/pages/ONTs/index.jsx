@@ -338,7 +338,7 @@ function ONTDrawer({ ont, onClose }) {
               <StatusBadge status={ont.status} />
             </div>
             <div style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <span className="mono">{ont.mac_address}</span>
+              <span className="mono">{ont.mac}</span>
               {ont.client && <span style={{ color: 'var(--cyan)' }}>· {ont.client.name}</span>}
               {ont.olt   && <span style={{ color: 'var(--text-muted)' }}>· {ont.olt.name}</span>}
             </div>
@@ -368,23 +368,35 @@ function ONTDrawer({ ont, onClose }) {
                   Información del Equipo
                 </div>
                 <InfoRow label="Serial"       value={ont.serial_number} mono />
-                <InfoRow label="MAC"           value={ont.mac_address}   mono />
+                <InfoRow label="MAC"           value={ont.mac}           mono />
                 <InfoRow label="OLT"           value={ont.olt?.name} />
-                <InfoRow label="Puerto PON"    value={ont.pon_port}      mono />
+                <InfoRow label="Interfaz"      value={ont.description}   mono />
                 <InfoRow label="Cliente"       value={ont.client?.name} />
                 <InfoRow label="Estado"        value={<StatusBadge status={ont.status} />} />
-                <InfoRow label="Modelo"        value={ont.model} />
-                <InfoRow label="Firmware"      value={ont.firmware}      mono />
-                <InfoRow label="Uptime"        value={ont.uptime} />
-                <InfoRow label="Dirección IP"  value={ont.ip_address}    mono />
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: 6 }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>RX / TX</span>
+                {ont.model      && <InfoRow label="Modelo"   value={ont.model} />}
+                {ont.firmware   && <InfoRow label="Firmware" value={ont.firmware} mono />}
+                {ont.vlan       && <InfoRow label="VLAN"     value={ont.vlan} mono />}
+                {ont.ip_address && <InfoRow label="IP"       value={ont.ip_address} mono />}
+              </div>
+
+              {/* Métricas ópticas */}
+              <div className="card" style={{ padding: '12px 16px' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  Métricas Ópticas
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8 }}>
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>RX / TX power</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <SignalValue value={ont.rx_power} size="md" />
                     <span style={{ color: 'var(--text-muted)' }}>/</span>
                     <SignalValue value={ont.tx_power} size="md" />
                   </div>
                 </div>
+                <InfoRow label="OLT RX power"  value={ont.olt_rx_power != null ? `${ont.olt_rx_power} dBm` : null} mono />
+                <InfoRow label="Distancia"     value={ont.distance != null ? `${ont.distance} m` : null} mono />
+                <InfoRow label="Temperatura"   value={ont.temperature != null ? `${ont.temperature} °C` : null} mono />
+                <InfoRow label="Voltaje"       value={ont.voltage != null ? `${ont.voltage} V` : null} mono />
+                <InfoRow label="Corriente bias" value={ont.bias_current != null ? `${ont.bias_current} mA` : null} mono />
               </div>
 
               <MiniSignalChart ontId={ont.id} height={160} />
@@ -505,7 +517,7 @@ function ONTDrawer({ ont, onClose }) {
                 <InfoRow label="Gateway"       value="192.168.1.1"                       mono />
                 <InfoRow label="DNS Primario"  value="8.8.8.8"                           mono />
                 <InfoRow label="DNS Secundario" value="8.8.4.4"                          mono />
-                <InfoRow label="MAC Binding"   value={ont.mac_address}                   mono />
+                <InfoRow label="MAC Binding"   value={ont.mac}                   mono />
               </div>
               <div style={{
                 padding: '10px 14px', background: 'rgba(63,185,80,0.06)',
@@ -648,7 +660,7 @@ export default function ONTs() {
   const ponPorts = useMemo(() => {
     const seen = new Set();
     return rawONTs
-      .map(o => o.pon_port)
+      .map(o => o.description)
       .filter(p => { if (!p || seen.has(p)) return false; seen.add(p); return true; })
       .sort();
   }, [rawONTs]);
@@ -674,11 +686,12 @@ export default function ONTs() {
 
   /* ── Stats ── */
   const stats = useMemo(() => {
+    const st = o => (o.status || '').toLowerCase();
     const total   = rawONTs.length;
-    const online  = rawONTs.filter(o => o.status === 'online').length;
-    const offline = rawONTs.filter(o => o.status === 'offline').length;
-    const los     = rawONTs.filter(o => o.status === 'los').length;
-    const ztp     = rawONTs.filter(o => o.status === 'ztp' || o.status === 'pending').length;
+    const online  = rawONTs.filter(o => st(o) === 'online').length;
+    const offline = rawONTs.filter(o => st(o) === 'offline').length;
+    const los     = rawONTs.filter(o => st(o) === 'los').length;
+    const ztp     = rawONTs.filter(o => ['ztp','pending'].includes(st(o))).length;
     const rxVals  = rawONTs.map(o => o.rx_power).filter(v => v != null);
     const avgRx   = rxVals.length ? rxVals.reduce((a, b) => a + b, 0) / rxVals.length : null;
     return { total, online, offline, los, ztp, avgRx };
@@ -692,17 +705,17 @@ export default function ONTs() {
       const q = search.toLowerCase();
       list = list.filter(o =>
         o.serial_number?.toLowerCase().includes(q) ||
-        o.mac_address?.toLowerCase().includes(q) ||
+        o.mac?.toLowerCase().includes(q) ||
         o.client?.name?.toLowerCase().includes(q) ||
         o.ip_address?.toLowerCase().includes(q)
       );
     }
     if (filterOLT)    list = list.filter(o => String(o.olt?.id) === filterOLT);
-    if (filterPort)   list = list.filter(o => o.pon_port === filterPort);
+    if (filterPort)   list = list.filter(o => o.description === filterPort);
     if (filterSignal) list = list.filter(o => getSignalMeta(o.rx_power).key === filterSignal);
     if (filterStatus) {
-      if (filterStatus === 'ztp') list = list.filter(o => o.status === 'ztp' || o.status === 'pending');
-      else                        list = list.filter(o => o.status === filterStatus);
+      if (filterStatus === 'ztp') list = list.filter(o => ['ztp','pending'].includes((o.status||'').toLowerCase()));
+      else                        list = list.filter(o => (o.status||'').toLowerCase() === filterStatus);
     }
 
     const [key, dir] = sortState;
@@ -710,7 +723,7 @@ export default function ONTs() {
       serial_number: o => o.serial_number,
       client:        o => o.client?.name || '',
       olt:           o => o.olt?.name || '',
-      pon_port:      o => o.pon_port || '',
+      pon_port:      o => o.description || '',
       rx_power:      o => o.rx_power ?? -999,
       tx_power:      o => o.tx_power ?? -999,
       distance:      o => o.distance ?? 0,
@@ -957,7 +970,7 @@ export default function ONTs() {
                     {/* Serial / MAC */}
                     <td>
                       <div className="mono" style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ont.serial_number}</div>
-                      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{ont.mac_address}</div>
+                      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{ont.mac || '—'}</div>
                     </td>
 
                     {/* Cliente */}
@@ -978,9 +991,9 @@ export default function ONTs() {
                       {ont.olt?.brand && <div style={{ marginTop: 2 }}><BrandTag brand={ont.olt.brand} /></div>}
                     </td>
 
-                    {/* Puerto PON */}
+                    {/* Puerto PON / Interfaz */}
                     <td>
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.pon_port || '—'}</span>
+                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.description || ont.pon_port || '—'}</span>
                     </td>
 
                     {/* RX */}
