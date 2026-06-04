@@ -7,7 +7,7 @@ import {
 import {
   IconSearch, IconRefresh, IconTrash, IconPower, IconGauge,
   IconFilter, IconX, IconChevronDown, IconChevronUp,
-  IconWifi, IconUser,
+  IconWifi, IconUser, IconDownload, IconUpload, IconEye,
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
@@ -790,19 +790,19 @@ export default function ONTs() {
 
   /* ── Filter options ── */
   const STATUS_PILLS = [
-    { key: '',        label: 'Todos'   },
-    { key: 'online',  label: 'Online'  },
-    { key: 'offline', label: 'Offline' },
-    { key: 'los',     label: 'LOS'     },
-    { key: 'ztp',     label: 'ZTP'     },
+    { key: '',        label: 'All'          },
+    { key: 'online',  label: 'Online'       },
+    { key: 'offline', label: 'Offline'      },
+    { key: 'los',     label: 'LOS'          },
+    { key: 'ztp',     label: 'Unconfigured' },
   ];
   const SIGNAL_OPTS = [
-    { key: '',         label: 'Señal: Todos'    },
-    { key: 'optimal',  label: 'Óptimo'          },
-    { key: 'normal',   label: 'Normal'          },
-    { key: 'warn',     label: 'Advertencia'     },
-    { key: 'critical', label: 'Crítico'         },
-    { key: 'unknown',  label: 'Desconocido'     },
+    { key: '',         label: 'Signal: Any' },
+    { key: 'optimal',  label: 'Optimal'     },
+    { key: 'normal',   label: 'Normal'      },
+    { key: 'warn',     label: 'Warning'     },
+    { key: 'critical', label: 'Critical'    },
+    { key: 'unknown',  label: 'Unknown'     },
   ];
 
   const hasFilters = search || filterOLT || filterPort || filterSignal || filterStatus;
@@ -823,14 +823,22 @@ export default function ONTs() {
       {/* Page header */}
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="page-title">ONTs</span>
+          <span className="page-title">Configured ONUs</span>
           <span className="badge badge-gray" style={{ fontSize: 11 }}>{filtered.length}</span>
-          {isFetching && !isLoading && <span className="polling-dot" title="Actualizando…" />}
+          {isFetching && !isLoading && <span className="polling-dot" title="Updating…" />}
         </div>
-        <button className="btn" onClick={() => refetch()} disabled={isFetching}>
-          <IconRefresh size={13} style={{ animation: isFetching ? 'spin-slow 0.7s linear infinite' : 'none' }} />
-          Actualizar
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn" onClick={() => toast.success('Export ONUs (próximamente)')}>
+            <IconDownload size={13} /> Export
+          </button>
+          <button className="btn" onClick={() => toast.success('Import ONUs (próximamente)')}>
+            <IconUpload size={13} /> Import
+          </button>
+          <button className="btn" onClick={() => refetch()} disabled={isFetching}>
+            <IconRefresh size={13} style={{ animation: isFetching ? 'spin-slow 0.7s linear infinite' : 'none' }} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* Stats bar */}
@@ -871,7 +879,7 @@ export default function ONTs() {
           <input
             className="input-base"
             style={{ paddingLeft: 28 }}
-            placeholder="Serial, MAC, cliente, IP…"
+            placeholder="Search SN, MAC, name, IP…"
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
           />
@@ -879,13 +887,13 @@ export default function ONTs() {
 
         {/* OLT */}
         <select className="select-base" style={{ minWidth: 130 }} value={filterOLT} onChange={e => { setFilterOLT(e.target.value); setPage(1); }}>
-          <option value="">Todas las OLTs</option>
+          <option value="">All OLTs</option>
           {olts.map(o => <option key={o.id} value={String(o.id)}>{o.name}</option>)}
         </select>
 
         {/* PON port */}
         <select className="select-base" style={{ minWidth: 130 }} value={filterPort} onChange={e => { setFilterPort(e.target.value); setPage(1); }}>
-          <option value="">Todos los puertos</option>
+          <option value="">All ports</option>
           {ponPorts.map(p => <option key={p} value={p}>{p}</option>)}
         </select>
 
@@ -926,13 +934,13 @@ export default function ONTs() {
         {isLoading ? (
           <div className="empty-state">
             <span className="spinner" style={{ width: 24, height: 24, margin: '0 auto 10px', display: 'block' }} />
-            Cargando ONTs…
+            Loading ONUs…
           </div>
         ) : filtered.length === 0 ? (
           <div className="empty-state">
             <IconWifi size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />
-            <div>No se encontraron ONTs</div>
-            <div style={{ fontSize: 11, marginTop: 4, color: 'var(--text-muted)' }}>Intenta ajustar los filtros</div>
+            <div>No ONUs found</div>
+            <div style={{ fontSize: 11, marginTop: 4, color: 'var(--text-muted)' }}>Try adjusting the filters</div>
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
@@ -943,16 +951,17 @@ export default function ONTs() {
                   <th style={{ width: 38, textAlign: 'center', paddingLeft: 12 }}>
                     <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
                   </th>
-                  <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort}>Serial / MAC</SortTh>
-                  <SortTh sortKey="client"        sortState={sortState} onSort={handleSort}>Cliente</SortTh>
+                  <SortTh sortKey="status"         sortState={sortState} onSort={handleSort}>Status</SortTh>
+                  <th style={{ width: 64, textAlign: 'center' }}>View</th>
+                  <SortTh sortKey="client"        sortState={sortState} onSort={handleSort}>Name</SortTh>
+                  <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort}>SN / MAC</SortTh>
                   <SortTh sortKey="olt"            sortState={sortState} onSort={handleSort}>OLT</SortTh>
-                  <SortTh sortKey="pon_port"       sortState={sortState} onSort={handleSort}>Puerto PON</SortTh>
-                  <SortTh sortKey="rx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>RX dBm</SortTh>
-                  <SortTh sortKey="tx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>TX dBm</SortTh>
-                  <SortTh sortKey="distance"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>Distancia</SortTh>
-                  <SortTh sortKey="status"         sortState={sortState} onSort={handleSort}>Estado</SortTh>
-                  <SortTh sortKey="last_seen"      sortState={sortState} onSort={handleSort}>Última Vista</SortTh>
-                  <th style={{ textAlign: 'center', width: 92 }}>Acciones</th>
+                  <SortTh sortKey="pon_port"       sortState={sortState} onSort={handleSort}>ONU / PON</SortTh>
+                  <SortTh sortKey="rx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>Signal RX</SortTh>
+                  <SortTh sortKey="tx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>B/R TX</SortTh>
+                  <SortTh sortKey="distance"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>Distance</SortTh>
+                  <SortTh sortKey="last_seen"      sortState={sortState} onSort={handleSort}>Last seen</SortTh>
+                  <th style={{ textAlign: 'center', width: 92 }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -967,13 +976,18 @@ export default function ONTs() {
                       <input type="checkbox" className="checkbox" checked={selected.has(ont.id)} onChange={() => toggleOne(ont.id)} />
                     </td>
 
-                    {/* Serial / MAC */}
-                    <td>
-                      <div className="mono" style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ont.serial_number}</div>
-                      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{ont.mac || '—'}</div>
+                    {/* Status */}
+                    <td><StatusBadge status={ont.status} /></td>
+
+                    {/* View (botón azul SmartOLT) */}
+                    <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                      <button className="btn btn-primary" style={{ padding: '3px 9px', fontSize: 11 }}
+                        onClick={() => setDrawerONT(ont)}>
+                        <IconEye size={12} /> View
+                      </button>
                     </td>
 
-                    {/* Cliente */}
+                    {/* Name */}
                     <td>
                       {ont.client ? (
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
@@ -985,56 +999,55 @@ export default function ONTs() {
                       )}
                     </td>
 
+                    {/* SN / MAC */}
+                    <td>
+                      <div className="mono" style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ont.serial_number}</div>
+                      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{ont.mac || '—'}</div>
+                    </td>
+
                     {/* OLT + BrandTag */}
                     <td>
                       <div style={{ fontSize: 12, lineHeight: 1.3 }}>{ont.olt?.name || '—'}</div>
                       {ont.olt?.brand && <div style={{ marginTop: 2 }}><BrandTag brand={ont.olt.brand} /></div>}
                     </td>
 
-                    {/* Puerto PON / Interfaz */}
+                    {/* ONU / PON */}
                     <td>
                       <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.description || ont.pon_port || '—'}</span>
                     </td>
 
-                    {/* RX */}
+                    {/* Signal RX */}
                     <td style={{ textAlign: 'right' }}>
                       <SignalValue value={ont.rx_power} size="sm" />
                     </td>
 
-                    {/* TX */}
+                    {/* B/R TX */}
                     <td style={{ textAlign: 'right' }}>
                       <SignalValue value={ont.tx_power} size="sm" />
                     </td>
 
-                    {/* Distancia */}
+                    {/* Distance */}
                     <td style={{ textAlign: 'right' }}>
                       <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
                         {formatDist(ont.distance)}
                       </span>
                     </td>
 
-                    {/* Estado */}
-                    <td><StatusBadge status={ont.status} /></td>
-
-                    {/* Última Vista */}
+                    {/* Last seen */}
                     <td>
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatRelative(ont.last_seen)}</span>
                     </td>
 
-                    {/* Acciones */}
+                    {/* Actions */}
                     <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                       <div style={{ display: 'inline-flex', gap: 4 }}>
-                        <button className="btn-icon tooltip" data-tip="Ver señal"
-                          onClick={() => setDrawerONT(ont)} style={{ padding: 4 }}>
-                          <IconGauge size={12} />
-                        </button>
-                        <button className="btn-icon tooltip" data-tip="Reiniciar"
+                        <button className="btn-icon tooltip" data-tip="Reboot"
                           onClick={e => handleReboot(e, ont.id)}
                           disabled={rebootMut.isPending}
                           style={{ padding: 4 }}>
                           <IconPower size={12} />
                         </button>
-                        <button className="btn-icon tooltip" data-tip="Eliminar"
+                        <button className="btn-icon tooltip" data-tip="Delete"
                           onClick={e => handleDelete(e, ont.id)}
                           style={{ padding: 4, color: 'var(--red)' }}>
                           <IconTrash size={12} />
@@ -1055,12 +1068,12 @@ export default function ONTs() {
             padding: '8px 16px', borderTop: '1px solid var(--border)',
           }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} de {filtered.length}
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
             </span>
             <div style={{ display: 'flex', gap: 4 }}>
               <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}
                 disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
-                ‹ Anterior
+                ‹ Prev
               </button>
               {visiblePages.map(n => (
                 <button key={n} className="btn" style={{
@@ -1074,7 +1087,7 @@ export default function ONTs() {
               ))}
               <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}
                 disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
-                Siguiente ›
+                Next ›
               </button>
             </div>
           </div>
@@ -1085,19 +1098,19 @@ export default function ONTs() {
       {someSelected && (
         <div className="batch-bar">
           <span style={{ fontSize: 13, fontWeight: 600 }}>
-            {selected.size} seleccionado{selected.size !== 1 ? 's' : ''}
+            {selected.size} selected
           </span>
           <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
           <button className="btn" style={{ fontSize: 12 }} onClick={handleBatchReboot}>
-            <IconPower size={13} /> Reboot masivo
+            <IconPower size={13} /> Reboot
           </button>
           <button className="btn" style={{ fontSize: 12 }} onClick={handleBatchPing}>
-            <IconGauge size={13} /> Ping masivo
+            <IconGauge size={13} /> Ping
           </button>
           <button className="btn btn-danger" style={{ fontSize: 12 }} onClick={handleBatchDelete}>
-            <IconTrash size={13} /> Eliminar
+            <IconTrash size={13} /> Delete
           </button>
-          <button className="btn-icon" onClick={clearSel} title="Cancelar">
+          <button className="btn-icon" onClick={clearSel} title="Cancel">
             <IconX size={13} />
           </button>
         </div>
