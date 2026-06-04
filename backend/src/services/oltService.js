@@ -169,8 +169,55 @@ async function scanOLTOnts(id) {
     }
   }
 
+  // --- Optical info enrichment (Huawei MA5800 and any adapter that supports it) ---
+  let opticalUpdated = 0;
+  if (typeof adapter.getOpticalInfo === 'function') {
+    try {
+      // Derive the {slot, port} pairs that actually have ONTs, from the scanned interfaces.
+      // Huawei interface format is "frame/slot/port:ontId" (e.g. "0/1/0:5").
+      const slotPorts = [];
+      const seen = new Set();
+      for (const o of rawOnts) {
+        const m = (o.interface || '').match(/^\d+\/(\d+)\/(\d+):\d+$/);
+        if (m) {
+          const key = `${m[1]}/${m[2]}`;
+          if (!seen.has(key)) { seen.add(key); slotPorts.push({ slot: parseInt(m[1]), port: parseInt(m[2]) }); }
+        }
+      }
+
+      const opticalRows = await adapter.getOpticalInfo(slotPorts);
+      logger.info(`scanOLTOnts ${olt.ip}: optical info rows = ${opticalRows.length}`);
+
+      for (const row of opticalRows) {
+        // Build the description key as stored by _listONTsDirectTelnet: "0/<slot>/<port>:<ontId>"
+        const descKey = `0/${row.slot}/${row.port}:${row.ont_id}`;
+        try {
+          const updated = await prisma.oNT.updateMany({
+            where: { olt_id: id, description: descKey },
+            data: {
+              rx_power:     row.rx_power     ?? undefined,
+              tx_power:     row.tx_power     ?? undefined,
+              olt_rx_power: row.olt_rx_power ?? undefined,
+              temperature:  row.temperature  ?? undefined,
+              voltage:      row.voltage      ?? undefined,
+              bias_current: row.bias_current ?? undefined,
+              distance:     row.distance     ?? undefined,
+            },
+          });
+          opticalUpdated += updated.count;
+        } catch (e) {
+          logger.warn(`scanOLTOnts optical update ${descKey}: ${e.message}`);
+        }
+      }
+      logger.info(`scanOLTOnts ${olt.ip}: updated optical data for ${opticalUpdated} ONTs`);
+    } catch (e) {
+      // Optical enrichment failure must not break the scan result
+      logger.error(`scanOLTOnts getOpticalInfo ${olt.ip}: ${e.message}`);
+    }
+  }
+
   await prisma.oLT.update({ where: { id }, data: { status: 'ONLINE' } });
-  return { scanned: rawOnts.length, saved: saved.length, onts: saved };
+  return { scanned: rawOnts.length, saved: saved.length, opticalUpdated, onts: saved };
 }
 
 module.exports = { getAllOLTs, getOLTById, createOLT, updateOLT, deleteOLT, getOLTStatus, getOLTPorts, getPortONTs, sendOLTCommand, scanOLTOnts };

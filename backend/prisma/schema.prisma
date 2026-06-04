@@ -104,6 +104,16 @@ model ONT {
   status           ONTStatus @default(OFFLINE)
   rx_power         Float?
   tx_power         Float?
+  olt_rx_power     Float?
+  distance         Int?
+  temperature      Float?
+  voltage          Float?
+  bias_current     Float?
+  model            String?
+  firmware         String?
+  vlan             Int?
+  ip_address       String?
+  uptime           BigInt?
   last_seen        DateTime?
   provisioned_at   DateTime?
   latitude         Float?

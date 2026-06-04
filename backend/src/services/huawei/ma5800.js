@@ -151,6 +151,132 @@ class MA5800 {
     return onts;
   }
 
+  /**
+   * Fetch optical info for ONTs. Requires the `interface gpon 0/<slot>` context;
+   * the command is `display ont optical-info <port> all` (port goes in the command,
+   * not in each row). Receives the list of {slot, port} pairs that actually have ONTs
+   * (derived from the ONT scan) to avoid probing all 16 ports blindly.
+   * Returns rows: { slot, port, ont_id, rx_power, tx_power, olt_rx_power, temperature, voltage, bias_current, distance }.
+   */
+  async getOpticalInfo(slotPorts) {
+    const net = require('net');
+    const creds = this.telnet._getCredentials();
+    if (!creds.password) return [];
+
+    // Default: derive nothing → fall back to slot 1 port 0
+    let pairs = Array.isArray(slotPorts) && slotPorts.length
+      ? slotPorts
+      : [{ slot: 1, port: 0 }];
+    // Dedup
+    const seen = new Set();
+    pairs = pairs.filter(p => { const k = `${p.slot}/${p.port}`; if (seen.has(k)) return false; seen.add(k); return true; });
+    logger.info(`MA5800 getOpticalInfo ${this.olt.ip}: ${pairs.length} slot/port pairs`);
+
+    const PROMPT = /MA5800[^#>\r\n]*[#>]/;
+    const MORE   = /---- More|More \( Press/;
+    const CR_PROMPT = /\{ <cr>/;
+
+    const sock = new net.Socket();
+    let buf = '';
+    sock.on('data', d => { for (const b of d) { if (b < 0xf0) buf += String.fromCharCode(b); } });
+
+    const waitFor = (regexes, timeoutMs) => new Promise((resolve) => {
+      const start = Date.now();
+      const iv = setInterval(() => {
+        const hit = regexes.find(r => r.test(buf));
+        if (hit) { clearInterval(iv); resolve(hit); }
+        else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(null); }
+      }, 80);
+    });
+
+    try {
+      await new Promise((res, rej) => {
+        const to = setTimeout(() => rej(new Error('connect timeout')), 15000);
+        sock.once('error', e => { clearTimeout(to); rej(e); });
+        sock.connect(23, this.olt.ip, () => { clearTimeout(to); res(); });
+      });
+
+      await waitFor([/User name:|Username:|Login:/i], 10000);
+      buf = ''; sock.write((creds.username || 'admin') + '\r\n');
+      await waitFor([/User password:|Password:/i], 8000);
+      buf = ''; sock.write(creds.password + '\r\n');
+      await waitFor([/MA5800[^#>\r\n]*>/], 10000);
+      buf = ''; sock.write('enable\r\n');
+      await waitFor([/MA5800[^#>\r\n]*#/], 6000);
+      buf = ''; sock.write('config\r\n');
+      await waitFor([/MA5800\(config\)#/], 6000);
+
+      // Collect paginated output until prompt
+      const collect = async (cmd, pageTimeout = 15000) => {
+        buf = '';
+        sock.write(cmd + '\r\n');
+        let out = '';
+        let hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+        while (true) {
+          out += buf; buf = '';
+          if (hit === CR_PROMPT) { sock.write('\r\n'); }
+          else if (hit === MORE) { sock.write(' '); }
+          else break;
+          hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+          if (hit === null) { out += buf; buf = ''; break; }
+        }
+        return out;
+      };
+
+      let allOptical = [];
+      let currentSlot = null;
+      for (const { slot, port } of pairs) {
+        if (slot !== currentSlot) {
+          // Leave previous interface context, enter the new slot's
+          if (currentSlot !== null) { await collect('quit'); }
+          await collect(`interface gpon 0/${slot}`);
+          currentSlot = slot;
+        }
+        const raw = await collect(`display ont optical-info ${port} all`);
+        const parsed = this._parseOpticalInfoTable(raw, parseInt(slot), parseInt(port));
+        allOptical = allOptical.concat(parsed);
+        logger.info(`MA5800 getOpticalInfo ${this.olt.ip}: slot ${slot} port ${port} → ${parsed.length} rows`);
+      }
+
+      sock.destroy();
+      logger.info(`MA5800 getOpticalInfo ${this.olt.ip}: total ${allOptical.length} rows`);
+      return allOptical;
+    } catch (e) {
+      logger.error(`MA5800 getOpticalInfo ${this.olt.ip}: ${e.message}`);
+      try { sock.destroy(); } catch {}
+      return [];
+    }
+  }
+
+  /**
+   * Parse `display ont optical-info <port> all` output. Rows are:
+   *   ONT_ID  Rx(dBm)  Tx(dBm)  OLT-Rx(dBm)  Temp(C)  Volt(V)  Curr(mA)  Dist(m)
+   * The port is NOT in each row — it comes from the command, passed in.
+   */
+  _parseOpticalInfoTable(raw, slot, port) {
+    const results = [];
+    for (const line of raw.split('\n')) {
+      const m = line.match(
+        /^\s*(\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(-?\d+\.\d+)\s+(\d+)\s+(\d+\.\d+)\s+(\d+)\s+(\d+)\s*$/
+      );
+      if (!m) continue;
+      const [, ontId, rx, tx, oltRx, temp, volt, curr, dist] = m;
+      results.push({
+        slot,
+        port,
+        ont_id: parseInt(ontId),
+        rx_power:     parseFloat(rx),
+        tx_power:     parseFloat(tx),
+        olt_rx_power: parseFloat(oltRx),
+        temperature:  parseFloat(temp),
+        voltage:      parseFloat(volt),
+        bias_current: parseFloat(curr),
+        distance:     parseInt(dist),
+      });
+    }
+    return results;
+  }
+
   async getONTSignal(ontId) {
     try {
       return await this.snmp.getONTSignal(ontId);
