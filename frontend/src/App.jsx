@@ -1,9 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import Sidebar from './components/layout/Sidebar';
-import Topbar from './components/layout/Topbar';
+import TopNav from './components/layout/TopNav';
 import { useWebSocket } from './hooks/useWebSocket';
-import { useUIStore } from './store/uiStore';
 import { useAuthStore } from './store/authStore';
 import Login from './pages/Login';
 
@@ -32,20 +30,13 @@ const Fallback = () => (
 
 function AppLayout() {
   useWebSocket();
-  const sidebarCollapsed = useUIStore(s => s.sidebarCollapsed);
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--content-bg)' }}>
-      <Sidebar />
-      <div
-        className="flex flex-col flex-1 overflow-hidden"
-        style={{
-          marginLeft: sidebarCollapsed ? '52px' : '220px',
-          transition: 'margin-left 0.25s ease',
-        }}
-      >
-        <Topbar />
+    <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'transparent' }}>
+      <TopNav />
+      <div className="flex flex-col flex-1 overflow-hidden">
         <main className="flex-1 overflow-auto p-4">
+          <div style={{ maxWidth: 1320, margin: '0 auto' }}>
           <React.Suspense fallback={<Fallback />}>
             <Routes>
               <Route path="/"                element={<Navigate to="/dashboard" replace />} />
@@ -67,6 +58,7 @@ function AppLayout() {
               <Route path="/users"           element={<Users />} />
             </Routes>
           </React.Suspense>
+          </div>
         </main>
       </div>
     </div>

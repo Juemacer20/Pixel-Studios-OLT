@@ -2,41 +2,53 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── SmartOLT clone theme (navy) ───────────────────────────────────────────── */
 :root {
-  --sidebar-bg: #161b22;
-  --content-bg: #0d1117;
-  --card-bg: #161b22;
-  --border: #21262d;
-  --border-light: #30363d;
-  --accent: #1f6feb;
-  --accent-hover: #388bfd;
-  --green: #3fb950;
-  --red: #f85149;
-  --orange: #d29922;
-  --purple: #bc8cff;
-  --cyan: #79c0ff;
+  --topbar-bg: #0a1d31;
+  --sidebar-bg: #0c2236;      /* paneles/cabeceras */
+  --content-bg: #0c2038;      /* inputs / fondo sólido navy */
+  --card-bg: #102a44;
+  --border: #213a55;
+  --border-light: #2c4a68;
+  --accent: #2b7fd4;
+  --accent-hover: #3a8fe0;
+  --green: #23a85a;
+  --red: #e0504f;
+  --orange: #e08a16;
+  --purple: #a98cff;
+  --cyan: #79b8e6;
   --yellow: #e3b341;
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
-  --bg-hover: #1c2128;
+  --text-primary: #e8eef5;
+  --text-secondary: #9fb3c8;
+  --text-muted: #6f859c;
+  --bg-hover: rgba(255,255,255,0.05);
+
+  --sol-blue: #2b7fd4;   --sol-blue2: #1f6fc0;
+  --sol-green: #23a85a;  --sol-green2: #1c904c;
+  --sol-slate: #5a6b7d;  --sol-slate2: #43525f;
+  --sol-orange: #e08a16; --sol-orange2: #c9790f;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
-  background-color: var(--content-bg);
   color: var(--text-primary);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 600px at 75% 12%, rgba(70,120,170,0.18), transparent 60%),
+    radial-gradient(900px 500px at 8% 92%, rgba(40,80,120,0.12), transparent 55%),
+    linear-gradient(135deg, #0a1623 0%, #0e2236 55%, #10283f 100%);
+  background-attachment: fixed;
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--content-bg); }
-::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #484f58; }
+::-webkit-scrollbar { width: 7px; height: 7px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2c4a68; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3a5f82; }
 
 .font-mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace; }
 
@@ -85,18 +97,21 @@ html, body {
   to   { transform: rotate(360deg); }
 }
 
-/* Cards */
+/* Cards (SmartOLT translucent panels) */
 .card {
-  background: var(--card-bg);
+  background: rgba(14, 34, 54, 0.72);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 11px;
   padding: 16px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
 }
 .card-sm {
-  background: var(--card-bg);
+  background: rgba(14, 34, 54, 0.72);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 12px;
+  backdrop-filter: blur(4px);
 }
 
 /* Buttons */
@@ -391,3 +406,84 @@ html, body {
 .kpi-label { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 .kpi-value { font-size: 24px; font-weight: 700; font-family: monospace; color: var(--text-primary); }
 .kpi-sub   { font-size: 11px; color: var(--text-muted); }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   SmartOLT clone — componentes específicos
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Topbar horizontal ── */
+.sol-topnav {
+  display: flex; align-items: center; gap: 2px;
+  background: linear-gradient(180deg, #0c2236, #0a1c2e);
+  border-bottom: 1px solid var(--border-light);
+  height: 52px; padding: 0 16px;
+  position: sticky; top: 0; z-index: 50;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+}
+.sol-brand {
+  display: flex; align-items: center; gap: 9px;
+  font-weight: 800; letter-spacing: .5px; font-size: 17px;
+  color: #fff; margin-right: 14px; white-space: nowrap;
+}
+.sol-brand .logo {
+  width: 26px; height: 26px; border-radius: 7px;
+  background: linear-gradient(135deg, #2b7fd4, #23a85a);
+  display: grid; place-items: center; font-size: 14px;
+  box-shadow: 0 0 14px rgba(43,127,212,.5);
+}
+.sol-nav { display: flex; align-items: center; gap: 2px; flex: 1; }
+.sol-nav-item {
+  color: #c4d3e3; text-decoration: none; font-size: 13.5px;
+  padding: 8px 11px; border-radius: 6px;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  cursor: pointer; border: none; background: transparent; font-family: inherit;
+}
+.sol-nav-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+.sol-nav-item.active { background: rgba(43,127,212,.22); color: #fff; box-shadow: inset 0 -2px 0 var(--accent); }
+.sol-nav-item .caret { font-size: 9px; opacity: .7; }
+.sol-nav-item.save { color: #bfe6cb; }
+
+/* dropdown */
+.sol-dd { position: relative; }
+.sol-dd-menu {
+  position: absolute; top: calc(100% + 6px); left: 0;
+  background: #0e2740; border: 1px solid var(--border-light);
+  border-radius: 9px; padding: 6px; min-width: 210px; z-index: 60;
+  box-shadow: 0 12px 30px rgba(0,0,0,.45);
+}
+.sol-dd-menu a {
+  display: block; padding: 8px 11px; border-radius: 6px;
+  color: #c4d3e3; text-decoration: none; font-size: 13px; white-space: nowrap;
+}
+.sol-dd-menu a:hover { background: rgba(43,127,212,.18); color: #fff; }
+
+.sol-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
+.sol-iconbtn { width: 34px; height: 34px; border-radius: 7px; display: grid; place-items: center; color: #c4d3e3; cursor: pointer; background: transparent; border: none; }
+.sol-iconbtn:hover { background: rgba(255,255,255,.06); color: #fff; }
+.sol-logout { color: #e6a3a3; font-size: 13.5px; padding: 8px 11px; border-radius: 6px; cursor: pointer; background: transparent; border: none; font-family: inherit; display: flex; align-items: center; gap: 6px; }
+.sol-logout:hover { background: rgba(220,80,80,.14); }
+
+/* update banner */
+.sol-banner { background: rgba(35,168,90,.12); border-bottom: 1px solid rgba(35,168,90,.25); color: #8fe0aa; font-size: 12.5px; text-align: center; padding: 6px; }
+.sol-banner a { color: #bff3cf; text-decoration: underline; }
+
+/* ── Stat boxes ── */
+.sol-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.sol-statbox {
+  border-radius: 11px; padding: 16px 18px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; justify-content: space-between; min-height: 104px;
+  box-shadow: 0 6px 18px rgba(0,0,0,.28); border: 1px solid rgba(255,255,255,.08);
+  color: #fff; cursor: pointer; text-decoration: none;
+}
+.sol-statbox .ico { position: absolute; right: 14px; top: 12px; font-size: 30px; opacity: .3; }
+.sol-statbox .num { font-size: 34px; font-weight: 800; line-height: 1; }
+.sol-statbox .lbl { font-size: 13px; opacity: .92; margin-top: 6px; font-weight: 600; }
+.sol-statbox .foot { font-size: 11px; opacity: .8; margin-top: 8px; border-top: 1px solid rgba(255,255,255,.18); padding-top: 6px; display: flex; gap: 12px; }
+.sol-s-blue   { background: linear-gradient(135deg, var(--sol-blue),  var(--sol-blue2)); }
+.sol-s-green  { background: linear-gradient(135deg, var(--sol-green), var(--sol-green2)); }
+.sol-s-slate  { background: linear-gradient(135deg, var(--sol-slate), var(--sol-slate2)); }
+.sol-s-orange { background: linear-gradient(135deg, var(--sol-orange),var(--sol-orange2)); }
+
+/* panel header SmartOLT */
+.sol-card-h { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: #dce8f4; background: rgba(255,255,255,.04); }
+.sol-card-h .more { font-size: 12px; color: #7fb2e6; cursor: pointer; font-weight: 500; }
