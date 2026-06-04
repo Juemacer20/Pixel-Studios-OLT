@@ -22,6 +22,10 @@ const SpeedProfiles    = React.lazy(() => import('./pages/SpeedProfiles'));
 const Reports          = React.lazy(() => import('./pages/Reports'));
 const Settings         = React.lazy(() => import('./pages/Settings'));
 const Users            = React.lazy(() => import('./pages/Users'));
+const Zones            = React.lazy(() => import('./pages/Zones'));
+const ODBs             = React.lazy(() => import('./pages/ODBs'));
+const OnuTypes         = React.lazy(() => import('./pages/OnuTypes'));
+const AuthPresets      = React.lazy(() => import('./pages/AuthPresets'));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
@@ -58,6 +62,10 @@ function AppLayout() {
               <Route path="/reports"         element={<Reports />} />
               <Route path="/settings"        element={<Settings />} />
               <Route path="/users"           element={<Users />} />
+              <Route path="/zones"           element={<Zones />} />
+              <Route path="/odbs"            element={<ODBs />} />
+              <Route path="/onu-types"       element={<OnuTypes />} />
+              <Route path="/auth-presets"    element={<AuthPresets />} />
             </Routes>
           </React.Suspense>
           </div>

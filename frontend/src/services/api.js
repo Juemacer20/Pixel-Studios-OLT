@@ -97,4 +97,28 @@ export const ztpAPI = {
   profiles: () => api.get('/ztp/profiles'),
 };
 
+export const zoneAPI = {
+  list: () => api.get('/zones'),
+  create: (data) => api.post('/zones', data),
+  delete: (id) => api.delete(`/zones/${id}`),
+};
+
+export const odbAPI = {
+  list: () => api.get('/odbs'),
+  create: (data) => api.post('/odbs', data),
+  delete: (id) => api.delete(`/odbs/${id}`),
+};
+
+export const onuTypeAPI = {
+  list: () => api.get('/onu-types'),
+  create: (data) => api.post('/onu-types', data),
+  delete: (id) => api.delete(`/onu-types/${id}`),
+};
+
+export const authPresetAPI = {
+  list: () => api.get('/auth-presets'),
+  create: (data) => api.post('/auth-presets', data),
+  delete: (id) => api.delete(`/auth-presets/${id}`),
+};
+
 export default api;

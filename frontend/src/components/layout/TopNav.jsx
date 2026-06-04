@@ -27,13 +27,13 @@ const REPORTS = [
 ];
 
 const SETTINGS = [
-  { to: '/settings',        label: 'Zones' },
-  { to: '/settings',        label: 'ODBs' },
-  { to: '/settings',        label: 'ONU types' },
+  { to: '/zones',           label: 'Zones' },
+  { to: '/odbs',            label: 'ODBs' },
+  { to: '/onu-types',       label: 'ONU types' },
   { to: '/speed-profiles',  label: 'Speed profiles' },
   { to: '/olts',            label: 'OLTs' },
   { to: '/tr069',           label: 'VPN & TR069' },
-  { to: '/ztp',             label: 'Authorization presets' },
+  { to: '/auth-presets',    label: 'Authorization presets' },
   { to: '/settings',        label: 'General' },
   { to: '/users',           label: 'Users' },
 ];

@@ -42,6 +42,11 @@ app.use('/api/v1/dhcp', require('./routes/dhcp'));
 app.use('/api/v1/gps', require('./routes/gps'));
 app.use('/api/v1/vlan', require('./routes/vlan'));
 app.use('/api/v1/speed-profiles', require('./routes/speedProfiles'));
+const inventory = require('./routes/inventory');
+app.use('/api/v1/zones', inventory.zones);
+app.use('/api/v1/odbs', inventory.odbs);
+app.use('/api/v1/onu-types', inventory.onuTypes);
+app.use('/api/v1/auth-presets', inventory.authPresets);
 
 app.use(notFound);
 app.use(errorHandler);

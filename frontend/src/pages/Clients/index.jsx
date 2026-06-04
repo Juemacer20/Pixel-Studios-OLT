@@ -114,7 +114,7 @@ function EditClientModal({ client, onClose, onSave }) {
             </div>
           </div>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Dirección</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Address</label>
             <input className="input-base" value={form.address} onChange={e => set('address', e.target.value)} placeholder="Calle 123 N° 456" />
           </div>
           <div>
@@ -138,7 +138,7 @@ function EditClientModal({ client, onClose, onSave }) {
             disabled={saving || !form.name.trim()}
             style={{ opacity: saving || !form.name.trim() ? 0.6 : 1 }}
           >
-            {saving ? 'Guardando...' : 'Guardar cambios'}
+            {saving ? 'Guardando...' : 'Save changes'}
           </button>
         </div>
       </div>
@@ -173,7 +173,7 @@ function ClientDrawer({ client, onClose, onEdit }) {
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                 <span className={`status-dot ${client.status === 'active' ? 'status-online' : 'status-offline'}`} />
                 <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                  {client.status === 'active' ? 'Activo' : 'Inactivo'}
+                  {client.status === 'active' ? 'Active' : 'Inactive'}
                 </span>
               </div>
             </div>
@@ -463,7 +463,7 @@ export default function Clients() {
         ) : clients.length === 0 ? (
           <div className="empty-state">
             <IconUsers size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
-            <p>{search ? 'Sin resultados para la búsqueda' : 'No hay clientes registrados'}</p>
+            <p>{search ? 'No results for your search' : 'No clients registered'}</p>
           </div>
         ) : (
           <table className="table-base">
@@ -514,7 +514,7 @@ export default function Clients() {
                   </td>
                   <td>
                     <span className={`badge ${c.status === 'active' ? 'badge-green' : 'badge-gray'}`}>
-                      {c.status === 'active' ? 'Activo' : 'Inactivo'}
+                      {c.status === 'active' ? 'Active' : 'Inactive'}
                     </span>
                   </td>
                   <td onClick={e => e.stopPropagation()}>

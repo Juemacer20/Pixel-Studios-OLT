@@ -181,7 +181,7 @@ export default function MapView() {
                 <Popup>
                   <div style={{ fontFamily: 'monospace', fontSize: 12, minWidth: 160, lineHeight: 1.6 }}>
                     <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{ont.serial_number}</div>
-                    <div>Estado: <span style={{ color }}>{ont.status}</span></div>
+                    <div>Status: <span style={{ color }}>{ont.status}</span></div>
                     {ont.rx_power != null && (
                       <div>RX: <span style={{ color }}>{ont.rx_power} dBm</span></div>
                     )}

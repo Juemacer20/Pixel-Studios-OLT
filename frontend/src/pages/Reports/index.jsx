@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { IconDownload, IconRefresh, IconCalendar } from '@tabler/icons-react';
 
-const TABS = ['Disponibilidad', 'Señal', 'Eventos', 'Clientes'];
+const TABS = ['Disponibilidad', 'Señal', 'Eventos', 'Clients'];
 
 function DateRange({ from, to, onFromChange, onToChange }) {
   return (

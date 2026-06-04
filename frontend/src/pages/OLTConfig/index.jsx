@@ -42,7 +42,7 @@ function UnsupportedSection({ reason }) {
       }}>
         <IconAlertCircle size={22} color="var(--red)" />
       </div>
-      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Función no disponible</p>
+      <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Feature not available</p>
       <p style={{ fontSize: 12, color: 'var(--text-secondary)', maxWidth: 340 }}>{reason}</p>
     </div>
   );
@@ -313,7 +313,7 @@ function SnmpTab({ oltId, notify }) {
 
   return (
     <div className="card" style={{ padding: 20, maxWidth: 520 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>Configuración SNMP</h3>
+      <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>SNMP configuration</h3>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {[['Community (read-only)', 'community', 'public'], ['Trap Host', 'trapHost', '10.0.0.100'], ['Contact', 'contact', 'admin@empresa.com'], ['Location', 'location', 'Data Center']].map(([lbl, key, ph]) => (
           <div key={key}>
@@ -464,7 +464,7 @@ function ProfilesTab({ oltId, notify }) {
       <div className="card" style={{ padding: 20 }}>
         <h3 style={{ fontSize: 13, fontWeight: 600, marginBottom: 14 }}>New DBA profile</h3>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          {[['ID', 'id', '10', 60], ['Nombre', 'name', '10Mbps', 140], ['Máx. kbps', 'max_kbps', '10000', 100]].map(([lbl, key, ph, w]) => (
+          {[['ID', 'id', '10', 60], ['Name', 'name', '10Mbps', 140], ['Máx. kbps', 'max_kbps', '10000', 100]].map(([lbl, key, ph, w]) => (
             <div key={key}>
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>{lbl} *</label>
               <input className="input-base" style={{ width: w }} placeholder={ph} value={form[key]} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))} />
@@ -599,7 +599,7 @@ export default function OLTConfig() {
             <UnsupportedSection reason={
               tab.id === 'tr069' ? 'TR-069 ACS no disponible en VSOL V1600G1' :
               tab.id === 'gps'   ? 'GPS / ubicación no disponible en VSOL V1600G1' :
-              'Función no disponible en este modelo'
+              'Feature not available on this model'
             } />
           ) : TabComponent ? (
             <TabComponent key={activeTab} oltId={id} notify={notify} />
