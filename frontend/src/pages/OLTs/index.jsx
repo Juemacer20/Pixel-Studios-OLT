@@ -8,8 +8,9 @@ import {
   IconPencil, IconRefresh, IconTrash, IconTerminal2,
   IconPlus, IconX, IconChevronDown, IconChevronRight,
   IconServer, IconWifi, IconWifiOff, IconAlertTriangle,
-  IconCpu, IconCloudDownload, IconSettings,
+  IconCpu, IconCloudDownload, IconSettings, IconDownload, IconEye,
 } from '@tabler/icons-react';
+import toast from 'react-hot-toast';
 
 /* ─── Mock data (fallback when API unavailable) ─────────────────────────── */
 
@@ -257,8 +258,18 @@ export default function OLTs() {
   };
 
   const handleDelete = (olt) => {
-    if (!confirm(`¿Eliminar ${olt.name}? Esta acción no se puede deshacer.`)) return;
+    if (!confirm(`Delete ${olt.name}? This only removes it from the platform (no changes on the OLT).`)) return;
     deleteMut.mutate(olt.id);
+  };
+
+  // Export OLTs list a CSV (solo lectura de la plataforma, no toca la OLT)
+  const exportOlts = () => {
+    const cols = ['id', 'name', 'status', 'ip', 'tcp_port', 'udp_port', 'hw_version', 'sw_version'];
+    const rows = olts.map((o, i) => [i + 1, o.name, o.status, o.ip || o.host, o.tcp_port ?? '', o.udp_port ?? '', o.hw_version ?? o.model ?? '', o.sw_version ?? '']);
+    const csv = [['#', ...cols.slice(1)].join(','), ...rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))].join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'olts.csv'; a.click(); URL.revokeObjectURL(url);
+    toast.success('OLTs list exported');
   };
 
   const handlePoll = async (olt) => {
@@ -291,36 +302,18 @@ export default function OLTs() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* ── Header ── */}
-      <div className="page-header">
-        <h1 className="page-title">OLTs</h1>
+      {/* ── Toolbar (estilo SmartOLT) ── */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <button className="btn btn-primary" onClick={() => setModalOlt(false)}>
           <IconPlus size={14} /> Add OLT
         </button>
-      </div>
-
-      {/* ── Stats bar ── */}
-      <div className="stats-bar">
-        <div className="stat-item">
-          <div className="stat-label"><IconServer size={10} style={{ display: 'inline', marginRight: 4 }} />Total OLTs</div>
-          <div className="stat-value" style={{ color: 'var(--cyan)' }}>{total}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label"><IconWifi size={10} style={{ display: 'inline', marginRight: 4 }} />Online</div>
-          <div className="stat-value" style={{ color: 'var(--green)' }}>{online}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label"><IconWifiOff size={10} style={{ display: 'inline', marginRight: 4 }} />Offline</div>
-          <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{offline}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label"><IconAlertTriangle size={10} style={{ display: 'inline', marginRight: 4 }} />With alerts</div>
-          <div className="stat-value" style={{ color: alerts > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>{alerts}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label"><IconCpu size={10} style={{ display: 'inline', marginRight: 4 }} />Managed ONUs</div>
-          <div className="stat-value" style={{ color: 'var(--purple)' }}>{totalONTs}</div>
-        </div>
+        <button className="btn btn-success" onClick={exportOlts}>
+          <IconDownload size={14} /> Export OLTs list
+        </button>
+        <button className="btn" style={{ borderColor: 'var(--yellow)', color: 'var(--yellow)' }}
+          onClick={() => toast('Find config mismatches — próximamente')}>
+          <IconAlertTriangle size={14} /> Find config mismatches
+        </button>
       </div>
 
       {/* ── Table card ── */}
@@ -341,112 +334,51 @@ export default function OLTs() {
           <table className="table-base">
             <thead>
               <tr>
-                <th style={{ width: 24 }} />
+                <th style={{ width: 64, textAlign: 'center' }}>View</th>
+                <th style={{ width: 40, textAlign: 'center' }}>ID</th>
                 <th>Status</th>
                 <th>Name</th>
                 <th>OLT IP</th>
-                <th>Brand</th>
-                <th>Model</th>
-                <th>PON ports</th>
-                <th>ONUs</th>
-                <th>CPU</th>
-                <th>Uptime</th>
-                <th>Actions</th>
+                <th style={{ textAlign: 'center' }}>TCP</th>
+                <th style={{ textAlign: 'center' }}>UDP</th>
+                <th>OLT hardware version</th>
+                <th>OLT SW version</th>
+                <th style={{ textAlign: 'center', width: 80 }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {olts.map(olt => (
-                <React.Fragment key={olt.id}>
-                  <tr style={{ cursor: 'pointer' }}>
-                    {/* Expand toggle */}
-                    <td onClick={() => toggleExpand(olt.id)} style={{ paddingLeft: 12, paddingRight: 4 }}>
-                      <button className="btn-icon" style={{ width: 20, height: 20, border: 'none' }}>
-                        {expandedId === olt.id
-                          ? <IconChevronDown size={12} style={{ color: 'var(--accent)' }} />
-                          : <IconChevronRight size={12} />}
+              {olts.map((olt, i) => (
+                <tr key={olt.id}>
+                  <td style={{ textAlign: 'center' }}>
+                    <button className="btn btn-primary" style={{ padding: '3px 12px', fontSize: 11 }}
+                      onClick={() => navigate(`/olts/${olt.id}/config`)}>
+                      <IconEye size={12} /> View
+                    </button>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span className="mono" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{i + 1}</span>
+                  </td>
+                  <td><StatusDotOLT status={olt.status} /></td>
+                  <td><span className="mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{olt.name}</span></td>
+                  <td><span className="mono" style={{ color: 'var(--text-secondary)' }}>{olt.ip || olt.host}</span></td>
+                  <td style={{ textAlign: 'center' }}><span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.tcp_port ?? '—'}</span></td>
+                  <td style={{ textAlign: 'center' }}><span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.udp_port ?? '—'}</span></td>
+                  <td><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.hw_version || olt.model || '—'}</span></td>
+                  <td><span className="badge badge-blue">{olt.sw_version || '—'}</span></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <div style={{ display: 'inline-flex', gap: 4 }}>
+                      <button className="btn-icon tooltip" data-tip="Edit"
+                        onClick={() => setModalOlt(olt)}>
+                        <IconPencil size={13} />
                       </button>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}><StatusDotOLT status={olt.status} /></td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span className="mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{olt.name}</span>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span className="mono" style={{ color: 'var(--text-secondary)' }}>{olt.ip || olt.host}</span>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <BrandTag brand={olt.brand} />
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.model}</span>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span style={{ color: 'var(--cyan)', fontFamily: 'monospace', fontSize: 12 }}>{olt._count?.ponPorts ?? olt.pon_ports ?? 0}</span>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span style={{ color: 'var(--purple)', fontFamily: 'monospace', fontSize: 12 }}>{olt._count?.onts ?? olt.ont_count ?? 0}</span>
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <CpuBar value={olt.cpu_usage || 0} />
-                    </td>
-                    <td onClick={() => toggleExpand(olt.id)}>
-                      <span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 11 }}>{formatUptime(olt.uptime)}</span>
-                    </td>
-                    {/* Actions — no row-expand propagation */}
-                    <td>
-                      <div style={{ display: 'flex', gap: 4 }}>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Configurar OLT"
-                          onClick={(e) => { e.stopPropagation(); navigate(`/olts/${olt.id}/config`); }}
-                          style={{ color: 'var(--cyan)' }}
-                        >
-                          <IconSettings size={13} />
-                        </button>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Editar"
-                          onClick={(e) => { e.stopPropagation(); setModalOlt(olt); }}
-                        >
-                          <IconPencil size={13} />
-                        </button>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Sondear ahora"
-                          onClick={(e) => { e.stopPropagation(); handlePoll(olt); }}
-                          style={{ color: pollingId === olt.id ? 'var(--green)' : undefined }}
-                        >
-                          <IconRefresh size={13} style={{ animation: pollingId === olt.id ? 'spin-slow 0.7s linear infinite' : 'none' }} />
-                        </button>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Sincronizar ONUs"
-                          onClick={(e) => { e.stopPropagation(); handleSync(olt); }}
-                          disabled={syncingId === olt.id}
-                          style={{ color: syncingId === olt.id ? 'var(--cyan)' : undefined, opacity: syncingId === olt.id ? 0.7 : 1 }}
-                        >
-                          <IconCloudDownload size={13} style={{ animation: syncingId === olt.id ? 'spin-slow 0.9s linear infinite' : 'none' }} />
-                        </button>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Terminal"
-                          onClick={(e) => { e.stopPropagation(); setTerminalOlt(olt); }}
-                        >
-                          <IconTerminal2 size={13} />
-                        </button>
-                        <button
-                          className="btn-icon tooltip"
-                          data-tip="Eliminar"
-                          onClick={(e) => { e.stopPropagation(); handleDelete(olt); }}
-                          style={{ color: 'var(--red)', borderColor: 'rgba(248,81,73,0.3)' }}
-                        >
-                          <IconTrash size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                  {/* Expanded ports sub-table */}
-                  {expandedId === olt.id && <PortsSubTable oltId={olt.id} />}
-                </React.Fragment>
+                      <button className="btn-icon tooltip" data-tip="Delete"
+                        onClick={() => handleDelete(olt)}
+                        style={{ color: 'var(--red)', borderColor: 'rgba(224,80,79,0.3)' }}>
+                        <IconTrash size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>

@@ -33,10 +33,12 @@ async function main() {
   for (const v of VSOL_OLTS) {
     await prisma.oLT.upsert({
       where: { name: v.name },
-      update: { brand: 'VSOL', model: v.model, status: 'ONLINE' },
+      update: { brand: 'VSOL', model: v.model, status: 'ONLINE', hw_version: `VSOL-${v.model}`, sw_version: 'V2.0', tcp_port: 23, udp_port: 161 },
       create: {
         name: v.name, brand: 'VSOL', model: v.model, ip: v.ip, community: 'public', port: 161,
-        location: v.location, status: 'ONLINE', uptime: BigInt(Math.floor(Math.random() * 5000000) + 86400),
+        location: v.location, status: 'ONLINE', tcp_port: 23, udp_port: 161,
+        hw_version: `VSOL-${v.model}`, sw_version: 'V2.0',
+        uptime: BigInt(Math.floor(Math.random() * 5000000) + 86400),
         cpu_usage: Math.round(10 + Math.random() * 30), temperature: Math.round(33 + Math.random() * 12),
       },
     });
@@ -58,13 +60,17 @@ async function main() {
 
   const oltByNum = {};
   for (const row of d.olts) {
-    const numId = row[1], name = row[3], ip = row[4] || `0.0.0.${numId}`, hw = row[7] || 'MA5800-X15';
+    const numId = row[1], name = row[3], ip = row[4] || `0.0.0.${numId}`;
+    const tcp = parseInt(row[5]) || null, udp = parseInt(row[6]) || null;
+    const hw = (row[7] || 'Huawei-MA5800-X15').trim(), sw = (row[8] || '').trim() || null;
+    const model = hw.replace(/^Huawei-?/, '');
     const created = await prisma.oLT.upsert({
       where: { name },
-      update: { brand: 'Huawei', model: hw.replace(/^Huawei-?/, ''), ip, status: 'ONLINE' },
+      update: { brand: 'Huawei', model, ip, status: 'ONLINE', tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw },
       create: {
-        name, brand: 'Huawei', model: hw.replace(/^Huawei-?/, ''), ip, community: 'public', port: 161,
+        name, brand: 'Huawei', model, ip, community: 'public', port: 161,
         location: name.replace(/^Itelsa-?/, ''), status: 'ONLINE',
+        tcp_port: tcp, udp_port: udp, hw_version: hw, sw_version: sw,
         uptime: BigInt(Math.floor(Math.random() * 8000000) + 86400),
         cpu_usage: Math.round(15 + Math.random() * 35), temperature: Math.round(35 + Math.random() * 15),
       },

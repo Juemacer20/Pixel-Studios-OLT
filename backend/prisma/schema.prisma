@@ -69,6 +69,10 @@ model OLT {
   uptime                BigInt?
   cpu_usage             Float?
   temperature           Float?
+  tcp_port              Int?
+  udp_port              Int?
+  hw_version            String?
+  sw_version            String?
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
 
