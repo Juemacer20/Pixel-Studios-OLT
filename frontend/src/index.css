@@ -487,3 +487,43 @@ html, body {
 /* panel header SmartOLT */
 .sol-card-h { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: #dce8f4; background: rgba(255,255,255,.04); }
 .sol-card-h .more { font-size: 12px; color: #7fb2e6; cursor: pointer; font-weight: 500; }
+
+/* ── Tabla OLTs estilo SmartOLT (barra de cabecera azul + filas con contraste) ── */
+.sol-otable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.sol-otable thead th {
+  background: linear-gradient(180deg, #2c4f78 0%, #21405f 100%);
+  color: #dbe8f5; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em;
+  padding: 12px 14px; text-align: left; white-space: nowrap; border-bottom: 2px solid #16314c;
+}
+.sol-otable thead th:first-child { border-top-left-radius: 10px; }
+.sol-otable thead th:last-child  { border-top-right-radius: 10px; }
+.sol-otable tbody td {
+  padding: 11px 14px; color: #dce8f4; vertical-align: middle;
+  background: rgba(28, 54, 84, 0.38);
+  border-bottom: 1px solid rgba(120,160,200,0.10);
+}
+.sol-otable tbody tr:hover td { background: rgba(43,127,212,0.16); }
+.sol-otable tbody tr:last-child td { border-bottom: none; }
+.sol-otable tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
+.sol-otable tbody tr:last-child td:last-child  { border-bottom-right-radius: 10px; }
+
+/* Botón View azul SmartOLT */
+.sol-viewbtn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: linear-gradient(180deg, #2f8be0, #1f6fc0); color: #fff; border: none;
+  padding: 5px 13px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(31,111,192,.4);
+}
+.sol-viewbtn:hover { background: linear-gradient(180deg, #3a97ec, #2576c8); }
+
+/* Botones de acción rellenos (dark rounded) */
+.sol-act {
+  width: 30px; height: 28px; border-radius: 7px; display: inline-grid; place-items: center;
+  cursor: pointer; border: 1px solid rgba(120,160,200,.22); background: rgba(9,22,38,.55);
+  color: #c4d3e3; transition: all .12s;
+}
+.sol-act:hover { background: rgba(9,22,38,.85); }
+.sol-act.teal  { color: #4fd0c0; border-color: rgba(79,208,192,.4); }
+.sol-act.amber { color: #e6b455; border-color: rgba(230,180,85,.4); }
+.sol-act.red   { color: #e0504f; border-color: rgba(224,80,79,.4); }
+.sol-act.red:hover { background: rgba(224,80,79,.18); }

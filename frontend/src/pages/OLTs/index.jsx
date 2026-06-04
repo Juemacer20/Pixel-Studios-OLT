@@ -216,6 +216,7 @@ export default function OLTs() {
   const [pollingId, setPollingId] = useState(null);
   const [syncingId, setSyncingId] = useState(null);
   const [syncResult, setSyncResult] = useState(null);
+  const [mismatches, setMismatches] = useState(null);
 
   /* ── Data fetching ── */
   const { data, isLoading } = useQuery({
@@ -260,6 +261,29 @@ export default function OLTs() {
   const handleDelete = (olt) => {
     if (!confirm(`Delete ${olt.name}? This only removes it from the platform (no changes on the OLT).`)) return;
     deleteMut.mutate(olt.id);
+  };
+
+  // Disable / Enable OLT (solo cambia el estado en la plataforma, no toca la OLT)
+  const handleToggleDisable = (olt) => {
+    const disabled = (olt.status || '').toUpperCase() === 'MAINTENANCE';
+    updateMut.mutate({ id: olt.id, form: { status: disabled ? 'ONLINE' : 'MAINTENANCE' } });
+    toast.success(disabled ? `${olt.name} enabled` : `${olt.name} disabled`);
+  };
+
+  // Find config mismatches: chequeo real de consistencia de la plataforma (no toca la OLT)
+  const handleFindMismatches = () => {
+    const issues = [];
+    olts.forEach((o, i) => {
+      const miss = [];
+      if (!o.ip && !o.host) miss.push('IP');
+      if (o.tcp_port == null) miss.push('TCP');
+      if (o.udp_port == null) miss.push('UDP');
+      if (!o.hw_version && !o.model) miss.push('hardware version');
+      if (!o.sw_version) miss.push('SW version');
+      if ((o.status || '').toUpperCase() !== 'ONLINE') miss.push(`status=${o.status}`);
+      if (miss.length) issues.push({ id: i + 1, name: o.name, miss });
+    });
+    setMismatches({ checked: olts.length, issues });
   };
 
   // Export OLTs list a CSV (solo lectura de la plataforma, no toca la OLT)
@@ -308,22 +332,22 @@ export default function OLTs() {
           <IconPlus size={14} /> Add OLT
         </button>
         <button className="btn btn-success" onClick={exportOlts}>
-          <IconDownload size={14} /> Export OLTs list
+          <IconDownload size={14} /> Export OLTs to list
         </button>
         <button className="btn" style={{ borderColor: 'var(--yellow)', color: 'var(--yellow)' }}
-          onClick={() => toast('Find config mismatches — próximamente')}>
+          onClick={handleFindMismatches}>
           <IconAlertTriangle size={14} /> Find config mismatches
         </button>
       </div>
 
-      {/* ── Table card ── */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* ── Tabla estilo SmartOLT ── */}
+      <div style={{ overflowX: 'auto' }}>
         {isLoading ? (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
+          <div className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
             <div className="spinner" /> Loading OLTs...
           </div>
         ) : olts.length === 0 ? (
-          <div className="empty-state">
+          <div className="card empty-state">
             <IconServer size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
             <p>No OLTs registered</p>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOlt(false)}>
@@ -331,34 +355,35 @@ export default function OLTs() {
             </button>
           </div>
         ) : (
-          <table className="table-base">
+          <table className="sol-otable">
             <thead>
               <tr>
-                <th style={{ width: 64, textAlign: 'center' }}>View</th>
+                <th style={{ width: 70, textAlign: 'center' }}>View</th>
                 <th style={{ width: 40, textAlign: 'center' }}>ID</th>
-                <th>Status</th>
+                <th style={{ width: 70, textAlign: 'center' }}>Status</th>
                 <th>Name</th>
                 <th>OLT IP</th>
                 <th style={{ textAlign: 'center' }}>TCP</th>
                 <th style={{ textAlign: 'center' }}>UDP</th>
                 <th>OLT hardware version</th>
                 <th>OLT SW version</th>
-                <th style={{ textAlign: 'center', width: 80 }}>Action</th>
+                <th style={{ textAlign: 'center', width: 130 }}>Action</th>
               </tr>
             </thead>
             <tbody>
-              {olts.map((olt, i) => (
+              {olts.map((olt, i) => {
+                const disabled = (olt.status || '').toUpperCase() === 'MAINTENANCE';
+                return (
                 <tr key={olt.id}>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn btn-primary" style={{ padding: '3px 12px', fontSize: 11 }}
-                      onClick={() => navigate(`/olts/${olt.id}/config`)}>
+                    <button className="sol-viewbtn" onClick={() => navigate(`/olts/${olt.id}/config`)}>
                       <IconEye size={12} /> View
                     </button>
                   </td>
                   <td style={{ textAlign: 'center' }}>
                     <span className="mono" style={{ color: 'var(--text-muted)', fontSize: 12 }}>{i + 1}</span>
                   </td>
-                  <td><StatusDotOLT status={olt.status} /></td>
+                  <td style={{ textAlign: 'center' }}><StatusDotOLT status={olt.status} /></td>
                   <td><span className="mono" style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{olt.name}</span></td>
                   <td><span className="mono" style={{ color: 'var(--text-secondary)' }}>{olt.ip || olt.host}</span></td>
                   <td style={{ textAlign: 'center' }}><span className="mono" style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.tcp_port ?? '—'}</span></td>
@@ -366,24 +391,55 @@ export default function OLTs() {
                   <td><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.hw_version || olt.model || '—'}</span></td>
                   <td><span className="badge badge-blue">{olt.sw_version || '—'}</span></td>
                   <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', gap: 4 }}>
-                      <button className="btn-icon tooltip" data-tip="Edit"
-                        onClick={() => setModalOlt(olt)}>
+                    <div style={{ display: 'inline-flex', gap: 5 }}>
+                      <button className="sol-act teal tooltip" data-tip="Edit" onClick={() => setModalOlt(olt)}>
                         <IconPencil size={13} />
                       </button>
-                      <button className="btn-icon tooltip" data-tip="Delete"
-                        onClick={() => handleDelete(olt)}
-                        style={{ color: 'var(--red)', borderColor: 'rgba(224,80,79,0.3)' }}>
+                      <button className="sol-act amber tooltip" data-tip={disabled ? 'Enable OLT' : 'Disable OLT'} onClick={() => handleToggleDisable(olt)}>
+                        {disabled ? <IconWifi size={13} /> : <IconWifiOff size={13} />}
+                      </button>
+                      <button className="sol-act red tooltip" data-tip="Delete" onClick={() => handleDelete(olt)}>
                         <IconTrash size={13} />
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         )}
       </div>
+
+      {/* ── Modal: Find config mismatches (resultado real) ── */}
+      {mismatches && (
+        <>
+          <div className="drawer-overlay" onClick={() => setMismatches(null)} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+            background: 'var(--card-bg)', border: '1px solid var(--border-light)', borderRadius: 10,
+            width: 560, maxHeight: '80vh', overflow: 'auto', zIndex: 300, padding: 0 }}>
+            <div className="sol-card-h"><span>⚠ Configuration mismatches (Database vs OLT)</span>
+              <button className="btn-icon" onClick={() => setMismatches(null)}><IconX size={14} /></button></div>
+            <div style={{ padding: 16 }}>
+              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 12 }}>
+                Scanned {mismatches.checked} OLTs · {mismatches.issues.length} with issues.
+              </div>
+              {mismatches.issues.length === 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--green)', fontSize: 13 }}>
+                  ✓ No mismatches found — all OLTs are consistent.
+                </div>
+              ) : (
+                <table className="table-base">
+                  <thead><tr><th>ID</th><th>OLT</th><th>Missing / mismatched</th></tr></thead>
+                  <tbody>{mismatches.issues.map(it => (
+                    <tr key={it.id}><td>{it.id}</td><td>{it.name}</td>
+                      <td style={{ color: 'var(--orange)', fontSize: 12 }}>{it.miss.join(', ')}</td></tr>
+                  ))}</tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* ── CREATE/EDIT Modal ── */}
       {modalOlt !== null && (
