@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, LineChart, Line,
@@ -611,6 +612,7 @@ function SortTh({ children, sortKey, sortState, onSort, style }) {
 /* ─── Main page ──────────────────────────────────────────────────────────── */
 export default function ONTs() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const [search,       setSearch]       = useState('');
   const [filterOLT,    setFilterOLT]    = useState('');
@@ -979,10 +981,10 @@ export default function ONTs() {
                     {/* Status */}
                     <td><StatusBadge status={ont.status} /></td>
 
-                    {/* View (botón azul SmartOLT) */}
+                    {/* View (botón azul SmartOLT) → página completa de gestión */}
                     <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                       <button className="btn btn-primary" style={{ padding: '3px 9px', fontSize: 11 }}
-                        onClick={() => setDrawerONT(ont)}>
+                        onClick={() => navigate(`/onts/view/${ont.id}`)}>
                         <IconEye size={12} /> View
                       </button>
                     </td>

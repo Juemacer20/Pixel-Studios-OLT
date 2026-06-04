@@ -9,6 +9,7 @@ const Dashboard        = React.lazy(() => import('./pages/Dashboard'));
 const OLTs             = React.lazy(() => import('./pages/OLTs'));
 const OLTConfig        = React.lazy(() => import('./pages/OLTConfig'));
 const ONTs             = React.lazy(() => import('./pages/ONTs'));
+const ONUView          = React.lazy(() => import('./pages/ONUView'));
 const Clients          = React.lazy(() => import('./pages/Clients'));
 const MapView          = React.lazy(() => import('./pages/MapView'));
 const TR069            = React.lazy(() => import('./pages/TR069'));
@@ -43,6 +44,7 @@ function AppLayout() {
               <Route path="/dashboard"       element={<Dashboard />} />
               <Route path="/olts"             element={<OLTs />} />
               <Route path="/olts/:id/config" element={<OLTConfig />} />
+              <Route path="/onts/view/:id"   element={<ONUView />} />
               <Route path="/onts/*"          element={<ONTs />} />
               <Route path="/clients/*"       element={<Clients />} />
               <Route path="/map"             element={<MapView />} />
