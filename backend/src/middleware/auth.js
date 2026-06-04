@@ -15,6 +15,11 @@ function verifyToken(req, res, next) {
       return res.status(403).json({ error: 'Invalid token' });
     }
     req.user = decoded;
+    // Enforce read-only: usuarios 'readonly' solo pueden hacer lecturas (GET/HEAD/OPTIONS).
+    const SAFE = ['GET', 'HEAD', 'OPTIONS'];
+    if (req.user.role === 'readonly' && !SAFE.includes(req.method)) {
+      return res.status(403).json({ error: 'Read-only user: write operations are not allowed' });
+    }
     next();
   });
 }

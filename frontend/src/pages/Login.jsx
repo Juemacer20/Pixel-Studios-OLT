@@ -4,7 +4,7 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 
 export default function Login() {
-  const [email,    setEmail]    = useState('admin@pixel-studios.com');
+  const [email,    setEmail]    = useState('admin@itelsa.com.ar');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);

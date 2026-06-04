@@ -4,13 +4,16 @@ const { generateTokens, verifyToken } = require('../middleware/auth');
 const { auth: authLimiter } = require('../middleware/rateLimiter');
 const router = express.Router();
 
-// bcrypt hash of "password" — change in production or use DB-backed auth
-const DEMO_HASH = '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
+// Credenciales de la plataforma. Se pueden sobrescribir por env (AUTH_*_EMAIL/HASH).
+// Generadas 2026-06-04 — reemplazan a las demo. Cambiables por ENV en prod.
+const RW_HASH = process.env.AUTH_RW_HASH || '$2a$10$hgT5za2DNHV9Z/tkSu2KFepyIT5PRw3ShW.BlV77tUwTpsMa34gNW';
+const RO_HASH = process.env.AUTH_RO_HASH || '$2a$10$z.3gKg/Ia/4N8dh.dz2ayOF.E7UX7SgXd/FAMQv6hCDtdiel12hr6';
 
 const users = [
-  { id: '1', email: 'admin@pixel-studios.com', password: DEMO_HASH, role: 'admin', name: 'Administrador' },
-  { id: '2', email: 'noc@pixel-studios.com', password: DEMO_HASH, role: 'noc', name: 'Operador NOC' },
-  { id: '3', email: 'viewer@pixel-studios.com', password: DEMO_HASH, role: 'readonly', name: 'Solo Lectura' },
+  // Usuario de ESCRITURA (lectura+escritura, gestión completa)
+  { id: '1', email: process.env.AUTH_RW_EMAIL || 'admin@itelsa.com.ar', password: RW_HASH, role: 'admin', name: 'Administrador ITELSA' },
+  // Usuario de LECTURA (solo consulta)
+  { id: '2', email: process.env.AUTH_RO_EMAIL || 'lectura@itelsa.com.ar', password: RO_HASH, role: 'readonly', name: 'Lectura ITELSA' },
 ];
 
 router.post('/login', authLimiter, async (req, res, next) => {
