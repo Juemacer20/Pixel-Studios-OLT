@@ -6,3 +6,4 @@ build/
 .DS_Store
 backend/data/real-data.json
 backend/data/olt-communities.json
+backend/data/platform-communities.json

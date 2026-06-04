@@ -62,6 +62,9 @@ async function main() {
   // Communities SNMP reales por OLT (relevadas de SmartOLT) si existen
   let comms = {};
   try { comms = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'olt-communities.json'), 'utf8')); } catch {}
+  // Communities PROPIAS de la plataforma (creadas en la OLT) — tienen prioridad, no se pisan.
+  let platformComms = {};
+  try { platformComms = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'data', 'platform-communities.json'), 'utf8')); } catch {}
 
   const oltByNum = {};
   for (const row of d.olts) {
@@ -71,8 +74,10 @@ async function main() {
     const udp = parseInt(cm.snmp_udp) || parseInt(row[6]) || null;
     const hw = (row[7] || 'Huawei-MA5800-X15').trim(), sw = (cm.sw || row[8] || '').replace(/\s*\(Detected\)/i, '').trim() || null;
     const model = hw.replace(/^Huawei-?/, '');
+    const pc = platformComms[name] || {};
     const snmpFields = {
-      snmp_read: cm.snmp_read || null, snmp_write: cm.snmp_write || null,
+      snmp_read: pc.snmp_read || cm.snmp_read || null,   // la propia de la plataforma tiene prioridad
+      snmp_write: pc.snmp_write || cm.snmp_write || null,
       telnet_user: cm.telnet_user || null, pon_type: 'GPON',
     };
     const created = await prisma.oLT.upsert({
