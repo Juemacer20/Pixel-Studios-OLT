@@ -377,11 +377,11 @@ function BackupTab({ data, onChange }) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 const TABS = [
-  { label: 'General',              icon: <IconSettings size={13} /> },
-  { label: 'Polling',              icon: <IconClock size={13} /> },
-  { label: 'Umbrales de Señal',    icon: <IconWifi size={13} /> },
-  { label: 'Notificaciones',       icon: <IconBell size={13} /> },
-  { label: 'Backup',               icon: <IconDatabase size={13} /> },
+  { label: 'General',           icon: <IconSettings size={13} /> },
+  { label: 'Polling',           icon: <IconClock size={13} /> },
+  { label: 'Signal thresholds', icon: <IconWifi size={13} /> },
+  { label: 'Notifications',     icon: <IconBell size={13} /> },
+  { label: 'Backup',            icon: <IconDatabase size={13} /> },
 ];
 
 export default function Settings() {
@@ -395,7 +395,7 @@ export default function Settings() {
       <div className="page-header">
         <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IconSettings size={18} style={{ color: 'var(--accent)' }} />
-          Configuración
+          General settings
         </h1>
       </div>
 

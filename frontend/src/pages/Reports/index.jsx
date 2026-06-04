@@ -212,7 +212,7 @@ export default function Reports() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="page-header">
-        <span className="page-title">Reportes</span>
+        <span className="page-title">Reports</span>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <DateRange from={from} to={to} onFromChange={setFrom} onToChange={setTo} />
           <button className="btn btn-primary" onClick={() => exportCSV(dataMap[tab](), nameMap[tab])}>

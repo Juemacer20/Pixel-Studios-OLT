@@ -54,7 +54,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <IconShieldCheck size={16} style={{ color: 'var(--green)' }} />
-            <h3 style={{ fontSize: 14, fontWeight: 600 }}>Autorizar ONT</h3>
+            <h3 style={{ fontSize: 14, fontWeight: 600 }}>Authorize ONU</h3>
           </div>
           <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
         </div>
@@ -87,7 +87,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
               className="input-base"
               value={form.client}
               onChange={e => set('client', e.target.value)}
-              placeholder="Nombre o ID de cliente..."
+              placeholder="Client name or ID…"
             />
           </div>
 
@@ -101,7 +101,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
               value={form.profileId}
               onChange={e => set('profileId', e.target.value)}
             >
-              <option value="">Seleccionar perfil...</option>
+              <option value="">Select profile…</option>
               {profiles.map(p => (
                 <option key={p.id} value={p.id}>
                   {p.name} — ↓{p.download}Mbps / ↑{p.upload}Mbps
@@ -142,7 +142,7 @@ function AuthorizeModal({ ont, profiles, onClose, onAuthorize }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancel</button>
           <button
             className="btn btn-primary"
             onClick={handleSubmit}
@@ -275,7 +275,7 @@ export default function ZTP() {
       {/* ── Header ── */}
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h1 className="page-title">Zero Touch Provisioning</h1>
+          <h1 className="page-title">Unconfigured ONUs</h1>
           {totalPending > 0 && (
             <span className="badge badge-orange" style={{ animation: 'pulse-orange 2s infinite' }}>
               <IconClock size={10} />
@@ -353,7 +353,7 @@ export default function ZTP() {
         ) : visiblePending.length === 0 ? (
           <div className="empty-state">
             <IconCheck size={32} style={{ margin: '0 auto 12px', color: 'var(--green)' }} />
-            <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>Sin ONTs pendientes</p>
+            <p style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>No unconfigured ONUs</p>
             <p style={{ fontSize: 12, marginTop: 6 }}>
               Cuando se detecte una nueva ONT aparecerá aquí para autorización.
             </p>
@@ -372,7 +372,7 @@ export default function ZTP() {
                 </th>
                 <th>Serial</th>
                 <th>MAC</th>
-                <th>OLT detectada</th>
+                <th>Detected OLT</th>
                 <th>Puerto</th>
                 <th>Primera vez visto</th>
                 <th>Acciones</th>

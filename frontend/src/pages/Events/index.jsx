@@ -90,7 +90,7 @@ export default function Events() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Eventos</h1>
+          <h1 className="page-title">Tasks</h1>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             Última actualización: {lastRefresh.toLocaleTimeString('es-AR')}
           </span>
@@ -132,7 +132,7 @@ export default function Events() {
           <input
             className="input-base"
             style={{ paddingLeft: 28 }}
-            placeholder="Buscar tipo, mensaje, ONT..."
+            placeholder="Search type, message, ONU…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
@@ -170,7 +170,7 @@ export default function Events() {
                 <th>OLT</th>
                 <th>ONT</th>
                 <th>Mensaje</th>
-                <th>Estado</th>
+                <th>Status</th>
                 <th>Acciones</th>
               </tr>
             </thead>

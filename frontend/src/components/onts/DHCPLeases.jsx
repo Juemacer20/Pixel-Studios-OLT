@@ -4,7 +4,7 @@ import CopyButton from '../shared/CopyButton';
 
 export default function DHCPLeases({ ontId }) {
   const { data: leases = [], isLoading } = useDHCPLeases(ontId);
-  if (isLoading) return <div className="text-xs text-gray-600 text-center py-4">Cargando...</div>;
+  if (isLoading) return <div className="text-xs text-gray-600 text-center py-4">Loading...</div>;
   if (!leases.length) return <div className="text-xs text-gray-600 text-center py-4">Sin leases activos</div>;
   return (
     <div className="flex flex-col gap-1 text-xs">

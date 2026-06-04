@@ -160,7 +160,7 @@ function ProfileModal({ profile, onClose, onSave }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 20 }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancel</button>
           <button
             className="btn btn-primary"
             onClick={handleSave}
@@ -238,7 +238,7 @@ export default function SpeedProfiles() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Header ── */}
       <div className="page-header">
-        <h1 className="page-title">Perfiles de Velocidad</h1>
+        <h1 className="page-title">Speed profiles</h1>
         <button className="btn btn-primary" onClick={() => setModalProfile(false)}>
           <IconPlus size={14} /> Nuevo perfil
         </button>
@@ -278,7 +278,7 @@ export default function SpeedProfiles() {
         ) : profiles.length === 0 ? (
           <div className="empty-state">
             <IconBolt size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
-            <p>No hay perfiles de velocidad</p>
+            <p>No speed profiles</p>
             <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalProfile(false)}>
               <IconPlus size={13} /> Crear primer perfil
             </button>
@@ -287,11 +287,11 @@ export default function SpeedProfiles() {
           <table className="table-base">
             <thead>
               <tr>
-                <th>Nombre</th>
-                <th>Descarga (Mbps)</th>
-                <th>Subida (Mbps)</th>
+                <th>Name</th>
+                <th>Download (Mbps)</th>
+                <th>Upload (Mbps)</th>
                 <th>Burst</th>
-                <th>ONTs usando</th>
+                <th>ONUs using</th>
                 <th>Acciones</th>
               </tr>
             </thead>

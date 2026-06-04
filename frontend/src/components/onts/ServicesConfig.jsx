@@ -6,13 +6,13 @@ export default function ServicesConfig({ ontId }) {
   const toggle = (key) => setServices(s => { const ns = { ...s, [key]: !s[key] }; toast.success(`Servicio ${key} ${ns[key] ? 'activado' : 'desactivado'}`); return ns; });
   return (
     <div className="flex flex-col gap-3 text-xs">
-      {[['datos', 'Datos', '#00D4FF', '🌐'], ['voip', 'VoIP', '#00FF94', '📞'], ['iptv', 'IPTV', '#A855F7', '📺']].map(([key, label, color, icon]) => (
+      {[['datos', 'Data', '#00D4FF', '🌐'], ['voip', 'VoIP', '#00FF94', '📞'], ['iptv', 'IPTV', '#A855F7', '📺']].map(([key, label, color, icon]) => (
         <div key={key} className="flex items-center justify-between p-3 rounded-lg" style={{ background: '#1A2235', border: `1px solid ${services[key] ? color + '33' : '#1E2D45'}` }}>
           <div className="flex items-center gap-2">
             <span>{icon}</span>
             <div>
               <div className="font-medium text-gray-200">{label}</div>
-              <div className="text-[10px] text-gray-600">{services[key] ? 'Activo' : 'Inactivo'}</div>
+              <div className="text-[10px] text-gray-600">{services[key] ? 'Active' : 'Inactive'}</div>
             </div>
           </div>
           <button onClick={() => toggle(key)} className="w-10 h-5 rounded-full transition-colors relative"

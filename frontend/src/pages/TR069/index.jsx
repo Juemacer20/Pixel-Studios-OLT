@@ -94,7 +94,7 @@ function DeviceDrawer({ device, onClose }) {
           {tab === 1 && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="card" style={{ padding: '12px 14px' }}>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Firmware actual</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Current firmware</div>
                 <div className="mono" style={{ fontSize: 13, color: 'var(--text-primary)' }}>{device.firmware}</div>
                 {device.fw_new && (
                   <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(63,185,80,0.08)', border: '1px solid rgba(63,185,80,0.2)', borderRadius: 6, fontSize: 12, color: 'var(--green)' }}>
@@ -103,10 +103,10 @@ function DeviceDrawer({ device, onClose }) {
                 )}
               </div>
               <div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Actualizar firmware</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 8 }}>Upgrade firmware</div>
                 <input
                   className="input-base"
-                  placeholder="URL del firmware (.bin)"
+                  placeholder="Firmware URL (.bin)"
                   value={fwFile}
                   onChange={e => setFwFile(e.target.value)}
                   style={{ marginBottom: 8 }}
@@ -176,21 +176,21 @@ export default function TR069() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
       <div className="page-header">
-        <span className="page-title">TR-069 / ACS</span>
+        <span className="page-title">VPN & TR069</span>
         <button className="btn-icon" title="Refrescar"><IconRefresh size={14} /></button>
       </div>
 
       {/* Stats bar */}
       <div className="stats-bar">
-        <div className="stat-item"><div className="stat-label">Total dispositivos</div><div className="stat-value" style={{ color: 'var(--text-primary)', fontSize: 16 }}>{allDevices.length}</div></div>
+        <div className="stat-item"><div className="stat-label">Total devices</div><div className="stat-value" style={{ color: 'var(--text-primary)', fontSize: 16 }}>{allDevices.length}</div></div>
         <div className="stat-item"><div className="stat-label">Online</div><div className="stat-value" style={{ color: 'var(--green)', fontSize: 16 }}>{online}</div></div>
         <div className="stat-item"><div className="stat-label">Offline</div><div className="stat-value" style={{ color: 'var(--text-muted)', fontSize: 16 }}>{allDevices.length - online}</div></div>
-        <div className="stat-item"><div className="stat-label">Con tarea pendiente</div><div className="stat-value" style={{ color: 'var(--orange)', fontSize: 16 }}>{pending}</div></div>
+        <div className="stat-item"><div className="stat-label">With pending task</div><div className="stat-value" style={{ color: 'var(--orange)', fontSize: 16 }}>{pending}</div></div>
       </div>
 
       {/* Search */}
       <div style={{ maxWidth: 320 }}>
-        <input className="input-base" value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar por serial, modelo o IP..." />
+        <input className="input-base" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by serial, model or IP…" />
       </div>
 
       {/* Table */}
@@ -201,10 +201,10 @@ export default function TR069() {
               <th>Serial</th>
               <th>Modelo</th>
               <th>IP</th>
-              <th>Firmware actual</th>
-              <th>Nuevo FW</th>
+              <th>Current firmware</th>
+              <th>New FW</th>
               <th>Última conexión</th>
-              <th>Estado</th>
+              <th>Status</th>
               <th></th>
             </tr>
           </thead>

@@ -5,10 +5,10 @@ const PORTS = [1, 2, 3, 4];
 
 export default function EthernetPorts({ ontId }) {
   const [vlans, setVlans] = useState({ 1: '', 2: '', 3: '', 4: '' });
-  const save = (port) => { toast.success(`VLAN ${vlans[port]} aplicada en Puerto ${port}`); };
+  const save = (port) => { toast.success(`VLAN ${vlans[port]} aplicada en Port ${port}`); };
   return (
     <div className="flex flex-col gap-2 text-xs">
-      <div className="text-[10px] text-gray-600 mb-1">Configuración de puertos ETH</div>
+      <div className="text-[10px] text-gray-600 mb-1">ETH port configuration</div>
       <div className="grid grid-cols-2 gap-2">
         {PORTS.map(port => (
           <div key={port} className="rounded-lg p-3" style={{ background: '#1A2235', border: '1px solid #1E2D45' }}>

@@ -110,7 +110,7 @@ export default function PonPorts() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
       {/* Header */}
       <div className="page-header">
-        <span className="page-title">Puertos PON</span>
+        <span className="page-title">Diagnostics</span>
         <select
           className="select-base"
           value={selectedOLT}
@@ -123,7 +123,7 @@ export default function PonPorts() {
       {/* Stats bar */}
       <div className="stats-bar">
         <div className="stat-item">
-          <div className="stat-label">Total Puertos</div>
+          <div className="stat-label">Total ports</div>
           <div className="stat-value" style={{ color: 'var(--cyan)', fontSize: 16 }}>{ports.length}</div>
         </div>
         <div className="stat-item">
@@ -131,7 +131,7 @@ export default function PonPorts() {
           <div className="stat-value" style={{ color: 'var(--green)', fontSize: 16 }}>{onlinePorts}</div>
         </div>
         <div className="stat-item">
-          <div className="stat-label">Total ONTs</div>
+          <div className="stat-label">Total ONUs</div>
           <div className="stat-value" style={{ color: 'var(--text-primary)', fontSize: 16 }}>{totalONTs}</div>
         </div>
         <div className="stat-item">

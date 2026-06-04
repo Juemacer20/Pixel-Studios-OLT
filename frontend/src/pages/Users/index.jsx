@@ -90,10 +90,10 @@ function UserModal({ user, onSave, onClose }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {/* Name */}
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Nombre</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Name</label>
               <input
                 className="input-base"
-                placeholder="Nombre completo"
+                placeholder="Full name"
                 value={form.name}
                 onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                 style={errors.name ? { borderColor: 'var(--red)' } : {}}
@@ -133,7 +133,7 @@ function UserModal({ user, onSave, onClose }) {
 
             {/* Role */}
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Rol</label>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Role</label>
               <div style={{ display: 'flex', gap: 8 }}>
                 {ROLES.map(r => (
                   <button
@@ -170,7 +170,7 @@ function UserModal({ user, onSave, onClose }) {
 
           {/* Footer */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16, paddingTop: 14, borderTop: '1px solid var(--border)' }}>
-            <button className="btn" onClick={onClose}>Cancelar</button>
+            <button className="btn" onClick={onClose}>Cancel</button>
             <button className="btn btn-primary" onClick={handleSave}>
               <IconCheck size={13} /> {isEdit ? 'Guardar cambios' : 'Crear usuario'}
             </button>
@@ -191,7 +191,7 @@ function DeleteModal({ user, onConfirm, onClose }) {
         onClick={e => e.stopPropagation()}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--red)' }}>Eliminar usuario</span>
+          <span style={{ fontWeight: 700, fontSize: 14, color: 'var(--red)' }}>Delete user</span>
           <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
         </div>
         <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 16 }}>
@@ -199,7 +199,7 @@ function DeleteModal({ user, onConfirm, onClose }) {
           Esta acción no se puede deshacer.
         </p>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-          <button className="btn" onClick={onClose}>Cancelar</button>
+          <button className="btn" onClick={onClose}>Cancel</button>
           <button className="btn btn-danger" onClick={onConfirm}>
             <IconTrash size={13} /> Eliminar
           </button>
@@ -275,11 +275,11 @@ export default function Users() {
         <table className="table-base">
           <thead>
             <tr>
-              <th>Usuario</th>
+              <th>User</th>
               <th>Email</th>
-              <th>Rol</th>
-              <th>Último acceso</th>
-              <th>Activo</th>
+              <th>Role</th>
+              <th>Last access</th>
+              <th>Active</th>
               <th>Acciones</th>
             </tr>
           </thead>

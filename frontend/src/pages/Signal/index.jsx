@@ -116,7 +116,7 @@ export default function Signal() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
       <div className="page-header">
-        <span className="page-title">Señal</span>
+        <span className="page-title">Graphs</span>
         <div style={{ display: 'flex', gap: 6 }}>
           {['24h','7d','30d'].map(r => (
             <button key={r} className="btn"
@@ -134,7 +134,7 @@ export default function Signal() {
       {/* ONT selector */}
       <div className="card" style={{ padding: '12px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Comparar ONTs (máx 5):</span>
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontWeight: 600 }}>Compare ONUs (max 5):</span>
           {selected.map((ont, idx) => (
             <span key={ont.id} className="badge badge-blue" style={{ gap: 6 }}>
               <span className="mono" style={{ fontSize: 10 }}>{ont.serial_number.slice(-8)}</span>
@@ -158,7 +158,7 @@ export default function Signal() {
                     <div style={{ position: 'relative' }}>
                       <IconSearch size={13} style={{ position: 'absolute', left: 8, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                       <input className="input-base" style={{ paddingLeft: 28, fontSize: 12 }}
-                        value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar ONT..." autoFocus />
+                        value={search} onChange={e => setSearch(e.target.value)} placeholder="Search ONU…" autoFocus />
                     </div>
                   </div>
                   <div style={{ maxHeight: 200, overflowY: 'auto' }}>
@@ -188,7 +188,7 @@ export default function Signal() {
         {selected.length === 0 ? (
           <div className="empty-state" style={{ height: 180 }}>
             <IconSearch size={32} style={{ margin: '0 auto 8px', color: 'var(--text-muted)', display: 'block' }} />
-            <div>Agrega hasta 5 ONTs para comparar su señal en el tiempo</div>
+            <div>Add up to 5 ONUs to compare their signal over time</div>
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={220}>

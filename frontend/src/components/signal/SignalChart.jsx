@@ -117,7 +117,7 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>
-          Historial de Señal
+          Signal history
           {isError && (
             <span style={{ color: 'var(--orange)', marginLeft: 8, fontWeight: 400 }}>
               (demo)
@@ -160,7 +160,7 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
           }}
         >
           <span className="spinner" />
-          Cargando...
+          Loading...
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={height}>

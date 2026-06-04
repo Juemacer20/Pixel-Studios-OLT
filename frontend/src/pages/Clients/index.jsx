@@ -391,7 +391,7 @@ export default function Clients() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Header ── */}
       <div className="page-header">
-        <h1 className="page-title">Clientes</h1>
+        <h1 className="page-title">Clients</h1>
       </div>
 
       {/* ── Search ── */}
