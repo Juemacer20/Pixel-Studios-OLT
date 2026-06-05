@@ -29,10 +29,9 @@ function uptimeStr(o) {
   // SNMP sysUpTime viene en timeticks (1/100 s)
   const secs = Math.floor(Number(tt) / 100);
   if (!isFinite(secs) || secs <= 0) return '—';
-  const dd = Math.floor(secs / 86400), hh = Math.floor((secs % 86400) / 3600),
-        mm = Math.floor((secs % 3600) / 60), ss = secs % 60;
+  const dd = Math.floor(secs / 86400), hh = Math.floor((secs % 86400) / 3600), mm = Math.floor((secs % 3600) / 60);
   const p = n => String(n).padStart(2, '0');
-  return `${dd}d ${p(hh)}:${p(mm)}:${p(ss)}`;
+  return `${dd} days, ${p(hh)}:${p(mm)}`;
 }
 function hhmm(iso) { try { return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return ''; } }
 
@@ -61,6 +60,7 @@ const NET_TABS = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly'];
 export default function Dashboard() {
   useAlerts({ resolved: false });
   const [netTab, setNetTab] = useState('Daily');
+  const [ponGroup, setPonGroup] = useState('OLT');
 
   const { data: sum } = useQuery({
     queryKey: ['dashboard', 'summary'],
@@ -203,13 +203,29 @@ export default function Dashboard() {
 
           {/* PON outage — tabla real */}
           <div className="card" style={{ padding: 0 }}>
-            <div className="sol-card-h"><span>⚡ PON outage</span></div>
+            <div className="sol-card-h">
+              <span>⚡ PON outage</span>
+              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>Group by:&nbsp;
+                {['OLT', 'Zone'].map((g, i) => (
+                  <button key={g} onClick={() => setPonGroup(g)} style={{
+                    fontSize: 11, padding: '2px 8px', marginLeft: 4, borderRadius: 5, cursor: 'pointer',
+                    border: '1px solid', borderColor: ponGroup === g ? 'var(--accent)' : 'transparent',
+                    background: ponGroup === g ? 'rgba(43,127,212,.18)' : 'transparent',
+                    color: ponGroup === g ? '#7fb6ec' : 'var(--text-muted)', fontFamily: 'inherit',
+                  }}>{g}</button>
+                ))}
+              </span>
+            </div>
             <div style={{ padding: 14 }}>
+              {/* Power outages - monitor grid */}
+              <div style={{ fontSize: 12.5, color: 'var(--text-secondary)', marginBottom: 8 }}>
+                Power outages - monitor grid — <b style={{ color: '#f0b35a' }}>{pon.active?.pons ?? 0}</b> PON / <b style={{ color: '#f0b35a' }}>{pon.active?.subs ?? 0}</b> Subscribers
+              </div>
               {pon.rows.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 8 }}>No PON outages</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 8 }}>No active outages</div>
               ) : (
                 <table className="table-base">
-                  <thead><tr><th>OLT</th><th style={{ textAlign: 'center' }}>PONs</th><th style={{ textAlign: 'center' }}>Subscribers</th><th>Since</th></tr></thead>
+                  <thead><tr><th>{ponGroup}</th><th style={{ textAlign: 'center' }}>PONs</th><th style={{ textAlign: 'center' }}>Subscribers</th><th>Since</th></tr></thead>
                   <tbody>
                     {pon.rows.slice(0, 8).map((r, i) => (
                       <tr key={i}>
@@ -224,7 +240,7 @@ export default function Dashboard() {
               )}
               <div style={{ marginTop: 10, fontSize: 12, color: 'var(--text-secondary)',
                 background: 'rgba(224,138,22,0.08)', border: '1px solid rgba(224,138,22,0.2)', borderRadius: 8, padding: '10px 12px' }}>
-                Probably disconnected (down &gt; 7 days) → <b style={{ color: '#f0b35a' }}>{pon.totalPons}</b> PON / <b style={{ color: '#f0b35a' }}>{pon.totalSubs}</b> Subscribers
+                Stale / probably decommissioned (down &gt; 7 days) — <b style={{ color: '#f0b35a' }}>{pon.stale?.pons ?? 0}</b> PON / <b style={{ color: '#f0b35a' }}>{pon.stale?.subs ?? 0}</b> Subscribers
               </div>
             </div>
           </div>
@@ -234,7 +250,7 @@ export default function Dashboard() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div className="card" style={{ padding: 0 }}>
             <div className="sol-card-h"><span><IconServer2 size={14} style={{ verticalAlign: -2 }} /> OLTs</span>
-              <NavLink to="/olts" className="more">View all ▸</NavLink></div>
+              <NavLink to="/olts" className="more">All ▸</NavLink></div>
             <div style={{ padding: '6px 14px' }}>
               {olts.length === 0 && <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 13 }}>No OLTs</div>}
               {olts.map(o => (
@@ -245,6 +261,7 @@ export default function Dashboard() {
                     boxShadow: (o.status || '').toUpperCase() === 'ONLINE' ? '0 0 7px rgba(35,168,90,.8)' : 'none' }} />
                   <span style={{ flex: 1, color: '#dbe6f1' }}>{o.name || o.host}</span>
                   <span style={{ color: 'var(--text-muted)', fontSize: 11.5 }}>{uptimeStr(o)}</span>
+                  {o.temperature != null && <span style={{ color: 'var(--text-muted)', fontSize: 11.5, minWidth: 38, textAlign: 'right' }}>{Math.round(o.temperature)}°C</span>}
                 </div>
               ))}
             </div>

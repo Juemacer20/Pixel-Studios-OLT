@@ -106,9 +106,10 @@ router.get('/pon-outage', async (req, res, next) => {
       if (p.since && new Date(p.since).getTime() < sevenDays) { byOlt[name].longDownPons++; byOlt[name].longDownSubs += p.off; }
     }
     const rows = Object.values(byOlt).sort((a, b) => b.subscribers - a.subscribers);
-    const totalPons = rows.reduce((s, r) => s + r.longDownPons, 0);
-    const totalSubs = rows.reduce((s, r) => s + r.longDownSubs, 0);
-    res.json({ data: { rows, totalPons, totalSubs } });
+    // "Power outages - monitor grid" = PONs caídas ahora; "Stale" = caídas > 7 días
+    const active = { pons: rows.reduce((s, r) => s + r.pons, 0), subs: rows.reduce((s, r) => s + r.subscribers, 0) };
+    const stale  = { pons: rows.reduce((s, r) => s + r.longDownPons, 0), subs: rows.reduce((s, r) => s + r.longDownSubs, 0) };
+    res.json({ data: { rows, active, stale, totalPons: stale.pons, totalSubs: stale.subs } });
   } catch (err) { next(err); }
 });
 

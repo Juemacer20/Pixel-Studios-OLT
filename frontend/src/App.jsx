@@ -74,6 +74,9 @@ function AppLayout() {
             </Routes>
           </React.Suspense>
           </div>
+          <footer style={{ textAlign: 'center', padding: '14px', fontSize: 12, color: 'var(--text-muted)' }}>
+            Pixel Studios OLT · v3.3.0 · © 2026 · <span style={{ color: '#7fb2e6' }}>💡 What's new</span>
+          </footer>
         </main>
       </div>
     </div>
