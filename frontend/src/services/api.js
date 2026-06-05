@@ -60,12 +60,14 @@ export const ontAPI = {
   get: (id) => api.get(`/onts/${id}`),
   create: (data) => api.post('/onts', data),
   update: (id, data) => api.put(`/onts/${id}`, data),
+  patch: (id, data) => api.patch(`/onts/${id}`, data),
   delete: (id) => api.delete(`/onts/${id}`),
   signal: (id) => api.get(`/onts/${id}/signal`),
   signalHistory: (id, range) => api.get(`/onts/${id}/signal/history`, { params: { range } }),
   reboot: (id) => api.post(`/onts/${id}/reboot`),
   updateLocation: (id, lat, lng) => api.put(`/onts/${id}/location`, { latitude: lat, longitude: lng }),
   dhcpLeases: (id) => api.get(`/onts/${id}/dhcp-leases`),
+  unconfigured: (params) => api.get('/onts/unconfigured', { params }),
 };
 
 export const alertAPI = {

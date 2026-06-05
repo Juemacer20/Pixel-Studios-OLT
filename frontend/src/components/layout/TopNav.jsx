@@ -10,7 +10,7 @@ import { useAuthStore } from '../../store/authStore';
 // ── Menú principal (etiquetas tipo SmartOLT, mapeadas a rutas reales) ──
 const MAIN = [
   { to: '/dashboard',  label: 'Dashboard',    Icon: IconLayoutDashboard },
-  { to: '/ztp',        label: 'Unconfigured', Icon: IconPlugConnected },
+  { to: '/onu/unconfigured', label: 'Unconfigured', Icon: IconPlugConnected },
   { to: '/onts',       label: 'Configured',   Icon: IconCircleCheck },
   { to: '/graphs',     label: 'Graphs',       Icon: IconChartLine },
   { to: '/pon-ports',  label: 'Diagnostics',  Icon: IconStethoscope },
