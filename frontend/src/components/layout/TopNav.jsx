@@ -18,12 +18,9 @@ const MAIN = [
 ];
 
 const REPORTS = [
-  { to: '/reports', label: 'Authorizations' },
-  { to: '/reports', label: 'Export' },
-  { to: '/reports', label: 'Import' },
-  { to: '/olts',    label: 'Find config mismatches (DB vs OLT)' },
-  { to: '/alerts',  label: 'Alerts' },
-  { to: '/map',     label: 'Map' },
+  { to: '/reports/tasks',          label: 'Tasks' },
+  { to: '/reports/authorizations', label: 'Authorizations' },
+  { to: '/reports/export',         label: 'Export' },
 ];
 
 const SETTINGS = [

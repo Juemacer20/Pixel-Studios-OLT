@@ -131,4 +131,10 @@ export const graphsAPI = {
   signalOnt: (ontId)  => api.get(`/graphs/signal/${ontId}`),
 };
 
+export const reportsAPI = {
+  tasks:          (params) => api.get('/reports/tasks', { params }),
+  authorizations: (params) => api.get('/reports/authorizations', { params }),
+  exportData:     (params) => api.get('/reports/export-data', { params }),
+};
+
 export default api;

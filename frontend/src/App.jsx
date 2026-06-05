@@ -19,7 +19,9 @@ const Events           = React.lazy(() => import('./pages/Events'));
 const PonPorts         = React.lazy(() => import('./pages/PonPorts'));
 const Signal           = React.lazy(() => import('./pages/Signal'));
 const SpeedProfiles    = React.lazy(() => import('./pages/SpeedProfiles'));
-const Reports          = React.lazy(() => import('./pages/Reports'));
+const ReportsTasks     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsTasks })));
+const ReportsAuths     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsAuthorizations })));
+const ReportsExport    = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsExport })));
 const Settings         = React.lazy(() => import('./pages/Settings'));
 const Users            = React.lazy(() => import('./pages/Users'));
 const Zones            = React.lazy(() => import('./pages/Zones'));
@@ -61,7 +63,10 @@ function AppLayout() {
               <Route path="/pon-ports"       element={<PonPorts />} />
               <Route path="/signal"          element={<Signal />} />
               <Route path="/speed-profiles"  element={<SpeedProfiles />} />
-              <Route path="/reports"         element={<Reports />} />
+              <Route path="/reports"             element={<Navigate to="/reports/tasks" replace />} />
+              <Route path="/reports/tasks"       element={<ReportsTasks />} />
+              <Route path="/reports/authorizations" element={<ReportsAuths />} />
+              <Route path="/reports/export"      element={<ReportsExport />} />
               <Route path="/settings"        element={<Settings />} />
               <Route path="/users"           element={<Users />} />
               <Route path="/zones"           element={<Zones />} />
