@@ -87,6 +87,7 @@ export const clientAPI = {
 export const dashboardAPI = {
   summary: () => api.get('/dashboard/summary'),
   networkHealth: () => api.get('/dashboard/network-health'),
+  ponOutage: () => api.get('/dashboard/pon-outage'),
 };
 
 export const tr069API = {
