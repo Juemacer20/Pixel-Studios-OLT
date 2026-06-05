@@ -102,8 +102,12 @@ async function importOLT(olt) {
 }
 
 (async () => {
-  const olts = await prisma.oLT.findMany({ where: { status: { not: 'MAINTENANCE' } } });
-  console.log(`Importando desde ${olts.length} OLTs...`);
+  // Filtro opcional por nombre: node import-from-olts.js "Itelsa-SantaAna" "Itelsa-Mocoreta"
+  const names = process.argv.slice(2).filter(Boolean);
+  const where = { status: { not: 'MAINTENANCE' } };
+  if (names.length) where.name = { in: names };
+  const olts = await prisma.oLT.findMany({ where });
+  console.log(`Importando desde ${olts.length} OLTs${names.length ? ' (filtro: ' + names.join(', ') + ')' : ''}...`);
   for (const olt of olts) {
     try { await importOLT(olt); }
     catch(e) { console.log(`  ✗ ${olt.name}: ${e.message}`); }

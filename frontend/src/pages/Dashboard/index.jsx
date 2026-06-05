@@ -91,7 +91,7 @@ export default function Dashboard() {
 
       {/* ── Stat boxes ── */}
       <div className="sol-stats">
-        <StatBox to="/ztp"    cls="sol-s-blue"   Icon={IconWand}          num={fmt(waiting)} label="Waiting authorization" foot={[`Pending: ${fmt(waiting)}`]} />
+        <StatBox to="/onu/unconfigured" cls="sol-s-blue" Icon={IconWand}    num={fmt(waiting)} label="Waiting authorization" foot={[`Pending: ${fmt(waiting)}`]} />
         <StatBox to="/onts"   cls="sol-s-green"  Icon={IconCircleCheck}   num={fmt(online)}  label="Online"  foot={[`Total authorized: ${fmt(total)}`]} />
         <StatBox to="/onts"   cls="sol-s-slate"  Icon={IconX}             num={fmt(offline)} label="Offline" foot={[`LOS: ${fmt(los)}`]} />
         <StatBox to="/alerts" cls="sol-s-orange" Icon={IconAlertTriangle} num={fmt(warning)} label="Warning" foot={[`Active alerts: ${fmt(warning)}`]} />

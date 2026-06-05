@@ -13,11 +13,8 @@ const ONUView          = React.lazy(() => import('./pages/ONUView'));
 const Clients          = React.lazy(() => import('./pages/Clients'));
 const MapView          = React.lazy(() => import('./pages/MapView'));
 const TR069            = React.lazy(() => import('./pages/TR069'));
-const ZTP              = React.lazy(() => import('./pages/ZTP'));
 const Alerts           = React.lazy(() => import('./pages/Alerts'));
 const Events           = React.lazy(() => import('./pages/Events'));
-const PonPorts         = React.lazy(() => import('./pages/PonPorts'));
-const Signal           = React.lazy(() => import('./pages/Signal'));
 const SpeedProfiles    = React.lazy(() => import('./pages/SpeedProfiles'));
 const ReportsTasks     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsTasks })));
 const ReportsAuths     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsAuthorizations })));
@@ -58,11 +55,8 @@ function AppLayout() {
               <Route path="/clients/*"       element={<Clients />} />
               <Route path="/map"             element={<MapView />} />
               <Route path="/tr069"           element={<TR069 />} />
-              <Route path="/ztp"             element={<ZTP />} />
               <Route path="/alerts"          element={<Alerts />} />
               <Route path="/events"          element={<Events />} />
-              <Route path="/pon-ports"       element={<PonPorts />} />
-              <Route path="/signal"          element={<Signal />} />
               <Route path="/speed-profiles"  element={<SpeedProfiles />} />
               <Route path="/reports"             element={<Navigate to="/reports/tasks" replace />} />
               <Route path="/reports/tasks"       element={<ReportsTasks />} />

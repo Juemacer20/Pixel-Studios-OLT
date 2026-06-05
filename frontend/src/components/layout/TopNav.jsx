@@ -13,7 +13,7 @@ const MAIN = [
   { to: '/onu/unconfigured', label: 'Unconfigured', Icon: IconPlugConnected },
   { to: '/onts',       label: 'Configured',   Icon: IconCircleCheck },
   { to: '/graphs',     label: 'Graphs',       Icon: IconChartLine },
-  { to: '/pon-ports',  label: 'Diagnostics',  Icon: IconStethoscope },
+  { to: '/diagnostics', label: 'Diagnostics', Icon: IconStethoscope },
   { to: '/events',     label: 'Tasks',        Icon: IconListCheck },
 ];
 

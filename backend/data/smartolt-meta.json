@@ -6,7 +6,7 @@
     },
     {
       "name": "Barrio 1 de Mayo",
-      "onus": 435
+      "onus": 434
     },
     {
       "name": "Barrio Angelita Tagliapietra",
@@ -18,11 +18,11 @@
     },
     {
       "name": "Barrio Centro",
-      "onus": 723
+      "onus": 725
     },
     {
       "name": "Barrio Chaco",
-      "onus": 457
+      "onus": 459
     },
     {
       "name": "Barrio Chispa",
@@ -66,7 +66,7 @@
     },
     {
       "name": "Barrio Nodo Mocoreta",
-      "onus": 90
+      "onus": 91
     },
     {
       "name": "Barrio Norte",
@@ -138,7 +138,7 @@
     },
     {
       "name": "Barrio Tropezon",
-      "onus": 446
+      "onus": 448
     },
     {
       "name": "Barrio Velez",
@@ -158,7 +158,7 @@
     },
     {
       "name": "Barrio Zona Norte Mocoreta",
-      "onus": 181
+      "onus": 182
     },
     {
       "name": "Colonia Brambilla",
@@ -174,7 +174,7 @@
     },
     {
       "name": "FEDERAL ETAPA 2",
-      "onus": 460
+      "onus": 464
     },
     {
       "name": "FEDERAL ETAPA 3",
@@ -194,7 +194,7 @@
     },
     {
       "name": "Feliciano Etapa 3",
-      "onus": 421
+      "onus": 422
     },
     {
       "name": "Feliciano Etapa 4",
@@ -210,7 +210,7 @@
     },
     {
       "name": "LAS 14",
-      "onus": 101
+      "onus": 102
     },
     {
       "name": "MOCORETA ETAPA 3",
@@ -282,6 +282,84 @@
     }
   ],
   "odbs": [
+    {
+      "name": "Caja 7 Fibra 33 Troncal 2",
+      "zone": "Barrio San Isidro",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 36 Troncal 1",
+      "zone": "Barrio Pinar",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 6 Fibra 82 Troncal 3",
+      "zone": "Barrio Centro",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 6 Fibra 21 Troncal 4",
+      "zone": "Barrio Chaco",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 1 Fibra 56 Troncal 3",
+      "zone": "Barrio Tropezon",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 39 Troncal 2",
+      "zone": "Barrio Tague",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 7 Fibra 41 Troncal 1",
+      "zone": "Barrio San Jose Obrero",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 117 Troncal 3",
+      "zone": "Barrio San Clemente",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 6 Fibra 22 Troncal 4",
+      "zone": "Barrio Chaco",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 23 Troncal 4",
+      "zone": "Barrio Chaco",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 8 Fibra 60 Troncal 3",
+      "zone": "Barrio Tropezon",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 3 Fibra 140 Troncal 3",
+      "zone": "Barrio Centro",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 5 Fibra 1 Troncal 7",
+      "zone": "LAS 14",
+      "ports": 8,
+      "onus": 1
+    },
     {
       "name": "Caja 4 Fibra 4 Troncal 14",
       "zone": "Barrio Villa Alejandrina",
@@ -409,12 +487,6 @@
       "onus": 1
     },
     {
-      "name": "Caja 4 Fibra 39 Troncal 2",
-      "zone": "Barrio Tague",
-      "ports": 8,
-      "onus": 1
-    },
-    {
       "name": "Caja 4 Fibra 27 Troncal 1",
       "zone": "Barrio Pinar",
       "ports": 8,
@@ -490,7 +562,7 @@
       "name": "Caja 5 Fibra 15 Troncal 4",
       "zone": "Barrio Santa Rosa",
       "ports": 8,
-      "onus": 2
+      "onus": 1
     },
     {
       "name": "Caja 6 Fibra 13 Troncal 6",
@@ -628,7 +700,7 @@
       "name": "Caja 7 Fibra 29 Troncal 1",
       "zone": "Barrio Pinar",
       "ports": 8,
-      "onus": 2
+      "onus": 1
     },
     {
       "name": "Caja 7 Fibra 121 Troncal 3",
@@ -663,78 +735,6 @@
     {
       "name": "Caja 2 Fibra 81 Troncal 12",
       "zone": "Barrio Tropezon",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 4 Fibra 14 Troncal 1",
-      "zone": "Barrio Tropezon",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 8 Fibra 38 Troncal 2",
-      "zone": "Barrio Tague",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 3 Fibra 30 Troncal 1",
-      "zone": "Barrio Pinar",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 4 Fibra 30 Troncal 1",
-      "zone": "Barrio Pinar",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 7 Fibra 32 Troncal 1",
-      "zone": "Barrio Pinar",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 4 Fibra 38 Troncal 12",
-      "zone": "Barrio 1 de Mayo",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 5 Fibra 2 Troncal 1",
-      "zone": "Barrio Chispa",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 8 Fibra 15 Troncal 2",
-      "zone": "Barrio Trifolios",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 5 Fibra 5 Troncal 7",
-      "zone": "LAS 14",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 1 Fibra 3 Troncal 5",
-      "zone": "Barrio Estacion",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 4 Fibra 62 Troncal 3",
-      "zone": "Barrio La Tablada",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 3 Fibra 42 Troncal 12",
-      "zone": "Barrio 1 de Mayo",
       "ports": 8,
       "onus": 1
     },
@@ -1057,8 +1057,20 @@
       "onus": 1
     },
     {
+      "name": "Caja 4 Fibra 6 Troncal 1 FELI",
+      "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
       "name": "Caja 1 Fibra 3 Troncal 1 FELI",
       "zone": "Feliciano Etapa 1",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 4 Fibra 15 Troncal 3 FELI",
+      "zone": "Feliciano Etapa 3",
       "ports": 8,
       "onus": 1
     },
@@ -1402,7 +1414,7 @@
       "name": "Caja 4 Fibra 18 Troncal 4 FELI",
       "zone": "Feliciano Etapa 4",
       "ports": 8,
-      "onus": 2
+      "onus": 1
     },
     {
       "name": "Caja 1 Fibra 30 Troncal 1 FELI",
@@ -1471,8 +1483,32 @@
       "onus": 1
     },
     {
-      "name": "Caja 4 Fibra 30 Troncal 1 FELI",
-      "zone": "Feliciano Etapa 1",
+      "name": "Caja 7 Fibra 45 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 9 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 1 Fibra 6 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
+      "ports": 8,
+      "onus": 1
+    },
+    {
+      "name": "Caja 2 Fibra 14 Troncal 2 FEDERAL",
+      "zone": "FEDERAL ETAPA 2",
+      "ports": 8,
+      "onus": 2
+    },
+    {
+      "name": "Caja 4 Fibra 9 TRONCAL 3 FEDERAL",
+      "zone": "FEDERAL ETAPA 3",
       "ports": 8,
       "onus": 1
     },
@@ -1538,12 +1574,6 @@
     },
     {
       "name": "Caja 1 Fibra 21 TRONCAL 3 FEDERAL",
-      "zone": "FEDERAL ETAPA 3",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 7 Fibra 45 TRONCAL 3 FEDERAL",
       "zone": "FEDERAL ETAPA 3",
       "ports": 8,
       "onus": 1
@@ -1726,7 +1756,7 @@
       "name": "Caja 2 Fibra 24 TRONCAL 3 FEDERAL",
       "zone": "FEDERAL ETAPA 3",
       "ports": 8,
-      "onus": 3
+      "onus": 1
     },
     {
       "name": "Caja 3 Fibra 34 Troncal 2 FEDERAL",
@@ -1858,7 +1888,7 @@
       "name": "Caja 8 Fibra 2 Troncal 2 FEDERAL",
       "zone": "FEDERAL ETAPA 2",
       "ports": 8,
-      "onus": 3
+      "onus": 2
     },
     {
       "name": "Caja 5 Fibra 3 Troncal 1 FEDERAL",
@@ -1867,20 +1897,14 @@
       "onus": 1
     },
     {
-      "name": "Caja 5 Fibra 20 TRONCAL 3 FEDERAL",
-      "zone": "FEDERAL ETAPA 3",
+      "name": "Caja 2 Fibra 4 Troncal 4 MOCORETA",
+      "zone": "Barrio Zona Norte Mocoreta",
       "ports": 8,
       "onus": 1
     },
     {
-      "name": "Caja 3 Fibra 20 TRONCAL 3 FEDERAL",
-      "zone": "FEDERAL ETAPA 3",
-      "ports": 8,
-      "onus": 1
-    },
-    {
-      "name": "Caja 7 Fibra 25 TRONCAL 3 FEDERAL",
-      "zone": "FEDERAL ETAPA 3",
+      "name": "Caja 3 Fibra 9 Troncal 1 MOCORETA",
+      "zone": "Barrio Nodo Mocoreta",
       "ports": 8,
       "onus": 1
     },
@@ -1942,7 +1966,7 @@
       "name": "Caja 1 Fibra 5 Troncal 1 MOCORETA",
       "zone": "Barrio San Gregorio Mocoreta",
       "ports": 8,
-      "onus": 2
+      "onus": 1
     },
     {
       "name": "Caja 3 Fibra 4 Troncal 1 MOCORETA",
@@ -2203,16 +2227,10 @@
       "onus": 1
     },
     {
-      "name": "Caja 1 Fibra 13 Troncal 4 MOCORETA",
-      "zone": "Barrio Zona Norte Mocoreta",
-      "ports": 8,
-      "onus": 1
-    },
-    {
       "name": "Caja 7 Fibra 2 Troncal 4",
       "zone": "Barrio Velez",
       "ports": 8,
-      "onus": 3
+      "onus": 6
     },
     {
       "name": "Caja 8 Fibra 2 Troncal 4",
@@ -2299,12 +2317,6 @@
       "onus": 7
     },
     {
-      "name": "Caja 6 Fibra 8 Troncal 4",
-      "zone": "Barrio Velez",
-      "ports": 8,
-      "onus": 1
-    },
-    {
       "name": "Caja 1 Fibra 19 Troncal 2",
       "zone": "Barrio 1 de Mayo",
       "ports": 8,
@@ -2314,7 +2326,7 @@
       "name": "Caja 7 Fibra 8 Troncal 4",
       "zone": "Barrio Velez",
       "ports": 8,
-      "onus": 3
+      "onus": 1
     }
   ],
   "onuTypes": [
@@ -2329,16 +2341,6 @@
       "onus": 1
     },
     {
-      "name": "EG8147X6-10",
-      "pon_type": "GPON",
-      "channels": 1,
-      "ethernet_ports": 4,
-      "wifi": "Yes",
-      "voip_ports": 0,
-      "catv": "Yes",
-      "onus": 61
-    },
-    {
       "name": "EG8041X6-10",
       "pon_type": "GPON",
       "channels": 1,
@@ -2346,7 +2348,17 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 174
+      "onus": 179
+    },
+    {
+      "name": "EG8147X6-10",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "Yes",
+      "voip_ports": 0,
+      "catv": "Yes",
+      "onus": 62
     },
     {
       "name": "HG8546M",
@@ -2376,7 +2388,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 33
+      "onus": 32
     },
     {
       "name": "EG8021V5",
@@ -2396,7 +2408,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 16
+      "onus": 15
     },
     {
       "name": "IC410WSG",
@@ -2416,17 +2428,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "Yes",
-      "onus": 50
-    },
-    {
-      "name": "BM242GFAC4T",
-      "pon_type": "GPON",
-      "channels": 1,
-      "ethernet_ports": 4,
-      "wifi": "Yes",
-      "voip_ports": 0,
-      "catv": "No",
-      "onus": 4
+      "onus": 49
     },
     {
       "name": "HG8120C",
@@ -2439,6 +2441,16 @@
       "onus": 4
     },
     {
+      "name": "BM242GFAC4T",
+      "pon_type": "GPON",
+      "channels": 1,
+      "ethernet_ports": 4,
+      "wifi": "Yes",
+      "voip_ports": 0,
+      "catv": "No",
+      "onus": 3
+    },
+    {
       "name": "BM341GAC2",
       "pon_type": "GPON",
       "channels": 1,
@@ -2446,7 +2458,7 @@
       "wifi": "Yes",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 4
+      "onus": 3
     },
     {
       "name": "Vector5",
@@ -2486,7 +2498,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 17
+      "onus": 18
     },
     {
       "name": "BM321GF",
@@ -2496,7 +2508,7 @@
       "wifi": "No",
       "voip_ports": 0,
       "catv": "No",
-      "onus": 19
+      "onus": 17
     },
     {
       "name": "EG8041V5",
@@ -2606,7 +2618,7 @@
       "name": "10M",
       "speed": "10496 kbps",
       "type": "Internet",
-      "onus": 264
+      "onus": 263
     },
     {
       "name": "20M",
@@ -2636,7 +2648,7 @@
       "name": "40M",
       "speed": "41984 kbps",
       "type": "Internet",
-      "onus": 5020
+      "onus": 5016
     },
     {
       "name": "50M",
@@ -2648,7 +2660,7 @@
       "name": "60M",
       "speed": "63232 kbps",
       "type": "Internet",
-      "onus": 6869
+      "onus": 6884
     },
     {
       "name": "70M",
@@ -2678,7 +2690,7 @@
       "name": "120M",
       "speed": "123648 kbps",
       "type": "Internet",
-      "onus": 806
+      "onus": 809
     },
     {
       "name": "150M",
@@ -2732,7 +2744,7 @@
       "name": "50M",
       "speed": "51200 kbps",
       "type": "IPTV",
-      "onus": 1744
+      "onus": 1746
     },
     {
       "name": "10M",
@@ -2768,7 +2780,7 @@
       "name": "5M",
       "speed": "10496 kbps",
       "type": "Internet",
-      "onus": 47
+      "onus": 46
     },
     {
       "name": "10M",
@@ -2798,13 +2810,13 @@
       "name": "30M",
       "speed": "31488 kbps",
       "type": "Internet",
-      "onus": 6873
+      "onus": 6888
     },
     {
       "name": "20M",
       "speed": "41984 kbps",
       "type": "Internet",
-      "onus": 5022
+      "onus": 5018
     },
     {
       "name": "40M",
@@ -2822,7 +2834,7 @@
       "name": "60M",
       "speed": "63232 kbps",
       "type": "Internet",
-      "onus": 809
+      "onus": 812
     },
     {
       "name": "70M",
@@ -2906,8 +2918,8 @@
       "name": "10M",
       "speed": "10496 kbps",
       "type": "IPTV",
-      "onus": 1744
+      "onus": 1746
     }
   ],
-  "generated_at": "2026-06-04T18:30:57.673Z"
+  "generated_at": "2026-06-05T09:00:37.896Z"
 }
