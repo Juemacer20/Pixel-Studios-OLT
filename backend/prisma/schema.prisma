@@ -84,11 +84,23 @@ model OLT {
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
 
-  ponPorts PONPort[]
-  onts     ONT[]
-  alerts   Alert[]
+  ponPorts   PONPort[]
+  onts       ONT[]
+  alerts     Alert[]
+  oltHistory OLTHistory[]
 
   @@map("olts")
+}
+
+model OLTHistory {
+  olt_id      String
+  timestamp   DateTime @default(now())
+  cpu_usage   Float?
+  temperature Float?
+  olt         OLT      @relation(fields: [olt_id], references: [id], onDelete: Cascade)
+
+  @@id([olt_id, timestamp])
+  @@map("olt_history")
 }
 
 model PONPort {
