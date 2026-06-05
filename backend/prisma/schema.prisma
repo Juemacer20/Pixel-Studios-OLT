@@ -331,3 +331,11 @@ model AuditLog {
 
   @@map("audit_logs")
 }
+
+model NetStatusHistory {
+  timestamp DateTime @id @default(now())
+  online    Int
+  offline   Int?
+
+  @@map("net_status_history")
+}

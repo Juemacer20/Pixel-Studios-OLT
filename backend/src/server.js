@@ -65,6 +65,21 @@ async function startJobs() {
     startPollOLTs(io);
     startSignalHistory(io);
     startAlertEngine(io);
+
+    // Snapshot del estado de red (online/offline) cada 5 min para el gráfico Network status
+    const prisma = require('./config/database');
+    const snapshot = async () => {
+      try {
+        const [online, total] = await Promise.all([
+          prisma.oNT.count({ where: { status: 'ONLINE' } }),
+          prisma.oNT.count(),
+        ]);
+        await prisma.netStatusHistory.create({ data: { timestamp: new Date(), online, offline: total - online } }).catch(() => {});
+      } catch {}
+    };
+    snapshot();
+    setInterval(snapshot, 5 * 60 * 1000);
+
     logger.info('Background jobs started');
   } catch (err) {
     logger.error('Failed to start jobs:', err);

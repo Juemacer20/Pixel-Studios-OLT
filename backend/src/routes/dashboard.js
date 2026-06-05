@@ -75,48 +75,64 @@ router.get('/network-health', async (req, res, next) => {
 // PON outage: PONs (board/port) con suscriptores caídos > 7 días, agrupados por OLT.
 router.get('/pon-outage', async (req, res, next) => {
   try {
-    const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
     const olts = await prisma.oLT.findMany({ select: { id: true, name: true } });
     const oltName = Object.fromEntries(olts.map(o => [o.id, o.name]));
-    // ONUs offline hace tiempo (o sin last_seen)
-    const downed = await prisma.oNT.findMany({
-      where: { status: { not: 'ONLINE' }, OR: [{ last_seen: { lt: cutoff } }, { last_seen: null }] },
-      select: { olt_id: true, description: true, last_seen: true },
-    });
-    // agrupar por OLT + board/port (de "gpon-onu_0/1/1:33" -> "1/1")
-    const groups = {}; // key olt|port
-    for (const o of downed) {
-      const m = (o.description || '').match(/onu_\d+\/(\d+)\/(\d+)/i);
-      const port = m ? `${m[1]}/${m[2]}` : '—';
+    const sevenDays = Date.now() - 7 * 24 * 3600 * 1000;
+    // Todas las ONUs con su PON (frame/slot/port de "0/12/0:9") para detectar PON entera caída
+    const all = await prisma.oNT.findMany({ select: { olt_id: true, description: true, status: true, last_seen: true } });
+    const ports = {}; // key olt|slot/port -> { total, off, since }
+    const parsePort = (d) => {
+      const m = (d || '').match(/(\d+)\/(\d+)\/(\d+)/); // frame/slot/port
+      return m ? `${m[2]}/${m[3]}` : null;
+    };
+    for (const o of all) {
+      const port = parsePort(o.description); if (!port) continue;
       const k = `${o.olt_id}|${port}`;
-      if (!groups[k]) groups[k] = { olt_id: o.olt_id, port, subs: 0, since: o.last_seen };
-      groups[k].subs++;
-      if (o.last_seen && (!groups[k].since || o.last_seen < groups[k].since)) groups[k].since = o.last_seen;
+      if (!ports[k]) ports[k] = { olt_id: o.olt_id, port, total: 0, off: 0, since: null };
+      ports[k].total++;
+      if ((o.status || '').toUpperCase() !== 'ONLINE') {
+        ports[k].off++;
+        if (o.last_seen && (!ports[k].since || o.last_seen < ports[k].since)) ports[k].since = o.last_seen;
+      }
     }
-    // agrupar por OLT (cantidad de PONs caídas + total subs)
+    // PON outage = puerto donde TODAS (o >=90%) las ONUs están caídas, con >=2 suscriptores
     const byOlt = {};
-    for (const g of Object.values(groups)) {
-      const name = oltName[g.olt_id] || g.olt_id;
-      if (!byOlt[name]) byOlt[name] = { olt: name, pons: 0, subscribers: 0, since: g.since };
-      byOlt[name].pons++; byOlt[name].subscribers += g.subs;
-      if (g.since && (!byOlt[name].since || g.since < byOlt[name].since)) byOlt[name].since = g.since;
+    for (const p of Object.values(ports)) {
+      if (p.total < 2 || p.off < p.total * 0.9) continue; // PON entera caída
+      const name = oltName[p.olt_id] || p.olt_id;
+      if (!byOlt[name]) byOlt[name] = { olt: name, pons: 0, subscribers: 0, since: null, longDownPons: 0, longDownSubs: 0 };
+      byOlt[name].pons++; byOlt[name].subscribers += p.off;
+      if (p.since && (!byOlt[name].since || p.since < byOlt[name].since)) byOlt[name].since = p.since;
+      if (p.since && new Date(p.since).getTime() < sevenDays) { byOlt[name].longDownPons++; byOlt[name].longDownSubs += p.off; }
     }
     const rows = Object.values(byOlt).sort((a, b) => b.subscribers - a.subscribers);
-    const totalPons = rows.reduce((s, r) => s + r.pons, 0);
-    const totalSubs = rows.reduce((s, r) => s + r.subscribers, 0);
+    const totalPons = rows.reduce((s, r) => s + r.longDownPons, 0);
+    const totalSubs = rows.reduce((s, r) => s + r.longDownSubs, 0);
     res.json({ data: { rows, totalPons, totalSubs } });
   } catch (err) { next(err); }
 });
 
-// Serie de ONUs online en el tiempo (últimas 48 medias horas) — derivada del estado actual.
+// Network status: online ONUs en el tiempo. Usa snapshots reales de net_status_history
+// si existen; si no, devuelve el online actual como línea estable (valor real).
 router.get('/network-status', async (req, res, next) => {
   try {
-    const onlineONTs = await prisma.oNT.count({ where: { status: 'ONLINE' } });
-    const points = Array.from({ length: 48 }, (_, i) => {
-      const t = new Date(Date.now() - (47 - i) * 30 * 60 * 1000);
-      const online = Math.max(0, Math.round(onlineONTs + Math.sin(i / 4) * (onlineONTs * 0.01) + (Math.random() - 0.5) * (onlineONTs * 0.008)));
-      return { t: t.toISOString(), online };
-    });
+    let points = [];
+    try {
+      const rows = await prisma.$queryRawUnsafe(`
+        SELECT timestamp AS t, online FROM net_status_history
+        WHERE timestamp > now() - interval '24 hours' ORDER BY timestamp
+      `);
+      points = rows.map(r => ({ t: new Date(r.t).toISOString(), online: Number(r.online) }));
+    } catch { /* tabla aún no existe */ }
+
+    if (points.length < 8) {
+      // Aún no hay suficiente histórico: línea estable al online actual (valor real)
+      const online = await prisma.oNT.count({ where: { status: 'ONLINE' } });
+      const base = Array.from({ length: 24 }, (_, i) => ({
+        t: new Date(Date.now() - (23 - i) * 3600 * 1000).toISOString(), online,
+      }));
+      points = base;
+    }
     res.json({ data: points });
   } catch (err) { next(err); }
 });

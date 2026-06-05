@@ -24,9 +24,15 @@ function relativeTime(iso) {
 }
 function fmt(n) { return n == null ? '—' : Number(n).toLocaleString('en-US'); }
 function uptimeStr(o) {
-  return o.uptime || o.uptime_str || (o.uptime_seconds
-    ? `${Math.floor(o.uptime_seconds / 86400)}d ${new Date(o.uptime_seconds * 1000).toISOString().substr(11, 8)}`
-    : '—');
+  const tt = o.uptime ?? o.uptime_seconds ?? null;
+  if (tt == null || tt === '') return '—';
+  // SNMP sysUpTime viene en timeticks (1/100 s)
+  const secs = Math.floor(Number(tt) / 100);
+  if (!isFinite(secs) || secs <= 0) return '—';
+  const dd = Math.floor(secs / 86400), hh = Math.floor((secs % 86400) / 3600),
+        mm = Math.floor((secs % 3600) / 60), ss = secs % 60;
+  const p = n => String(n).padStart(2, '0');
+  return `${dd}d ${p(hh)}:${p(mm)}:${p(ss)}`;
 }
 function hhmm(iso) { try { return new Date(iso).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }); } catch { return ''; } }
 
@@ -89,10 +95,25 @@ export default function Dashboard() {
   const low      = d.lowSignals ?? 0;
   const lb       = d.lowSignalsBreakdown || { warning: 0, critical: 0 };
 
-  const netSeries  = useMemo(() => buildNetSeries(online), [online, netTab]);
-  const authSeries = useMemo(() => Array.from({ length: 30 }, (_, i) => ({
-    d: `${i + 1}`, n: Math.round(20 + Math.random() * 70),
-  })), []);
+  // Network status REAL (signal_history, últimas 24h)
+  const { data: netRaw } = useQuery({
+    queryKey: ['dashboard', 'network-status'],
+    queryFn: () => dashboardAPI.networkStatus().then(r => r.data?.data ?? r.data).catch(() => []),
+    refetchInterval: 60_000, retry: 1,
+  });
+  const netSeries = useMemo(() => (Array.isArray(netRaw) ? netRaw : []).map(p => ({
+    t: new Date(p.t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }), online: p.online,
+  })), [netRaw]);
+
+  // ONU authorizations per day REAL (created_at)
+  const { data: authRaw } = useQuery({
+    queryKey: ['dashboard', 'auth-per-day'],
+    queryFn: () => dashboardAPI.authPerDay().then(r => r.data?.data ?? r.data).catch(() => []),
+    refetchInterval: 300_000, retry: 1,
+  });
+  const authSeries = useMemo(() => (Array.isArray(authRaw) ? authRaw : []).map(p => ({
+    d: (p.day || '').slice(5), n: p.n,
+  })), [authRaw]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
