@@ -7,6 +7,7 @@ const cookieParser = require('cookie-parser');
 const { httpLogger } = require('./middleware/logger');
 const { general } = require('./middleware/rateLimiter');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { verifyToken } = require('./middleware/auth');
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/v1/dhcp', require('./routes/dhcp'));
 app.use('/api/v1/gps', require('./routes/gps'));
 app.use('/api/v1/vlan', require('./routes/vlan'));
 app.use('/api/v1/speed-profiles', require('./routes/speedProfiles'));
+app.use('/api/v1/graphs', verifyToken, require('./routes/graphs'));
 const inventory = require('./routes/inventory');
 app.use('/api/v1/zones', inventory.zones);
 app.use('/api/v1/odbs', inventory.odbs);

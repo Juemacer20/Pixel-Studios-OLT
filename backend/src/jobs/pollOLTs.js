@@ -33,6 +33,18 @@ queue.process(async (job) => {
 
       await prisma.oLT.update({ where: { id: olt.id }, data: updateData });
 
+      try {
+        await prisma.oLTHistory.create({
+          data: {
+            olt_id: olt.id,
+            cpu_usage: updateData.cpu_usage ?? null,
+            temperature: updateData.temperature ?? null,
+          },
+        });
+      } catch (histErr) {
+        logger.warn(`OLTHistory save failed for ${olt.name}: ${histErr.message}`);
+      }
+
       if (global.io) {
         global.io.to('all').emit('olt:update', { id: olt.id, ...updateData, uptime: updateData.uptime?.toString() });
         if (updateData.cpu_usage > 85) {
