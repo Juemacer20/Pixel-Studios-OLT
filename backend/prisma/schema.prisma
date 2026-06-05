@@ -335,6 +335,9 @@ model AuditLog {
 model NetStatusHistory {
   timestamp DateTime @id @default(now())
   online    Int
+  powerfail Int      @default(0)
+  los       Int      @default(0)
+  na        Int      @default(0)
   offline   Int?
 
   @@map("net_status_history")

@@ -112,26 +112,43 @@ router.get('/pon-outage', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Network status: online ONUs en el tiempo. Usa snapshots reales de net_status_history
-// si existen; si no, devuelve el online actual como línea estable (valor real).
+// Network status: 4 series (online / powerfail / los / na) en el tiempo, de net_status_history.
+// ?range=hourly|daily|weekly|monthly|yearly
+const RANGES = {
+  hourly:  { interval: '1 hours',   bucket: 300,    pts: 12 },   // 5 min
+  daily:   { interval: '24 hours',  bucket: 1800,   pts: 24 },   // 30 min
+  weekly:  { interval: '7 days',    bucket: 21600,  pts: 28 },   // 6 h
+  monthly: { interval: '30 days',   bucket: 86400,  pts: 30 },   // 1 día
+  yearly:  { interval: '365 days',  bucket: 2592000, pts: 12 },  // 30 días
+};
 router.get('/network-status', async (req, res, next) => {
   try {
+    const r = RANGES[req.query.range] || RANGES.daily;
     let points = [];
     try {
       const rows = await prisma.$queryRawUnsafe(`
-        SELECT timestamp AS t, online FROM net_status_history
-        WHERE timestamp > now() - interval '24 hours' ORDER BY timestamp
+        SELECT to_timestamp(floor(extract(epoch from timestamp)/${r.bucket})*${r.bucket}) AS t,
+               round(avg(online))::int AS online, round(avg(powerfail))::int AS powerfail,
+               round(avg(los))::int AS los, round(avg(na))::int AS na
+        FROM net_status_history
+        WHERE timestamp > now() - interval '${r.interval}'
+        GROUP BY 1 ORDER BY 1
       `);
-      points = rows.map(r => ({ t: new Date(r.t).toISOString(), online: Number(r.online) }));
+      points = rows.map(x => ({ t: new Date(x.t).toISOString(), online: Number(x.online), powerfail: Number(x.powerfail), los: Number(x.los), na: Number(x.na) }));
     } catch { /* tabla aún no existe */ }
 
-    if (points.length < 8) {
-      // Aún no hay suficiente histórico: línea estable al online actual (valor real)
-      const online = await prisma.oNT.count({ where: { status: 'ONLINE' } });
-      const base = Array.from({ length: 24 }, (_, i) => ({
-        t: new Date(Date.now() - (23 - i) * 3600 * 1000).toISOString(), online,
+    if (points.length < 6) {
+      // Sin histórico suficiente: línea estable con el desglose ACTUAL real
+      const [online, powerfail, los, na] = await Promise.all([
+        prisma.oNT.count({ where: { status: 'ONLINE' } }),
+        prisma.oNT.count({ where: { status: 'DYING_GASP' } }),
+        prisma.oNT.count({ where: { status: 'LOS' } }),
+        prisma.oNT.count({ where: { status: 'OFFLINE' } }),
+      ]);
+      const span = { hourly: 3600e3, daily: 86400e3, weekly: 604800e3, monthly: 2592000e3, yearly: 31536000e3 }[req.query.range] || 86400e3;
+      points = Array.from({ length: r.pts }, (_, i) => ({
+        t: new Date(Date.now() - (r.pts - 1 - i) * (span / r.pts)).toISOString(), online, powerfail, los, na,
       }));
-      points = base;
     }
     res.json({ data: points });
   } catch (err) { next(err); }

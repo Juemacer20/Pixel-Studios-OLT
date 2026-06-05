@@ -88,7 +88,7 @@ export const dashboardAPI = {
   summary: () => api.get('/dashboard/summary'),
   networkHealth: () => api.get('/dashboard/network-health'),
   ponOutage: () => api.get('/dashboard/pon-outage'),
-  networkStatus: () => api.get('/dashboard/network-status'),
+  networkStatus: (range) => api.get('/dashboard/network-status', { params: { range } }),
   authPerDay: () => api.get('/dashboard/authorizations-per-day'),
 };
 

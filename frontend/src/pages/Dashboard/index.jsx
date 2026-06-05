@@ -95,15 +95,22 @@ export default function Dashboard() {
   const low      = d.lowSignals ?? 0;
   const lb       = d.lowSignalsBreakdown || { warning: 0, critical: 0 };
 
-  // Network status REAL (signal_history, últimas 24h)
+  // Network status REAL (4 series) según el rango (tab)
+  const range = netTab.toLowerCase();
   const { data: netRaw } = useQuery({
-    queryKey: ['dashboard', 'network-status'],
-    queryFn: () => dashboardAPI.networkStatus().then(r => r.data?.data ?? r.data).catch(() => []),
+    queryKey: ['dashboard', 'network-status', range],
+    queryFn: () => dashboardAPI.networkStatus(range).then(r => r.data?.data ?? r.data).catch(() => []),
     refetchInterval: 60_000, retry: 1,
   });
+  const fmtAxis = (iso) => {
+    const dt = new Date(iso);
+    if (range === 'hourly' || range === 'daily') return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (range === 'yearly') return dt.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    return dt.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
+  };
   const netSeries = useMemo(() => (Array.isArray(netRaw) ? netRaw : []).map(p => ({
-    t: new Date(p.t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }), online: p.online,
-  })), [netRaw]);
+    t: fmtAxis(p.t), online: p.online, powerfail: p.powerfail || 0, los: p.los || 0, na: p.na || 0,
+  })), [netRaw, range]);
 
   // ONU authorizations per day REAL (created_at)
   const { data: authRaw } = useQuery({
@@ -155,18 +162,16 @@ export default function Dashboard() {
             </div>
             <div style={{ padding: 14 }}>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={netSeries} margin={{ top: 5, right: 8, bottom: 0, left: -18 }}>
-                  <defs>
-                    <linearGradient id="gOnline" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#23a85a" stopOpacity={0.4} />
-                      <stop offset="100%" stopColor="#23a85a" stopOpacity={0.04} />
-                    </linearGradient>
-                  </defs>
+                <AreaChart data={netSeries} margin={{ top: 5, right: 8, bottom: 0, left: -10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.08)" vertical={false} />
-                  <XAxis dataKey="t" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} interval={7} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} domain={['dataMin - 50', 'dataMax + 50']} />
+                  <XAxis dataKey="t" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false}
+                    interval="preserveStartEnd" minTickGap={28} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} allowDecimals={false} />
                   <Tooltip contentStyle={{ background: '#0e2740', border: '1px solid var(--border-light)', borderRadius: 8, fontSize: 11 }} />
-                  <Area type="monotone" dataKey="online" stroke="#23a85a" strokeWidth={2} fill="url(#gOnline)" />
+                  <Area type="monotone" dataKey="online"    name="Online"     stackId="1" stroke="#23a85a" fill="#23a85a" fillOpacity={0.35} strokeWidth={1.5} />
+                  <Area type="monotone" dataKey="powerfail" name="Power fail"  stackId="1" stroke="#e08a16" fill="#e08a16" fillOpacity={0.5} strokeWidth={1} />
+                  <Area type="monotone" dataKey="los"       name="LoS"         stackId="1" stroke="#e0504f" fill="#e0504f" fillOpacity={0.5} strokeWidth={1} />
+                  <Area type="monotone" dataKey="na"        name="N/A"         stackId="1" stroke="#5a6b7d" fill="#5a6b7d" fillOpacity={0.5} strokeWidth={1} />
                 </AreaChart>
               </ResponsiveContainer>
               {/* leyenda */}

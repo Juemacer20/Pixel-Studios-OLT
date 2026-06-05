@@ -70,11 +70,15 @@ async function startJobs() {
     const prisma = require('./config/database');
     const snapshot = async () => {
       try {
-        const [online, total] = await Promise.all([
+        const [online, powerfail, los, na] = await Promise.all([
           prisma.oNT.count({ where: { status: 'ONLINE' } }),
-          prisma.oNT.count(),
+          prisma.oNT.count({ where: { status: 'DYING_GASP' } }),
+          prisma.oNT.count({ where: { status: 'LOS' } }),
+          prisma.oNT.count({ where: { status: 'OFFLINE' } }),
         ]);
-        await prisma.netStatusHistory.create({ data: { timestamp: new Date(), online, offline: total - online } }).catch(() => {});
+        await prisma.netStatusHistory.create({
+          data: { timestamp: new Date(), online, powerfail, los, na, offline: powerfail + los + na },
+        }).catch(() => {});
       } catch {}
     };
     snapshot();
