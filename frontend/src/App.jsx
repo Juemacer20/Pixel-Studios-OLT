@@ -30,6 +30,7 @@ const OnuTypes         = React.lazy(() => import('./pages/OnuTypes'));
 const AuthPresets      = React.lazy(() => import('./pages/AuthPresets'));
 const Graphs           = React.lazy(() => import('./pages/Graphs'));
 const Unconfigured     = React.lazy(() => import('./pages/Unconfigured'));
+const Diagnostics      = React.lazy(() => import('./pages/Diagnostics'));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
@@ -75,6 +76,7 @@ function AppLayout() {
               <Route path="/auth-presets"    element={<AuthPresets />} />
               <Route path="/graphs"          element={<Graphs />} />
               <Route path="/onu/unconfigured" element={<Unconfigured />} />
+              <Route path="/diagnostics"     element={<Diagnostics />} />
             </Routes>
           </React.Suspense>
           </div>

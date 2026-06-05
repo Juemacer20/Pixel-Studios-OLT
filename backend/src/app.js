@@ -44,6 +44,7 @@ app.use('/api/v1/gps', require('./routes/gps'));
 app.use('/api/v1/vlan', require('./routes/vlan'));
 app.use('/api/v1/speed-profiles', require('./routes/speedProfiles'));
 app.use('/api/v1/graphs', verifyToken, require('./routes/graphs'));
+app.use('/api/v1/diagnostics', verifyToken, require('./routes/diagnostics'));
 const inventory = require('./routes/inventory');
 app.use('/api/v1/zones', inventory.zones);
 app.use('/api/v1/odbs', inventory.odbs);
