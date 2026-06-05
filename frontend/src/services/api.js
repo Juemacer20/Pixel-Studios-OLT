@@ -122,4 +122,11 @@ export const authPresetAPI = {
   delete: (id) => api.delete(`/auth-presets/${id}`),
 };
 
+export const graphsAPI = {
+  oltStats:  (params) => api.get('/graphs/olt-stats', { params }),
+  ponSignal: (params) => api.get('/graphs/pon-signal', { params }),
+  signal:    (params) => api.get('/graphs/signal', { params }),
+  signalOnt: (ontId)  => api.get(`/graphs/signal/${ontId}`),
+};
+
 export default api;

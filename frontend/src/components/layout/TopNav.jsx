@@ -12,7 +12,7 @@ const MAIN = [
   { to: '/dashboard',  label: 'Dashboard',    Icon: IconLayoutDashboard },
   { to: '/ztp',        label: 'Unconfigured', Icon: IconPlugConnected },
   { to: '/onts',       label: 'Configured',   Icon: IconCircleCheck },
-  { to: '/signal',     label: 'Graphs',       Icon: IconChartLine },
+  { to: '/graphs',     label: 'Graphs',       Icon: IconChartLine },
   { to: '/pon-ports',  label: 'Diagnostics',  Icon: IconStethoscope },
   { to: '/events',     label: 'Tasks',        Icon: IconListCheck },
 ];
