@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: pixel-olt-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: pixel_studios_olt
+    ports:
+      - "5433:5432"
+    volumes:
+      - pixel-olt-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: pixel-olt-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - pixel-olt-redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pixel-olt-postgres-data:
+  pixel-olt-redis-data:
