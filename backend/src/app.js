@@ -11,6 +11,9 @@ const { verifyToken } = require('./middleware/auth');
 
 const app = express();
 
+// Detrás de proxy (vite dev / nginx): usar X-Forwarded-For para la IP real del cliente.
+app.set('trust proxy', 1);
+
 app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors({
   origin: process.env.CORS_ORIGIN || ['http://localhost:5173', 'http://localhost:3000'],
