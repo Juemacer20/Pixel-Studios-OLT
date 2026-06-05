@@ -14,7 +14,7 @@ const PLATFORM = {
   'Itelsa-Huawei2':   { snmp_read: 'pxlroabe80369', snmp_write: 'pxlrwa9837682', verified: true },
   'Itelsa-Feliciano': { snmp_read: 'pxlrod5902f15', snmp_write: 'pxlrwa232eb4a', verified: true },
   'Itelsa-Mocoreta':  { snmp_read: 'pxlroe9a1b564', snmp_write: 'pxlrwdb0934a3', verified: true },
-  'Itelsa-Federal':   { snmp_read: 'pxlrode1a4e6f', snmp_write: 'pxlrw6cc65845', verified: false }, // SNMP UDP no alcanzable aún
+  'Itelsa-Federal':   { snmp_read: 'pxlrode1a4e6f', snmp_write: 'pxlrw6cc65845', verified: true },
 };
 
 (async () => {

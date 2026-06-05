@@ -140,6 +140,7 @@ class MA5800 {
       onts.push({
         serial_number: serial,
         mac: null,
+        slot: parseInt(slot),
         pon_port: parseInt(port),
         onu_id: parseInt(ontId),
         interface: `${frame}/${slot}/${port}:${ontId}`,
