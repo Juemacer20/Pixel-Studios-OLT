@@ -31,43 +31,47 @@ queue.process(async (job) => {
 async function pollOLTSignal(olt) {
   const adapter = getAdapter(olt);
 
-  // Step 1: list all ONTs via telnet → [{serial_number, slot, pon_port, onu_id, status}]
+  // Step 1: list all ONTs → [{serial_number, slot?, pon_port, onu_id, status, rx_power?, tx_power?}]
   const telnetOnts = await adapter.listONTs();
   if (!telnetOnts.length) {
-    logger.debug(`Signal poll ${olt.name}: no ONTs via telnet`);
+    logger.debug(`Signal poll ${olt.name}: no ONTs`);
     return;
   }
 
-  // Step 2: get optical info via telnet (one session, all slot/port combos)
-  const slotPorts = [];
-  const seen = new Set();
-  for (const o of telnetOnts) {
-    const k = `${o.slot}/${o.pon_port}`;
-    if (!seen.has(k)) { seen.add(k); slotPorts.push({ slot: o.slot, port: o.pon_port }); }
-  }
-  const opticalRows = await adapter.getOpticalInfo(slotPorts);
+  let merged;
+  const hasOptical = typeof adapter.getOpticalInfo === 'function';
+  const hasSlot = telnetOnts.some(o => o.slot != null);
 
-  // Step 3: build lookup map (slot/port/ont_id) → optical data
-  const optMap = new Map();
-  for (const row of opticalRows) {
-    optMap.set(`${row.slot}/${row.port}/${row.ont_id}`, row);
-  }
+  if (hasOptical && hasSlot) {
+    // Huawei path: bulk optical info via telnet (slot/port/ont_id join)
+    const seen = new Set();
+    const slotPorts = [];
+    for (const o of telnetOnts) {
+      const k = `${o.slot}/${o.pon_port}`;
+      if (!seen.has(k)) { seen.add(k); slotPorts.push({ slot: o.slot, port: o.pon_port }); }
+    }
+    const opticalRows = await adapter.getOpticalInfo(slotPorts);
+    const optMap = new Map();
+    for (const row of opticalRows) optMap.set(`${row.slot}/${row.port}/${row.ont_id}`, row);
 
-  // Step 4: merge telnet ONTs with optical data
-  const merged = telnetOnts.map(o => {
-    const optical = optMap.get(`${o.slot}/${o.pon_port}/${o.onu_id}`);
-    return {
-      serial_number: o.serial_number,
-      status: o.status,
-      rx_power: optical?.rx_power ?? null,
-      tx_power: optical?.tx_power ?? null,
-      olt_rx_power: optical?.olt_rx_power ?? null,
-      temperature: optical?.temperature ?? null,
-      voltage: optical?.voltage ?? null,
-      bias_current: optical?.bias_current ?? null,
-      distance: optical?.distance ?? null,
-    };
-  });
+    merged = telnetOnts.map(o => {
+      const optical = optMap.get(`${o.slot}/${o.pon_port}/${o.onu_id}`);
+      return {
+        serial_number: o.serial_number, status: o.status,
+        rx_power: optical?.rx_power ?? null, tx_power: optical?.tx_power ?? null,
+        olt_rx_power: optical?.olt_rx_power ?? null, temperature: optical?.temperature ?? null,
+        voltage: optical?.voltage ?? null, bias_current: optical?.bias_current ?? null,
+        distance: optical?.distance ?? null,
+      };
+    });
+  } else {
+    // VSOL / other path: use what listONTs() already provides
+    merged = telnetOnts.map(o => ({
+      serial_number: o.serial_number, status: o.status,
+      rx_power: o.rx_power ?? null, tx_power: o.tx_power ?? null,
+      olt_rx_power: null, temperature: null, voltage: null, bias_current: null, distance: null,
+    }));
+  }
 
   // Step 5: load DB ONTs for this OLT, indexed by serial_number
   const dbOnts = await prisma.oNT.findMany({

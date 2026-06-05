@@ -118,8 +118,13 @@ class TelnetHuawei {
   _getCredentials() {
     if (this.olt.credentials_encrypted) {
       try {
-        return require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted) || {};
-      } catch (e) { return {}; }
+        const dec = require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted);
+        if (dec && dec.password) return dec;
+      } catch (e) {}
+    }
+    // Fall back to plain telnet_user / telnet_pass columns
+    if (this.olt.telnet_user || this.olt.telnet_pass) {
+      return { username: this.olt.telnet_user || 'admin', password: this.olt.telnet_pass || '' };
     }
     return { username: 'admin', password: 'admin' };
   }

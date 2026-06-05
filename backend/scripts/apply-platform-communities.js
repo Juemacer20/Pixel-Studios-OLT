@@ -23,7 +23,7 @@ const PLATFORM = {
     const r = await prisma.oLT.updateMany({
       where: { name },
       // Puertos internos reales: telnet 23, SNMP 161 (los 2333/2361 eran el NAT de SmartOLT)
-      data: { snmp_read: c.snmp_read, snmp_write: c.snmp_write, community: c.snmp_read, tcp_port: 23, udp_port: 161, telnet_user: 'smartolt' },
+      data: { snmp_read: c.snmp_read, snmp_write: c.snmp_write, community: c.snmp_read, tcp_port: 23, udp_port: 161, telnet_user: 'smartolt', telnet_pass: 'a10smartolt%' },
     });
     console.log(`  ${name}: ${r.count ? 'OK' : 'NO encontrada'} RO=${c.snmp_read} ${c.verified ? '(verificada)' : '(sin verificar SNMP)'}`);
   }
