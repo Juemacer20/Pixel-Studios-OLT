@@ -119,39 +119,52 @@ model PONPort {
 }
 
 model ONT {
-  id               String    @id @default(uuid())
-  olt_id           String
-  pon_port_id      String?
-  serial_number    String    @unique
-  mac              String?
-  description      String?
-  status           ONTStatus @default(OFFLINE)
-  rx_power         Float?
-  tx_power         Float?
-  olt_rx_power     Float?
-  distance         Int?
-  temperature      Float?
-  voltage          Float?
-  bias_current     Float?
-  model            String?
-  firmware         String?
-  vlan             Int?
-  ip_address       String?
-  uptime           BigInt?
-  last_seen        DateTime?
-  provisioned_at   DateTime?
-  latitude         Float?
-  longitude        Float?
-  nap_box_id       String?
-  speed_profile_id String?
-  protocol         Protocol  @default(GPON)
-  created_at       DateTime  @default(now())
-  updated_at       DateTime  @updatedAt
+  id                   String    @id @default(uuid())
+  olt_id               String
+  pon_port_id          String?
+  serial_number        String    @unique
+  mac                  String?
+  description          String?
+  status               ONTStatus @default(OFFLINE)
+  rx_power             Float?
+  tx_power             Float?
+  olt_rx_power         Float?
+  distance             Int?
+  temperature          Float?
+  voltage              Float?
+  bias_current         Float?
+  model                String?
+  firmware             String?
+  vlan                 Int?
+  ip_address           String?
+  uptime               BigInt?
+  last_seen            DateTime?
+  provisioned_at       DateTime?
+  latitude             Float?
+  longitude            Float?
+  nap_box_id           String?
+  speed_profile_id     String?
+  protocol             Protocol  @default(GPON)
+  external_id          String?
+  contact              String?
+  zone                 String?
+  odb                  String?
+  board                Int?
+  port                 Int?
+  onu_id               Int?
+  channel              Int?
+  mgmt_ip              String?
+  sw_version           String?
+  wan_mode             String?
+  pppoe_user           String?
+  configuration_method String?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
 
-  olt           OLT           @relation(fields: [olt_id], references: [id])
-  ponPort       PONPort?      @relation(fields: [pon_port_id], references: [id])
-  napBox        NAPBox?       @relation(fields: [nap_box_id], references: [id])
-  speedProfile  SpeedProfile? @relation(fields: [speed_profile_id], references: [id])
+  olt           OLT             @relation(fields: [olt_id], references: [id])
+  ponPort       PONPort?        @relation(fields: [pon_port_id], references: [id])
+  napBox        NAPBox?         @relation(fields: [nap_box_id], references: [id])
+  speedProfile  SpeedProfile?   @relation(fields: [speed_profile_id], references: [id])
   client        Client?
   alerts        Alert[]
   signalHistory SignalHistory[]
@@ -279,15 +292,22 @@ model NotificationConfig {
 
 model SpeedProfile {
   id            String   @id @default(uuid())
-  name          String   @unique
-  download_mbps Int
-  upload_mbps   Int
+  name          String
+  direction     String? // DOWNLOAD / UPLOAD / BOTH
+  speedKbps     Int?
+  download_mbps Int      @default(0)
+  upload_mbps   Int      @default(0)
   burst_down    Int?
   burst_up      Int?
+  type          String? // INTERNET / IPTV / MGMT
+  isDefault     Boolean  @default(false)
+  forPonType    String? // GPON / EPON / ANY
+  ont_count     Int?
   created_at    DateTime @default(now())
 
   onts ONT[]
 
+  @@unique([name, direction])
   @@map("speed_profiles")
 }
 
@@ -299,6 +319,8 @@ model NAPBox {
   address     String?
   ports_total Int      @default(16)
   ports_used  Int      @default(0)
+  zone        String?
+  odb_port    Int?
   created_at  DateTime @default(now())
 
   onts ONT[]
@@ -321,13 +343,15 @@ model DHCPLease {
 }
 
 model AuditLog {
-  id         String   @id @default(uuid())
-  user_id    String?
-  action     String
-  target     String?
-  details    Json?
-  ip_address String?
-  created_at DateTime @default(now())
+  id          String   @id @default(uuid())
+  user_id     String?
+  action      String
+  action_type String? // ONT_ACTION, OLT_ACTION, SYSTEM, AUTH, EXPORT, IMPORT
+  target      String?
+  target_type String? // ONT, OLT, ZONE, ODB, PRESET, USER
+  details     Json?
+  ip_address  String?
+  created_at  DateTime @default(now())
 
   @@map("audit_logs")
 }
@@ -341,4 +365,156 @@ model NetStatusHistory {
   offline   Int?
 
   @@map("net_status_history")
+}
+
+model AutoActionPreset {
+  id                String   @id @default(uuid())
+  name              String
+  olts              String? // JSON array de OLT IDs o "all"
+  boards            String? // JSON array de boards o null
+  ports             String? // JSON array de ports o null
+  ponType           String? // GPON / EPON
+  snPattern         String? // Regex para SN
+  onuTypeId         String?
+  fallbackOnuTypeId String?
+  isDefault         Boolean  @default(false)
+  mode              String? // Bridge / Router
+  svlanId           Int?
+  cvlanId           Int?
+  tagTransform      String? // default / translate / transparent
+  downloadSpeed     Int? // Kbps
+  uploadSpeed       Int? // Kbps
+  zoneId            String?
+  odbId             String?
+  webUser           String?
+  webPassword       String?
+  description       String?
+  isActive          Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("auto_action_presets")
+}
+
+model AuthorizationPreset {
+  id                String   @id @default(uuid())
+  name              String
+  description       String?
+  oltId             String?
+  board             Int?
+  port              Int?
+  ponType           String?
+  snPattern         String?
+  onuTypeId         String?
+  fallbackOnuTypeId String?
+  mode              String? // Bridge / Router
+  svlanId           Int?
+  cvlanId           Int?
+  tagTransform      String?
+  downloadSpeedId   String?
+  uploadSpeedId     String?
+  zoneId            String?
+  odbId             String?
+  webUser           String?
+  webPassword       String?
+  isActive          Boolean  @default(true)
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@map("authorization_presets")
+}
+
+model SignalThresholdConfig {
+  id                  String   @id @default(uuid())
+  variationThreshold  Float?   @default(3.0)
+  largeVariationDelta Float?   @default(5.0)
+  multiOnuThreshold   Int?     @default(3)
+  trendWindowHours    Int?     @default(24)
+  trendMinEvents      Int?     @default(5)
+  updated_at          DateTime @updatedAt
+
+  @@map("signal_threshold_config")
+}
+
+model ApiKey {
+  id               String    @id @default(uuid())
+  key              String    @unique
+  name             String
+  type             String? // full / read-only / billing
+  restrictionGroup String?
+  allowedIPs       String? // JSON array o CSV
+  isActive         Boolean   @default(true)
+  lastUsedAt       DateTime?
+  created_at       DateTime  @default(now())
+  expires_at       DateTime?
+
+  @@map("api_keys")
+}
+
+model OltSubscription {
+  id         String    @id @default(uuid())
+  olt_id     String    @unique
+  status     String    @default("active") // active, expired, trial
+  endDate    DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@map("olt_subscriptions")
+}
+
+model User {
+  id              String   @id @default(uuid())
+  email           String   @unique
+  password_hash   String
+  name            String?
+  group           String   @default("noc") // admin / noc
+  status          String   @default("active") // active / inactive
+  twofa_enabled   Boolean  @default(false)
+  twofa_secret    String?
+  remember_token  String?
+  ip_access       String? // CSV de IPs permitidas o null = todas
+  installer_limit Int? // días límite para installer (default 3)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@map("users")
+}
+
+model OnuType {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  ponType             String? // GPON / EPON / XGSPON
+  channels            Int?
+  ethernetPorts       Int?
+  wifiBands           String? // 2.4G, 5G, 2.4G+5G
+  voipPorts           Int?
+  hasCATV             Boolean  @default(false)
+  allowCustomProfiles Boolean  @default(false)
+  capability          String? // HGU, SFU, MDU, etc.
+  created_at          DateTime @default(now())
+
+  @@map("onu_types")
+}
+
+model VpnTunnel {
+  id         String   @id @default(uuid())
+  name       String
+  oltIds     String // JSON array OLT IDs
+  status     String   @default("active")
+  subnet     String?
+  connected  String?
+  created_at DateTime @default(now())
+
+  @@map("vpn_tunnels")
+}
+
+model Tr069Profile {
+  id         String   @id @default(uuid())
+  name       String
+  acsUrl     String?
+  status     String   @default("active")
+  oltIds     String? // JSON array
+  created_at DateTime @default(now())
+
+  @@map("tr069_profiles")
 }
