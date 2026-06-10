@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   AreaChart,
   Area,
@@ -78,21 +78,40 @@ function SignalTooltip({ active, payload, label }) {
  */
 export default function SignalChart({ ontId, range: rangeProp = '24h', height = 200 }) {
   const [range, setRange] = useState(rangeProp);
+  const live = range === 'LIVE';
 
   const { data: rawHistory, isLoading, isError } = useQuery({
     queryKey: ['signal-history', ontId, range],
     queryFn: () => ontAPI.signalHistory(ontId, range).then((r) => r.data?.data ?? r.data),
-    enabled: !!ontId,
+    enabled: !!ontId && !live,
     staleTime:        60_000,
     refetchInterval: 300_000,
     retry: 1,
   });
 
+  // ── Modo LIVE: poll /signal cada 3s y acumula puntos en memoria ──
+  const [liveBuf, setLiveBuf] = useState([]);
+  const liveRef = useRef(live); liveRef.current = live;
+  useEffect(() => {
+    if (!live || !ontId) return;
+    setLiveBuf([]);
+    let cancel = false;
+    const tick = async () => {
+      try {
+        const r = await ontAPI.signal(ontId);
+        const s = r.data?.data ?? r.data;
+        if (!cancel && s) setLiveBuf((b) => [...b.slice(-59), { timestamp: Date.now(), rx_power: s.rx_power, tx_power: s.tx_power }]);
+      } catch { /* ignora */ }
+    };
+    tick();
+    const iv = setInterval(tick, 3000);
+    return () => { cancel = true; clearInterval(iv); };
+  }, [live, ontId]);
+
   // Fall back to mock data when API is unavailable or returns nothing
-  const history =
-    isError || !rawHistory || rawHistory.length === 0
-      ? buildMockHistory(range)
-      : rawHistory;
+  const history = live
+    ? liveBuf
+    : (isError || !rawHistory || rawHistory.length === 0 ? buildMockHistory(range) : rawHistory);
 
   const chartData = history.map((h) => ({
     timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp).getTime() : h.timestamp,
@@ -125,7 +144,7 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
           )}
         </span>
 
-        {/* Range picker */}
+        {/* Range picker + LIVE */}
         <div style={{ display: 'flex', gap: 4 }}>
           {RANGES.map((r) => (
             <button
@@ -143,6 +162,13 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
               {r}
             </button>
           ))}
+          <button onClick={() => setRange(live ? '24h' : 'LIVE')} className="btn"
+            style={{ padding: '2px 8px', fontSize: 11, display: 'flex', alignItems: 'center', gap: 4,
+              borderColor: live ? 'var(--red)' : 'var(--border)', color: live ? 'var(--red)' : 'var(--text-muted)' }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: live ? 'var(--red)' : 'var(--text-muted)',
+              boxShadow: live ? '0 0 6px var(--red)' : 'none' }} />
+            LIVE
+          </button>
         </div>
       </div>
 
