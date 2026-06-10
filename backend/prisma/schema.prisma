@@ -307,7 +307,6 @@ model SpeedProfile {
 
   onts ONT[]
 
-  @@unique([name, direction])
   @@map("speed_profiles")
 }
 
@@ -478,6 +477,18 @@ model User {
   updated_at      DateTime @updatedAt
 
   @@map("users")
+}
+
+model Zone {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  latitude    Float?
+  longitude   Float?
+  ont_count   Int?     // contador desnormalizado
+  created_at  DateTime @default(now())
+
+  @@map("zones")
 }
 
 model OnuType {
