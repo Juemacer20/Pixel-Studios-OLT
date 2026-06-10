@@ -124,6 +124,57 @@ export default function ONUView() {
       { key: 'longitude', label: 'Longitude', type: 'number' },
     ], run: (v) => ontAPI.updateLocationDetails(id, v) },
 
+    'Update ONU mode':       { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'ethPort', label: 'Ethernet port', type: 'number', default: 1 },
+      { key: 'vlanId', label: 'Native VLAN', type: 'number' },
+      { key: 'linkType', label: 'Link type', type: 'select', options: ['access', 'trunk', 'hybrid'], default: 'access' },
+    ], run: (v) => ontAPI.updateMode(id, v) },
+    'Update Management and VoIP IP': { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'ip', label: 'IP (vacío = DHCP)' }, { key: 'mask', label: 'Mask', default: '255.255.255.0' },
+      { key: 'gateway', label: 'Gateway' }, { key: 'vlanId', label: 'VLAN', type: 'number' },
+    ], run: (v) => ontAPI.updateMgmtIP(id, v) },
+    'Mgmt IP':               { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'ip', label: 'IP (vacío = DHCP)' }, { key: 'vlanId', label: 'VLAN', type: 'number' },
+    ], run: (v) => ontAPI.updateMgmtIP(id, v) },
+    'Configure ethernet port':{ type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'ethPort', label: 'Ethernet port', type: 'number', default: 1 },
+      { key: 'vlanId', label: 'VLAN', type: 'number' },
+      { key: 'enabled', label: 'Enabled', type: 'checkbox', default: true },
+    ], run: (v) => ontAPI.ethernetPort(id, v) },
+    'Configure WiFi port':   { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'ssid', label: 'SSID' }, { key: 'password', label: 'Password', type: 'password' },
+      { key: 'enabled', label: 'Enabled', type: 'checkbox', default: true },
+    ], run: (v) => ontAPI.wifiPort(id, v) },
+    'VoIP service':          { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'phoneNumber', label: 'Phone number' }, { key: 'sipUser', label: 'SIP user' },
+      { key: 'sipPassword', label: 'SIP password', type: 'password' },
+    ], run: (v) => ontAPI.voip(id, { ...v, enable: true }) },
+    'Enable VoIP':           { type: 'modal', confirmLabel: 'Enable', fields: [
+      { key: 'phoneNumber', label: 'Phone number' }, { key: 'sipUser', label: 'SIP user' },
+      { key: 'sipPassword', label: 'SIP password', type: 'password' },
+    ], run: (v) => ontAPI.voip(id, { ...v, enable: true }) },
+    'Disable VoIP':          { type: 'confirm', danger: true, msg: 'Disable VoIP on this ONU?', run: () => ontAPI.disableVoip(id) },
+    'Update IPTV':           { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'svlanId', label: 'IPTV S-VLAN', type: 'number' },
+      { key: 'userVlan', label: 'User VLAN', type: 'number' },
+      { key: 'enable', label: 'Enable IPTV', type: 'checkbox', default: true },
+    ], run: (v) => ontAPI.updateIPTV(id, v) },
+    'Update GPON channel':   { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'lineProfileId', label: 'Line-profile ID', type: 'number', required: true },
+    ], run: (v) => ontAPI.gponChannel(id, v) },
+    'Update EPON channel':   { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'lineProfileId', label: 'Line-profile ID', type: 'number', required: true },
+    ], run: (v) => ontAPI.eponChannel(id, v) },
+    'Change allocated ONU ID':{ type: 'modal', confirmLabel: 'Reallocate', fields: [
+      { key: 'newOnuId', label: 'New ONU ID', type: 'number', required: true },
+    ], run: (v) => ontAPI.reallocateId(id, v) },
+    'TR069 Profile':         { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'acsProfileId', label: 'ACS profile ID', required: true },
+    ], run: (v) => ontAPI.tr069Profile(id, v) },
+    'Firmware Upgrade - Reset to defaults': { type: 'modal', confirmLabel: 'Upgrade', fields: [
+      { key: 'targetFile', label: 'Firmware file (opcional)' },
+    ], run: (v) => ontAPI.firmwareUpgrade(id, v) },
+
     'Get status':            { type: 'read', title: 'ONU status', run: () => ontAPI.signal(id) },
     'Show running config':   { type: 'read', title: 'Running config', run: () => ontAPI.runningConfig(id) },
   };

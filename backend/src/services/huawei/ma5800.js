@@ -506,6 +506,82 @@ class MA5800 {
     return this._ontAction(serial, location, (l) => [`ont delete ${l.port} ${l.onu_id}`]);
   }
 
+  updateMode(serial, { ethPort = 1, vlanId, linkType = 'access' }, location) {
+    return this._ontAction(serial, location, (l) => {
+      const cmds = [`ont port link-type ${l.port} ${l.onu_id} eth ${ethPort} type ${linkType}`];
+      if (vlanId) cmds.push(`ont port native-vlan ${l.port} ${l.onu_id} eth ${ethPort} vlan ${vlanId}`);
+      return cmds;
+    });
+  }
+
+  updateMgmtIP(serial, { ip, mask, gateway, vlanId }, location) {
+    return this._ontAction(serial, location, (l) => {
+      if (ip) return [`ont ipconfig ${l.port} ${l.onu_id} static ip-address ${ip} mask ${mask || '255.255.255.0'}${gateway ? ` gateway ${gateway}` : ''}${vlanId ? ` vlan ${vlanId}` : ''}`];
+      return [`ont ipconfig ${l.port} ${l.onu_id} dhcp${vlanId ? ` vlan ${vlanId}` : ''}`];
+    });
+  }
+
+  configureEthernetPort(serial, { ethPort = 1, vlanId, enabled = true }, location) {
+    return this._ontAction(serial, location, (l) => {
+      const cmds = [];
+      if (vlanId) cmds.push(`ont port native-vlan ${l.port} ${l.onu_id} eth ${ethPort} vlan ${vlanId}`);
+      cmds.push(`ont port attribute ${l.port} ${l.onu_id} eth ${ethPort} operational-state ${enabled ? 'enable' : 'disable'}`);
+      return cmds;
+    });
+  }
+
+  configureWiFiPort(serial, { ssid, password, enabled = true }, location) {
+    // WiFi sobre ONT vía OMCI extendido (depende de firmware); comando best-effort.
+    return this._ontAction(serial, location, (l) => {
+      const cmds = [];
+      if (ssid) cmds.push(`ont wifi-config ${l.port} ${l.onu_id} ssid ${ssid}${password ? ` wpa-key ${password}` : ''}`);
+      cmds.push(`ont wifi-config ${l.port} ${l.onu_id} state ${enabled ? 'enable' : 'disable'}`);
+      return cmds;
+    });
+  }
+
+  configureVoIP(serial, { phoneNumber, sipUser, sipPassword, enable = true }, location) {
+    return this._ontAction(serial, location, (l) => {
+      if (!enable) return [`ont voip-config ${l.port} ${l.onu_id} disable`];
+      return [`ont voip-config ${l.port} ${l.onu_id} pots 1 telno ${phoneNumber || ''} sip-user ${sipUser || ''} sip-pwd ${sipPassword || ''}`];
+    });
+  }
+
+  disableVoIP(serial, location) {
+    return this._ontAction(serial, location, (l) => [`ont voip-config ${l.port} ${l.onu_id} disable`]);
+  }
+
+  updateIPTV(serial, { svlanId, userVlan, enable = true }, location) {
+    return this._ontAction(serial, location, (l) => {
+      if (!enable) return [`undo ont port vlan ${l.port} ${l.onu_id} eth 1`];
+      return [`ont port vlan ${l.port} ${l.onu_id} eth 1 vlan ${userVlan || svlanId}`];
+    });
+  }
+
+  updateGponChannel(serial, { lineProfileId }, location) {
+    return this._ontAction(serial, location, (l) => [`ont modify ${l.port} ${l.onu_id} ont-lineprofile-id ${lineProfileId}`]);
+  }
+
+  updateEponChannel(serial, { lineProfileId }, location) {
+    return this._ontAction(serial, location, (l) => [`ont modify ${l.port} ${l.onu_id} ont-lineprofile-id ${lineProfileId}`]);
+  }
+
+  reallocateId(serial, { newOnuId }, location) {
+    // Huawei no reasigna ONT-ID in situ; se elimina y re-agrega con el nuevo id.
+    return this._ontAction(serial, location, (l) => [
+      `ont delete ${l.port} ${l.onu_id}`,
+      `ont add ${l.port} ${newOnuId} sn-auth ${serial} omci ont-lineprofile-id 1`,
+    ]);
+  }
+
+  setTr069Profile(serial, { acsProfileId }, location) {
+    return this._ontAction(serial, location, (l) => [`ont tr069-config ${l.port} ${l.onu_id} profile-id ${acsProfileId}`]);
+  }
+
+  firmwareUpgrade(serial, { targetFile }, location) {
+    return this._ontAction(serial, location, (l) => [`ont-version auto-update ${l.port} ${l.onu_id}${targetFile ? ` file ${targetFile}` : ''}`]);
+  }
+
   // Read-only actions -----------------------------------------------------------
   async getRunningConfig(serial, location) {
     return this._ontAction(serial, location, (l) => [`display ont info ${l.port} ${l.onu_id}`]);

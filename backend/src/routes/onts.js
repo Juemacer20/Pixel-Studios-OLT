@@ -81,6 +81,18 @@ router.post('/:id/web-user-pass',    checkRole('noc'), ctrl.ontAction('webUserPa
 router.post('/:id/replace-by-sn',    checkRole('noc'), ctrl.ontAction('replaceBySN'));
 router.post('/:id/move',             checkRole('noc'), ctrl.ontAction('move'));
 router.post('/:id/update-vlans',     checkRole('noc'), ctrl.ontAction('updateVLANs'));
+router.post('/:id/update-mode',      checkRole('noc'), ctrl.ontAction('updateMode'));
+router.post('/:id/update-mgmt-ip',   checkRole('noc'), ctrl.ontAction('updateMgmtIP'));
+router.post('/:id/ethernet-port',    checkRole('noc'), ctrl.ontAction('ethernetPort'));
+router.post('/:id/wifi-port',        checkRole('noc'), ctrl.ontAction('wifiPort'));
+router.post('/:id/voip-service',     checkRole('noc'), ctrl.ontAction('voip'));
+router.post('/:id/voip-disable',     checkRole('noc'), ctrl.ontAction('disableVoip'));
+router.post('/:id/update-iptv',      checkRole('noc'), ctrl.ontAction('updateIPTV'));
+router.post('/:id/gpon-channel',     checkRole('noc'), ctrl.ontAction('gponChannel'));
+router.post('/:id/epon-channel',     checkRole('noc'), ctrl.ontAction('eponChannel'));
+router.post('/:id/reallocate-id',    checkRole('noc'), ctrl.ontAction('reallocateId'));
+router.post('/:id/tr069-profile',    checkRole('noc'), ctrl.ontAction('tr069Profile'));
+router.post('/:id/firmware-upgrade', checkRole('noc'), ctrl.ontAction('firmwareUpgrade'));
 router.get('/:id/running-config',    ctrl.ontAction('runningConfig'));
 router.get('/:id/sw-info',           ctrl.ontAction('swInfo'));
 // DB-only actions
