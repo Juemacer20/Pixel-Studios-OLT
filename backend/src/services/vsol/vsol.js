@@ -194,6 +194,23 @@ class VSOL {
     }
   }
 
+  // ── Acciones de estado de ONU (VSOL CLI). Firma (serial, body, location) como
+  //    espera ontService.executeOntAction. sendCommand maneja la conexión Telnet.
+  async _vsolCmd(cmd) {
+    try { const output = await this.sendCommand(cmd); return { success: !/error|invalid|fail/i.test(output), output }; }
+    catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+  enableONT(serial)        { return this._vsolCmd(`onu activate ${serial}`); }
+  disableONT(serial)       { return this._vsolCmd(`onu deactivate ${serial}`); }
+  startONT(serial)         { return this._vsolCmd(`onu activate ${serial}`); }
+  stopONT(serial)          { return this._vsolCmd(`onu deactivate ${serial}`); }
+  resyncONT(serial)        { return this._vsolCmd(`onu reset ${serial}`); }
+  restoreDefaults(serial)  { return this._vsolCmd(`onu factory-reset ${serial}`); }
+  deleteONTFromOLT(serial) { return this._vsolCmd(`no onu ${serial}`); }
+  async getRunningConfig(serial) { try { return { success: true, outputs: [{ out: await this.sendCommand(`show gpon onu detail-info ${serial}`) }] }; } finally { this.disconnect(); } }
+  async getSwInfo(serial)        { try { return { success: true, outputs: [{ out: await this.sendCommand(`show gpon onu version ${serial}`) }] }; } finally { this.disconnect(); } }
+
   async getActiveAlerts() {
     try {
       const output = await this.sendCommand('show alarm active');
