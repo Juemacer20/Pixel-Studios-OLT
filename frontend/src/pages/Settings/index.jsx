@@ -266,12 +266,79 @@ function PollingTab({ data, onChange }) {
   );
 }
 
+// Configuración de variación de señal — cableada a /settings/signal-thresholds.
+function SignalVariationCard() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['signal-thresholds'], queryFn: () => settingsAPI.signalThresholds().then(r => r.data?.data ?? {}).catch(() => ({})) });
+  const [form, setForm] = useState(null);
+  const f = form ?? data ?? {};
+  const set = (k, v) => setForm({ ...f, [k]: v === '' ? null : Number(v) });
+  const saveMut = useMutation({
+    mutationFn: () => settingsAPI.saveSignalThresholds(f),
+    onSuccess: () => { toast.success('Signal thresholds saved'); qc.invalidateQueries({ queryKey: ['signal-thresholds'] }); setForm(null); },
+    onError: () => toast.error('Save failed'),
+  });
+  const FIELDS = [
+    ['variationThreshold', 'Variation threshold (dB)'], ['largeVariationDelta', 'Large variation Δ (dB)'],
+    ['multiOnuThreshold', 'Multi-ONU threshold'], ['trendWindowHours', 'Trend window (h)'], ['trendMinEvents', 'Trend min events'],
+  ];
+  return (
+    <div className="card">
+      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+        Signal variation alerts
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+        {FIELDS.map(([k, label]) => (
+          <label key={k} style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12.5, color: 'var(--text-secondary)' }}>
+            {label}
+            <input className="input-base" type="number" step="0.1" value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
+          </label>
+        ))}
+      </div>
+      <button className="btn btn-primary" style={{ marginTop: 14 }} disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
+        {saveMut.isPending ? 'Saving…' : 'Save signal thresholds'}
+      </button>
+    </div>
+  );
+}
+
+const API_METHODS = [
+  { method: 'GET /api/v1/onts', maxPerHour: 3600 },
+  { method: 'GET /api/v1/olts', maxPerHour: 3600 },
+  { method: 'POST /api/v1/onts/authorize', maxPerHour: 100 },
+  { method: 'POST /api/v1/onts/:id/reboot', maxPerHour: 60 },
+  { method: 'GET /api/v1/dashboard/*', maxPerHour: 7200 },
+  { method: 'GET /api/v1/graphs/*', maxPerHour: 3600 },
+  { method: 'GET /api/v1/reports/*', maxPerHour: 600 },
+  { method: 'POST /api/v1/reports/import', maxPerHour: 30 },
+];
+function ApiLogsTab() {
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="sol-card-h"><span>API rate limits</span></div>
+      <table className="table-base">
+        <thead><tr><th>Method</th><th style={{ textAlign: 'right' }}>Max calls / hour</th><th style={{ textAlign: 'right' }}>Current</th></tr></thead>
+        <tbody>
+          {API_METHODS.map((m) => (
+            <tr key={m.method}>
+              <td className="mono" style={{ fontSize: 11 }}>{m.method}</td>
+              <td style={{ textAlign: 'right' }}>{m.maxPerHour}</td>
+              <td style={{ textAlign: 'right' }}><span className="badge badge-green">0</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function ThresholdsTab({ data, onChange }) {
   const [saved, setSaved] = useState(false);
   const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <SignalVariationCard />
       {/* Visual threshold diagram */}
       <div className="card">
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 12, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
@@ -457,6 +524,7 @@ const TABS = [
   { label: 'Notifications',     icon: <IconBell size={13} /> },
   { label: 'Backup',            icon: <IconDatabase size={13} /> },
   { label: 'API Key',           icon: <IconKey size={13} /> },
+  { label: 'API Logs',          icon: <IconClock size={13} /> },
   { label: 'Billing',           icon: <IconCreditCard size={13} /> },
 ];
 
@@ -496,7 +564,8 @@ export default function Settings() {
         {tab === 3 && <NotificationsTab data={cfg.notifications} onChange={update('notifications')} />}
         {tab === 4 && <BackupTab        data={cfg.backup}        onChange={update('backup')} />}
         {tab === 5 && <ApiKeysTab />}
-        {tab === 6 && <BillingTab />}
+        {tab === 6 && <ApiLogsTab />}
+        {tab === 7 && <BillingTab />}
       </div>
     </div>
   );
