@@ -210,6 +210,8 @@ export const graphsAPI = {
   ponSignal: (params) => api.get('/graphs/pon-signal', { params }),
   signal:    (params) => api.get('/graphs/signal', { params }),
   signalOnt: (ontId)  => api.get(`/graphs/signal/${ontId}`),
+  traffic:   (params) => api.get('/graphs/traffic', { params }),
+  uplink:    (params) => api.get('/graphs/uplink', { params }),
 };
 
 export const reportsAPI = {

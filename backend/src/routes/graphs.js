@@ -257,4 +257,28 @@ router.get('/signal/:ontId', async (req, res, next) => {
   }
 });
 
+// GET /api/v1/graphs/traffic?olt_id=&range=24h — series rx/tx Mbps por interfaz.
+async function trafficHandler(req, res, next, onlyUplink) {
+  try {
+    const { olt_id, range = '24h' } = req.query;
+    const hours = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 }[range] || 24;
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+    const where = { timestamp: { gte: since } };
+    if (olt_id) where.olt_id = olt_id;
+    if (onlyUplink) where.is_uplink = true;
+    const rows = await prisma.oltTrafficHistory.findMany({ where, orderBy: { timestamp: 'asc' }, take: 20000 });
+    // Agrupar por olt_id + if_index
+    const groups = {};
+    for (const r of rows) {
+      const key = `${r.olt_id}:${r.if_index}`;
+      if (!groups[key]) groups[key] = { oltId: r.olt_id, ifIndex: r.if_index, ifDescr: r.if_descr, isUplink: r.is_uplink, points: [] };
+      groups[key].points.push({ t: r.timestamp, rx: r.rx_mbps, tx: r.tx_mbps });
+    }
+    res.json({ data: Object.values(groups) });
+  } catch (err) { next(err); }
+}
+
+router.get('/traffic', (req, res, next) => trafficHandler(req, res, next, false));
+router.get('/uplink', (req, res, next) => trafficHandler(req, res, next, true));
+
 module.exports = router;

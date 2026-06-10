@@ -335,6 +335,10 @@ class MA5800 {
     return this.snmp.getPortStats(portId);
   }
 
+  async getInterfaceTraffic() {
+    return this.snmp.getInterfaceTraffic();
+  }
+
   async sendCommand(cmd) {
     if (!this.telnet.connected) await this.telnet.connect();
     return this.telnet.sendCommand(cmd);

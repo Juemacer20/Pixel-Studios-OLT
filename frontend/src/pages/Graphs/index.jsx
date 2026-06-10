@@ -6,6 +6,7 @@ import { oltAPI } from '../../services/api';
 import SignalCard from '../../components/graphs/SignalCard';
 import OltCard from '../../components/graphs/OltCard';
 import PonCard from '../../components/graphs/PonCard';
+import TrafficCard from '../../components/graphs/TrafficCard';
 import GraphModal from '../../components/graphs/GraphModal';
 
 const TABS = ['OLT', 'Uplink', 'PON', 'Traffic', 'Signal'];
@@ -74,12 +75,20 @@ function OLTTab({ selectedOlt }) {
   );
 }
 
-function UplinkTab({ olts }) {
-  const list = Array.isArray(olts) ? olts : [];
-  if (!list.length) return <ComingSoonCard title="Uplink — Coming soon" />;
+function nameOf(olts, id) { return (Array.isArray(olts) ? olts : []).find(o => o.id === id)?.name || ''; }
+
+function UplinkTab({ selectedOlt, olts }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['graphs-uplink', selectedOlt],
+    queryFn: () => api.get('/graphs/uplink', { params: { range: '24h', ...(selectedOlt ? { olt_id: selectedOlt } : {}) } }).then(r => r.data?.data ?? r.data),
+    retry: 1,
+  });
+  const groups = Array.isArray(data) ? data : [];
+  if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>;
+  if (!groups.length) return <div className="empty-state">No uplink traffic yet — el polling SNMP guarda datos cada 5 min</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      {list.map(olt => <ComingSoonCard key={olt.id} title={`${olt.name} — Uplink`} />)}
+      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} />)}
     </div>
   );
 }
@@ -109,12 +118,18 @@ function PONTab({ selectedOlt }) {
   );
 }
 
-function TrafficTab({ olts }) {
-  const list = Array.isArray(olts) ? olts : [];
-  if (!list.length) return <ComingSoonCard title="Traffic — Coming soon" />;
+function TrafficTab({ selectedOlt, olts }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['graphs-traffic', selectedOlt],
+    queryFn: () => api.get('/graphs/traffic', { params: { range: '24h', ...(selectedOlt ? { olt_id: selectedOlt } : {}) } }).then(r => r.data?.data ?? r.data),
+    retry: 1,
+  });
+  const groups = Array.isArray(data) ? data : [];
+  if (isLoading) return <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}><div className="spinner" /></div>;
+  if (!groups.length) return <div className="empty-state">No traffic data yet — el polling SNMP guarda datos cada 5 min</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      {list.map(olt => <ComingSoonCard key={olt.id} title={`${olt.name} — Traffic`} />)}
+      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} />)}
     </div>
   );
 }
@@ -198,9 +213,9 @@ export default function Graphs() {
       </div>
 
       {activeTab === 'OLT'     && <OLTTab selectedOlt={selectedOlt || null} />}
-      {activeTab === 'Uplink'  && <UplinkTab olts={olts} />}
+      {activeTab === 'Uplink'  && <UplinkTab selectedOlt={selectedOlt || null} olts={olts} />}
       {activeTab === 'PON'     && <PONTab selectedOlt={selectedOlt || null} />}
-      {activeTab === 'Traffic' && <TrafficTab olts={olts} />}
+      {activeTab === 'Traffic' && <TrafficTab selectedOlt={selectedOlt || null} olts={olts} />}
       {activeTab === 'Signal'  && <SignalTab selectedOlt={selectedOlt || null} />}
     </div>
   );

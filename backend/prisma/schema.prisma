@@ -479,6 +479,20 @@ model User {
   @@map("users")
 }
 
+model OltTrafficHistory {
+  id        String   @id @default(uuid())
+  olt_id    String
+  if_index  Int
+  if_descr  String?
+  is_uplink Boolean  @default(false)
+  rx_mbps   Float    @default(0)
+  tx_mbps   Float    @default(0)
+  timestamp DateTime @default(now())
+
+  @@index([olt_id, timestamp])
+  @@map("olt_traffic_history")
+}
+
 model Zone {
   id          String   @id @default(uuid())
   name        String   @unique

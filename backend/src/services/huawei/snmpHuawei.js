@@ -22,7 +22,16 @@ const OIDS = {
   ifInOctets: '1.3.6.1.2.1.2.2.1.10',
   ifOutOctets: '1.3.6.1.2.1.2.2.1.16',
   ifOperStatus: '1.3.6.1.2.1.2.2.1.8',
+  ifDescr: '1.3.6.1.2.1.2.2.1.2',
 };
+
+// Heurística: ¿la interfaz parece un uplink (no PON/internal)?
+function isUplinkDescr(descr) {
+  if (!descr) return false;
+  const d = descr.toLowerCase();
+  if (/gpon|epon|pon|vlanif|null|inloop|meth|virtual/.test(d)) return false;
+  return /(^|\W)(xge|10ge|40ge|100ge|ge|eth|uplink|trunk)/.test(d);
+}
 
 class SNMPHuawei {
   constructor(olt) {
@@ -122,6 +131,31 @@ class SNMPHuawei {
       };
     } catch (err) {
       return { rx_power: null, tx_power: null };
+    }
+  }
+
+  // Lee contadores de octetos por interfaz (para gráficos de tráfico/uplink).
+  // Devuelve [{ ifIndex, descr, inOctets, outOctets, isUplink }].
+  async getInterfaceTraffic() {
+    try {
+      const [descrs, inO, outO] = await Promise.all([
+        snmpConfig.walk(this.session, OIDS.ifDescr),
+        snmpConfig.walk(this.session, OIDS.ifInOctets),
+        snmpConfig.walk(this.session, OIDS.ifOutOctets),
+      ]);
+      const idxOf = (oid, base) => oid.replace(base + '.', '');
+      const dMap = {}; for (const vb of descrs) dMap[idxOf(vb.oid, OIDS.ifDescr)] = String(vb.value);
+      const inMap = {}; for (const vb of inO) inMap[idxOf(vb.oid, OIDS.ifInOctets)] = Number(parseCounter(vb.value));
+      const outMap = {}; for (const vb of outO) outMap[idxOf(vb.oid, OIDS.ifOutOctets)] = Number(parseCounter(vb.value));
+      const rows = [];
+      for (const idx of Object.keys(inMap)) {
+        const descr = dMap[idx] || `if${idx}`;
+        rows.push({ ifIndex: parseInt(idx), descr, inOctets: inMap[idx] || 0, outOctets: outMap[idx] || 0, isUplink: isUplinkDescr(descr) });
+      }
+      return rows;
+    } catch (e) {
+      logger.error(`getInterfaceTraffic ${this.olt.ip}: ${e.message}`);
+      return [];
     }
   }
 
