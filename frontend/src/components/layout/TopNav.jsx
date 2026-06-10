@@ -3,9 +3,10 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import {
   IconLayoutDashboard, IconPlugConnected, IconCircleCheck, IconChartLine,
   IconStethoscope, IconListCheck, IconChevronDown, IconDeviceFloppy,
-  IconWorld, IconUser, IconPower,
+  IconWorld, IconUser, IconPower, IconGitCompare, IconSun, IconMoon,
 } from '@tabler/icons-react';
 import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../hooks/useTheme';
 
 // ── Menú principal (etiquetas tipo SmartOLT, mapeadas a rutas reales) ──
 const MAIN = [
@@ -21,6 +22,7 @@ const REPORTS = [
   { to: '/reports/tasks',          label: 'Tasks' },
   { to: '/reports/authorizations', label: 'Authorizations' },
   { to: '/reports/export',         label: 'Export' },
+  { to: '/reports/import',         label: 'Import' },
 ];
 
 const SETTINGS = [
@@ -63,6 +65,7 @@ export default function TopNav() {
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const { theme, toggle } = useTheme();
 
   const handleLogout = () => { clearAuth(); navigate('/login'); };
   const handleSave = () => {
@@ -84,6 +87,9 @@ export default function TopNav() {
             );
           })}
           <Dropdown label="Reports" items={REPORTS} navigate={navigate} />
+          <NavLink to="/config-comparison" className={`sol-nav-item${location.pathname === '/config-comparison' ? ' active' : ''}`}>
+            <IconGitCompare size={15} /> Config mismatches
+          </NavLink>
           <button className="sol-nav-item save" onClick={handleSave}>
             <IconDeviceFloppy size={15} /> Save config
           </button>
@@ -91,6 +97,9 @@ export default function TopNav() {
         </nav>
 
         <div className="sol-right">
+          <button className="sol-iconbtn" title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggle}>
+            {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
+          </button>
           <button className="sol-iconbtn" title="Language"><IconWorld size={17} /></button>
           <button className="sol-iconbtn" title={user?.email || 'User'} onClick={() => navigate('/users')}>
             <IconUser size={17} />

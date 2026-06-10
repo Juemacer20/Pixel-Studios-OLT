@@ -161,6 +161,38 @@ export const speedProfileAPI = {
   delete: (id) => api.delete(`/speed-profiles/${id}`),
 };
 
+export const apiKeyAPI = {
+  list: () => api.get('/api-keys'),
+  create: (data) => api.post('/api-keys', data),
+  regenerate: (id) => api.post(`/api-keys/${id}/regenerate`),
+  delete: (id) => api.delete(`/api-keys/${id}`),
+};
+
+export const settingsAPI = {
+  signalThresholds: () => api.get('/settings/signal-thresholds'),
+  saveSignalThresholds: (data) => api.put('/settings/signal-thresholds', data),
+  billing: () => api.get('/settings/billing'),
+  saveBilling: (oltId, data) => api.put(`/settings/billing/${oltId}`, data),
+};
+
+export const autoActionAPI = {
+  list: () => api.get('/auto-action-presets'),
+  create: (data) => api.post('/auto-action-presets', data),
+  update: (id, data) => api.put(`/auto-action-presets/${id}`, data),
+  toggle: (id) => api.post(`/auto-action-presets/${id}/toggle`),
+  delete: (id) => api.delete(`/auto-action-presets/${id}`),
+  runNow: () => api.post('/auto-action-presets/run-now'),
+};
+
+export const tr069API2 = {
+  vpnTunnels: () => api.get('/tr069/vpn-tunnels'),
+  createTunnel: (data) => api.post('/tr069/vpn-tunnels', data),
+  deleteTunnel: (id) => api.delete(`/tr069/vpn-tunnels/${id}`),
+  profiles: () => api.get('/tr069/profiles'),
+  createProfile: (data) => api.post('/tr069/profiles', data),
+  deleteProfile: (id) => api.delete(`/tr069/profiles/${id}`),
+};
+
 export const graphsAPI = {
   oltStats:  (params) => api.get('/graphs/olt-stats', { params }),
   ponSignal: (params) => api.get('/graphs/pon-signal', { params }),

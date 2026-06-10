@@ -29,6 +29,26 @@
   --sol-orange: #e08a16; --sol-orange2: #c9790f;
 }
 
+/* Light theme (toggle en TopNav, persistido en localStorage) */
+:root[data-theme="light"] {
+  --topbar-bg: #ffffff;
+  --sidebar-bg: #ffffff;
+  --content-bg: #ffffff;
+  --card-bg: #ffffff;
+  --border: rgba(0,0,0,0.12);
+  --border-light: rgba(0,0,0,0.18);
+  --accent: #337ab7;
+  --accent-hover: #2a6496;
+  --text-primary: #2c3e50;
+  --text-secondary: #51606e;
+  --text-muted: #8a97a5;
+  --bg-hover: rgba(0,0,0,0.04);
+}
+:root[data-theme="light"] body {
+  color: var(--text-primary);
+  background: #f4f6f9 !important;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {

@@ -1,8 +1,82 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   IconSettings, IconClock, IconWifi, IconBell,
-  IconDatabase, IconDeviceFloppy, IconCheck, IconRefresh,
+  IconDatabase, IconDeviceFloppy, IconCheck, IconRefresh, IconKey, IconCreditCard, IconTrash,
 } from '@tabler/icons-react';
+import { apiKeyAPI, settingsAPI } from '../../services/api';
+import toast from 'react-hot-toast';
+
+const arr = (r) => r?.data?.data ?? r?.data ?? [];
+
+// ── API Keys tab ──
+function ApiKeysTab() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['api-keys'], queryFn: () => apiKeyAPI.list().then(arr).catch(() => []) });
+  const keys = Array.isArray(data) ? data : [];
+  const createMut = useMutation({ mutationFn: () => apiKeyAPI.create({ name: 'API key', type: 'full' }),
+    onSuccess: () => { toast.success('API key generated'); qc.invalidateQueries({ queryKey: ['api-keys'] }); } });
+  const regenMut = useMutation({ mutationFn: (id) => apiKeyAPI.regenerate(id),
+    onSuccess: () => { toast.success('Regenerated'); qc.invalidateQueries({ queryKey: ['api-keys'] }); } });
+  const delMut = useMutation({ mutationFn: (id) => apiKeyAPI.delete(id),
+    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['api-keys'] }); } });
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="sol-card-h"><span>API keys</span>
+        <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => createMut.mutate()}>Generate API Key</button></div>
+      <table className="table-base">
+        <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Key</th><th>Allowed IPs</th><th style={{ width: 150 }}>Actions</th></tr></thead>
+        <tbody>
+          {keys.length === 0 && <tr><td colSpan={6} className="empty-state">No API keys</td></tr>}
+          {keys.map((k, i) => (
+            <tr key={k.id}>
+              <td>{i + 1}</td><td>{k.name}</td><td><span className="badge">{k.type}</span></td>
+              <td className="mono" style={{ fontSize: 11 }}>{k.key.slice(0, 12)}…</td>
+              <td className="mono" style={{ fontSize: 11 }}>{k.allowedIPs || 'Any'}</td>
+              <td style={{ display: 'flex', gap: 6 }}>
+                <button className="btn" style={{ fontSize: 11 }} onClick={() => regenMut.mutate(k.id)}>Regenerate</button>
+                <button className="btn-icon" onClick={() => delMut.mutate(k.id)}><IconTrash size={14} /></button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Billing tab ──
+function BillingTab() {
+  const qc = useQueryClient();
+  const { data } = useQuery({ queryKey: ['billing'], queryFn: () => settingsAPI.billing().then(arr).catch(() => []) });
+  const subs = Array.isArray(data) ? data : [];
+  const saveMut = useMutation({ mutationFn: ({ oltId, body }) => settingsAPI.saveBilling(oltId, body),
+    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['billing'] }); } });
+  return (
+    <div className="card" style={{ padding: 0 }}>
+      <div className="sol-card-h"><span>Billing — subscriptions per OLT</span></div>
+      <table className="table-base">
+        <thead><tr><th>OLT</th><th>Status</th><th>End date</th><th style={{ width: 120 }}>Action</th></tr></thead>
+        <tbody>
+          {subs.map((s) => (
+            <tr key={s.olt_id}>
+              <td>{s.olt_name}</td>
+              <td>
+                <select className="input-base" defaultValue={s.status} id={`st-${s.olt_id}`} style={{ height: 28, fontSize: 12 }}>
+                  <option value="active">active</option><option value="expired">expired</option><option value="trial">trial</option>
+                </select>
+              </td>
+              <td><input type="date" className="input-base" id={`ed-${s.olt_id}`} defaultValue={s.endDate ? s.endDate.slice(0, 10) : ''} style={{ height: 28, fontSize: 12 }} /></td>
+              <td><button className="btn" style={{ fontSize: 11 }} onClick={() => saveMut.mutate({ oltId: s.olt_id, body: {
+                status: document.getElementById(`st-${s.olt_id}`).value,
+                endDate: document.getElementById(`ed-${s.olt_id}`).value || null } })}>Save</button></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
 
 // ── Initial state ──────────────────────────────────────────────────────────────
 const INITIAL = {
@@ -382,6 +456,8 @@ const TABS = [
   { label: 'Signal thresholds', icon: <IconWifi size={13} /> },
   { label: 'Notifications',     icon: <IconBell size={13} /> },
   { label: 'Backup',            icon: <IconDatabase size={13} /> },
+  { label: 'API Key',           icon: <IconKey size={13} /> },
+  { label: 'Billing',           icon: <IconCreditCard size={13} /> },
 ];
 
 export default function Settings() {
@@ -419,6 +495,8 @@ export default function Settings() {
         {tab === 2 && <ThresholdsTab    data={cfg.thresholds}    onChange={update('thresholds')} />}
         {tab === 3 && <NotificationsTab data={cfg.notifications} onChange={update('notifications')} />}
         {tab === 4 && <BackupTab        data={cfg.backup}        onChange={update('backup')} />}
+        {tab === 5 && <ApiKeysTab />}
+        {tab === 6 && <BillingTab />}
       </div>
     </div>
   );
