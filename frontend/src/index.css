@@ -1,67 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── SmartOLT clone theme (navy) ───────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════════════
+   SmartOLT clone — design tokens (Apéndice B). Dark = "night" (default), Light.
+   ════════════════════════════════════════════════════════════════════════════ */
 :root {
-  --topbar-bg: #0a1d31;
-  --sidebar-bg: #0c2236;      /* paneles/cabeceras */
-  --content-bg: #0c2038;      /* inputs / fondo sólido navy */
-  --card-bg: #102a44;
-  --border: #213a55;
-  --border-light: #2c4a68;
-  --accent: #2b7fd4;
-  --accent-hover: #3a8fe0;
-  --green: #23a85a;
-  --red: #e0504f;
-  --orange: #e08a16;
+  /* Night mode (B.1) */
+  --topbar-bg: #0e2236;
+  --sidebar-bg: #16263d;      /* paneles/cabeceras */
+  --panel-bg: #16263d;
+  --content-bg: #0f2034;      /* inputs */
+  --card-bg: #16263d;
+  --border: rgba(255,255,255,0.12);
+  --border-light: rgba(255,255,255,0.20);
+  --text-primary: #EBEBF5;
+  --text-secondary: #b9c6d6;
+  --text-muted: #98989D;
+  --bg-hover: rgba(255,255,255,0.06);
+  --panel-shadow: 0 6px 20px rgba(0,0,0,0.45);
+  --radius: 4px;
+
+  /* Paleta semántica SmartOLT (B.2) */
+  --accent: #337ab7;       --accent-hover: #2b689c;
+  --primary: #337ab7;
+  --success: #5cb85c;      --green: #5cb85c;
+  --danger:  #d9534f;      --red:   #d9534f;
+  --warning: #CA8A04;      --orange: #e08a16;
+  --link:    #0064C8;
   --purple: #a98cff;
   --cyan: #79b8e6;
   --yellow: #e3b341;
-  --text-primary: #e8eef5;
-  --text-secondary: #9fb3c8;
-  --text-muted: #6f859c;
-  --bg-hover: rgba(255,255,255,0.05);
 
-  --sol-blue: #2b7fd4;   --sol-blue2: #1f6fc0;
-  --sol-green: #23a85a;  --sol-green2: #1c904c;
+  /* Stat boxes (KPI) */
+  --sol-blue: #337ab7;   --sol-blue2: #2b689c;
+  --sol-green: #4DB14B;  --sol-green2: #3c9a3a;
   --sol-slate: #5a6b7d;  --sol-slate2: #43525f;
   --sol-orange: #e08a16; --sol-orange2: #c9790f;
+  --page-grad-1: #0d1b2a; --page-grad-2: #16263d;
 }
 
-/* Light theme (toggle en TopNav, persistido en localStorage) */
+/* Light mode (B.1) — estilo Bootstrap-3 SmartOLT */
 :root[data-theme="light"] {
   --topbar-bg: #ffffff;
   --sidebar-bg: #ffffff;
+  --panel-bg: #ffffff;
   --content-bg: #ffffff;
   --card-bg: #ffffff;
   --border: rgba(0,0,0,0.12);
-  --border-light: rgba(0,0,0,0.18);
-  --accent: #337ab7;
-  --accent-hover: #2a6496;
+  --border-light: rgba(0,0,0,0.15);
   --text-primary: #2c3e50;
   --text-secondary: #51606e;
-  --text-muted: #8a97a5;
+  --text-muted: #999999;
   --bg-hover: rgba(0,0,0,0.04);
+  --panel-shadow: 0 6px 20px rgba(0,0,0,0.14);
 }
 :root[data-theme="light"] body {
   color: var(--text-primary);
-  background: #f4f6f9 !important;
+  background: #f8f8f8 !important;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body {
   color: var(--text-primary);
-  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
   background:
-    radial-gradient(1200px 600px at 75% 12%, rgba(70,120,170,0.18), transparent 60%),
-    radial-gradient(900px 500px at 8% 92%, rgba(40,80,120,0.12), transparent 55%),
-    linear-gradient(135deg, #0a1623 0%, #0e2236 55%, #10283f 100%);
+    radial-gradient(1200px 600px at 75% 12%, rgba(51,122,183,0.16), transparent 60%),
+    linear-gradient(135deg, var(--page-grad-1) 0%, var(--page-grad-2) 100%);
   background-attachment: fixed;
 }
 
@@ -80,12 +91,13 @@ html, body {
 .signal-high    { color: #bc8cff; }
 .signal-unknown { color: var(--text-muted); }
 
-/* Status dots */
+/* Status dots (SmartOLT — 12px con sombra, B.4) */
 .status-dot {
-  width: 8px; height: 8px;
+  width: 12px; height: 12px;
   border-radius: 50%;
   display: inline-block;
   flex-shrink: 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,.26);
 }
 .status-online  { background: #3fb950; box-shadow: 0 0 6px #3fb950; animation: pulse-green 2s infinite; }
 .status-offline { background: #484f58; }
@@ -117,33 +129,31 @@ html, body {
   to   { transform: rotate(360deg); }
 }
 
-/* Cards (SmartOLT translucent panels) */
+/* Cards / panels (SmartOLT Bootstrap-3 — border-radius 4px) */
 .card {
-  background: rgba(14, 34, 54, 0.72);
+  background: var(--panel-bg);
   border: 1px solid var(--border);
-  border-radius: 11px;
+  border-radius: var(--radius);
   padding: 16px;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.22);
+  box-shadow: var(--panel-shadow);
 }
 .card-sm {
-  background: rgba(14, 34, 54, 0.72);
+  background: var(--panel-bg);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius);
   padding: 12px;
-  backdrop-filter: blur(4px);
 }
 
 /* Buttons */
 .btn {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 12px;
-  border-radius: 6px;
+  border-radius: var(--radius);
   font-size: 12px;
   font-weight: 500;
   cursor: pointer;
   border: 1px solid var(--border);
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s;
   background: var(--card-bg);
   color: var(--text-primary);
   white-space: nowrap;
@@ -151,31 +161,31 @@ html, body {
 .btn:hover { background: var(--bg-hover); border-color: var(--border-light); }
 
 .btn-primary {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
 }
 .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .btn-danger {
-  background: transparent;
-  border-color: var(--red);
-  color: var(--red);
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
 }
-.btn-danger:hover { background: rgba(248,81,73,0.1); }
+.btn-danger:hover { filter: brightness(0.93); }
 
 .btn-success {
-  background: transparent;
-  border-color: var(--green);
-  color: var(--green);
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
 }
-.btn-success:hover { background: rgba(63,185,80,0.1); }
+.btn-success:hover { filter: brightness(0.93); }
 
 .btn-icon {
   padding: 5px;
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius);
   color: var(--text-secondary);
   cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
@@ -222,16 +232,17 @@ html, body {
   vertical-align: middle;
 }
 .table-base tbody tr { transition: background 0.1s; }
+.table-base tbody tr:nth-child(even) { background: rgba(127,150,180,0.05); }   /* table-striped */
 .table-base tbody tr:hover { background: var(--bg-hover); }
 .table-base tbody tr:last-child td { border-bottom: none; }
 
-/* Badges */
+/* Badges (SmartOLT severity badge — B.4) */
 .badge {
   display: inline-flex; align-items: center; gap: 4px;
-  padding: 2px 8px;
-  border-radius: 12px;
+  padding: 1px 6px;
+  border-radius: 3px;
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
 }
 .badge-green  { background: rgba(63,185,80,0.15);  color: #3fb950; border: 1px solid rgba(63,185,80,0.3); }
@@ -505,8 +516,8 @@ html, body {
 .sol-s-orange { background: linear-gradient(135deg, var(--sol-orange),var(--sol-orange2)); }
 
 /* panel header SmartOLT */
-.sol-card-h { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: #dce8f4; background: rgba(255,255,255,.04); }
-.sol-card-h .more { font-size: 12px; color: #7fb2e6; cursor: pointer; font-weight: 500; }
+.sol-card-h { display: flex; align-items: center; justify-content: space-between; padding: 11px 15px; border-bottom: 1px solid var(--border); font-size: 13.5px; font-weight: 700; color: var(--text-primary); background: var(--bg-hover); border-top-left-radius: var(--radius); border-top-right-radius: var(--radius); }
+.sol-card-h .more { font-size: 12px; color: var(--link); cursor: pointer; font-weight: 500; }
 
 /* ── Tabla OLTs estilo SmartOLT (barra de cabecera azul + filas con contraste) ── */
 .sol-otable { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
@@ -518,11 +529,12 @@ html, body {
 .sol-otable thead th:first-child { border-top-left-radius: 10px; }
 .sol-otable thead th:last-child  { border-top-right-radius: 10px; }
 .sol-otable tbody td {
-  padding: 11px 14px; color: #dce8f4; vertical-align: middle;
-  background: rgba(28, 54, 84, 0.38);
-  border-bottom: 1px solid rgba(120,160,200,0.10);
+  padding: 11px 14px; color: var(--text-primary); vertical-align: middle;
+  background: var(--panel-bg);
+  border-bottom: 1px solid var(--border);
 }
-.sol-otable tbody tr:hover td { background: rgba(43,127,212,0.16); }
+.sol-otable tbody tr:nth-child(even) td { background: rgba(127,150,180,0.05); }
+.sol-otable tbody tr:hover td { background: var(--bg-hover); }
 .sol-otable tbody tr:last-child td { border-bottom: none; }
 .sol-otable tbody tr:last-child td:first-child { border-bottom-left-radius: 10px; }
 .sol-otable tbody tr:last-child td:last-child  { border-bottom-right-radius: 10px; }
