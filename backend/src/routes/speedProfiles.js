@@ -1,9 +1,11 @@
 const express = require('express');
 const { verifyToken, checkRole } = require('../middleware/auth');
-const { getSpeedProfiles, createSpeedProfile, applySpeedProfile } = require('../services/speedLimitService');
+const { getSpeedProfiles, createSpeedProfile, updateSpeedProfile, deleteSpeedProfile, applySpeedProfile } = require('../services/speedLimitService');
 const router = express.Router();
 router.use(verifyToken);
 router.get('/', async (req, res, next) => { try { res.json({ data: await getSpeedProfiles() }); } catch(e) { next(e); } });
 router.post('/', checkRole('admin'), async (req, res, next) => { try { res.status(201).json({ data: await createSpeedProfile(req.body) }); } catch(e) { next(e); } });
+router.put('/:id', checkRole('admin'), async (req, res, next) => { try { res.json({ data: await updateSpeedProfile(req.params.id, req.body) }); } catch(e) { next(e); } });
+router.delete('/:id', checkRole('admin'), async (req, res, next) => { try { await deleteSpeedProfile(req.params.id); res.json({ message: 'deleted' }); } catch(e) { next(e); } });
 router.post('/apply/:ontId', checkRole('noc'), async (req, res, next) => { try { res.json({ data: await applySpeedProfile(req.params.ontId, req.body.profileId) }); } catch(e) { next(e); } });
 module.exports = router;

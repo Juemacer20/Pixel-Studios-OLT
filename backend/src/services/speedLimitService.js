@@ -37,8 +37,22 @@ async function getSpeedProfiles() {
   return prisma.speedProfile.findMany({ orderBy: { name: 'asc' } });
 }
 
-async function createSpeedProfile(data) {
-  return prisma.speedProfile.create({ data });
+const PROFILE_FIELDS = ['name', 'direction', 'speedKbps', 'download_mbps', 'upload_mbps', 'burst_down', 'burst_up', 'type', 'isDefault', 'forPonType'];
+function pickProfile(data) {
+  return PROFILE_FIELDS.reduce((acc, k) => (data[k] !== undefined ? (acc[k] = data[k], acc) : acc), {});
 }
 
-module.exports = { applySpeedProfile, getSpeedProfiles, createSpeedProfile };
+async function createSpeedProfile(data) {
+  return prisma.speedProfile.create({ data: pickProfile(data) });
+}
+
+async function updateSpeedProfile(id, data) {
+  return prisma.speedProfile.update({ where: { id }, data: pickProfile(data) });
+}
+
+async function deleteSpeedProfile(id) {
+  await prisma.oNT.updateMany({ where: { speed_profile_id: id }, data: { speed_profile_id: null } });
+  return prisma.speedProfile.delete({ where: { id } });
+}
+
+module.exports = { applySpeedProfile, getSpeedProfiles, createSpeedProfile, updateSpeedProfile, deleteSpeedProfile };
