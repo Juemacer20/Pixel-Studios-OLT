@@ -196,9 +196,10 @@ async function updateLocationDetails(id, body, userId) {
 
 // Authorize (provision) a new ONU: send to OLT, then persist ONT + Client.
 async function authorizeONT(data, userId) {
+  if (!data.oltId) throw Object.assign(new Error('oltId is required'), { status: 400 });
+  if (!data.serialNumber) throw Object.assign(new Error('serialNumber is required'), { status: 400 });
   const olt = await prisma.oLT.findUnique({ where: { id: data.oltId } });
   if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
-  if (!data.serialNumber) throw Object.assign(new Error('serialNumber is required'), { status: 400 });
 
   const adapter = getAdapter(olt);
   if (typeof adapter.authorizeONT !== 'function') {
