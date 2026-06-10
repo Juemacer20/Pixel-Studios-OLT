@@ -110,6 +110,8 @@ export default function Diagnostics() {
                 <th className="px-3 py-2">Dist (m)</th>
                 <th className="px-3 py-2">Nombre / Interfaz</th>
                 <th className="px-3 py-2">SN</th>
+                <th className="px-3 py-2">Zona</th>
+                <th className="px-3 py-2">ODB</th>
                 <th className="px-3 py-2">OLT</th>
                 <th className="px-3 py-2">Último cambio</th>
               </tr>
@@ -133,6 +135,8 @@ export default function Diagnostics() {
                     {ont.description || <span className="text-gray-600 italic">sin nombre</span>}
                   </td>
                   <td className="px-3 py-1.5 font-mono text-gray-400 text-xs">{ont.serial_number}</td>
+                  <td className="px-3 py-1.5 text-gray-400 text-xs">{ont.zone || '—'}</td>
+                  <td className="px-3 py-1.5 text-gray-400 text-xs">{ont.odb || '—'}</td>
                   <td className="px-3 py-1.5 text-gray-400">{ont.olt?.name}</td>
                   <td className="px-3 py-1.5 text-gray-500 text-xs">{relTime(ont.last_seen)}</td>
                 </tr>

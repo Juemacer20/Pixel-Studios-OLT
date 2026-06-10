@@ -290,6 +290,8 @@ export default function SpeedProfiles() {
                 <th>Name</th>
                 <th>Download (Mbps)</th>
                 <th>Upload (Mbps)</th>
+                <th>Type</th>
+                <th>Default</th>
                 <th>Burst</th>
                 <th>ONUs using</th>
                 <th>Actions</th>
@@ -313,6 +315,14 @@ export default function SpeedProfiles() {
                   </td>
                   <td>
                     <SpeedBar value={p.upload} max={maxSpeed} color="var(--cyan)" />
+                  </td>
+                  <td>
+                    <span className="badge" style={{ fontSize: 10, background: 'rgba(43,127,212,0.12)', color: 'var(--accent)', border: '1px solid rgba(43,127,212,0.3)' }}>
+                      {p.type || 'INTERNET'}
+                    </span>
+                  </td>
+                  <td>
+                    {p.isDefault ? <span className="badge badge-green" style={{ fontSize: 10 }}>Default</span> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </td>
                   <td>
                     <span className="badge" style={{

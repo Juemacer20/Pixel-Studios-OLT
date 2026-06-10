@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import TopNav from './components/layout/TopNav';
+import UpdateBanner from './components/layout/UpdateBanner';
 import { useWebSocket } from './hooks/useWebSocket';
 import { useAuthStore } from './store/authStore';
 import Login from './pages/Login';
@@ -44,6 +45,7 @@ function AppLayout() {
   return (
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'transparent' }}>
       <TopNav />
+      <UpdateBanner />
       <div className="flex flex-col flex-1 overflow-hidden">
         <main className="flex-1 overflow-auto p-4">
           <div style={{ maxWidth: 1320, margin: '0 auto' }}>

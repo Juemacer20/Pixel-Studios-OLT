@@ -7,6 +7,8 @@ import {
 } from '@tabler/icons-react';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../hooks/useTheme';
+import { oltAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 // ── Menú principal (etiquetas tipo SmartOLT, mapeadas a rutas reales) ──
 const MAIN = [
@@ -68,9 +70,10 @@ export default function TopNav() {
   const { theme, toggle } = useTheme();
 
   const handleLogout = () => { clearAuth(); navigate('/login'); };
-  const handleSave = () => {
-    // Equivalente al "Save configuration" de SmartOLT (guardar NVRAM)
-    window.dispatchEvent(new CustomEvent('sol-save-config'));
+  const handleSave = async () => {
+    if (!confirm('¿Guardar la configuración? Las acciones ya persisten por OLT; esto registra un guardado global.')) return;
+    try { await oltAPI.saveConfig(); toast.success('Configuración guardada'); }
+    catch (e) { toast.error(e?.response?.data?.error || 'Error al guardar'); }
   };
 
   return (

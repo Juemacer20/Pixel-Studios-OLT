@@ -39,6 +39,17 @@ router.get('/:id/ports', ctrl.getPorts);
 router.get('/:id/ports/:port/onts', ctrl.getPortONTs);
 router.post('/:id/scan', checkRole('noc'), ctrl.scanONTs);
 
+// Save configuration (global). Las acciones ya hacen `save` por-OLT; este endpoint
+// registra el evento y queda como gancho para un guardado masivo futuro.
+router.post('/save-config', checkRole('noc'), async (req, res, next) => {
+  try {
+    await prisma.auditLog.create({
+      data: { user_id: req.user?.id, action: 'SAVE_CONFIG', action_type: 'OLT_ACTION', details: { note: 'per-action saves already persist to OLT' } },
+    }).catch(() => {});
+    res.json({ data: { saved: true } });
+  } catch (e) { next(e); }
+});
+
 // Config comparison: DB vs OLT real (solo lectura)
 router.get('/:id/compare', checkRole('noc'), async (req, res, next) => {
   try {
