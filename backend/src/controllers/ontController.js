@@ -130,8 +130,28 @@ async function authorize(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function batchOperation(req, res, next) {
+  try {
+    const { ontIds, action, params } = req.body;
+    if (!Array.isArray(ontIds) || !ontIds.length) return res.status(400).json({ error: 'ontIds required' });
+    if (!action) return res.status(400).json({ error: 'action required' });
+    const { enqueueBatch } = require('../jobs/batchOperation');
+    const result = await enqueueBatch({ ontIds, action, params, userId: req.user?.id });
+    res.json({ data: result });
+  } catch (err) { next(err); }
+}
+
+async function batchStatus(req, res, next) {
+  try {
+    const { getBatchStatus } = require('../jobs/batchOperation');
+    const status = await getBatchStatus(req.params.jobId);
+    if (!status) return res.status(404).json({ error: 'Job not found' });
+    res.json({ data: status });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation,
   getDHCPLeases, getMACTable: getMACTableCtrl, provision, wanConfig,
-  ontAction, updateExternalId, updateLocationDetails, authorize,
+  ontAction, updateExternalId, updateLocationDetails, authorize, batchOperation, batchStatus,
 };

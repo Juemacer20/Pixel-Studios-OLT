@@ -42,6 +42,9 @@ router.get('/unconfigured', async (req, res, next) => {
 
 // Authorize a new ONU (must be before /:id)
 router.post('/authorize', checkRole('noc'), ctrl.authorize);
+// Batch operations (must be before /:id)
+router.post('/batch', checkRole('noc'), ctrl.batchOperation);
+router.get('/batch/:jobId', ctrl.batchStatus);
 
 router.get('/:id', ctrl.getOne);
 router.put('/:id', checkRole('noc'), ctrl.update);

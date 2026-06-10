@@ -53,6 +53,7 @@ app.use('/api/v1/zones', inventory.zones);
 app.use('/api/v1/odbs', inventory.odbs);
 app.use('/api/v1/onu-types', inventory.onuTypes);
 app.use('/api/v1/auth-presets', inventory.authPresets);
+app.use('/api/v1/auto-action-presets', require('./routes/autoActions'));
 
 app.use(notFound);
 app.use(errorHandler);

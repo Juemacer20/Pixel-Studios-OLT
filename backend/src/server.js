@@ -62,9 +62,12 @@ async function startJobs() {
     const { startPollOLTs } = require('./jobs/pollOLTs');
     const { startSignalHistory } = require('./jobs/signalHistory');
     const { startAlertEngine } = require('./jobs/alertEngine');
+    const { startAutoAuthorize } = require('./jobs/autoAuthorize');
     startPollOLTs(io);
     startSignalHistory(io);
     startAlertEngine(io);
+    startAutoAuthorize(io);
+    require('./jobs/batchOperation'); // registra el processor de la cola batch
 
     // Snapshot del estado de red (online/offline) cada 5 min para el gráfico Network status
     const prisma = require('./config/database');
