@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconMapPin, IconPlus, IconTrash, IconSearch, IconEdit } from '@tabler/icons-react';
+import { IconMapPin, IconPlus, IconTrash, IconSearch, IconEdit, IconDownload, IconUpload } from '@tabler/icons-react';
 import { zoneAPI } from '../../services/api';
 import ActionModal from '../../components/shared/ActionModal';
 import ConfirmModal from '../../components/shared/ConfirmModal';
+import { downloadCSV, parseCSV, readFileText } from '../../utils/csv';
 import toast from 'react-hot-toast';
 
 export default function Zones() {
@@ -32,6 +33,18 @@ export default function Zones() {
     onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
   });
 
+  const importRef = React.useRef(null);
+  const doExport = () => downloadCSV(zones.map((z) => ({ name: z.name, description: z.description || '', latitude: z.latitude ?? '', longitude: z.longitude ?? '' })), 'zones.csv');
+  const doImport = async (file) => {
+    if (!file) return;
+    try {
+      const rows = parseCSV(await readFileText(file));
+      let ok = 0;
+      for (const r of rows) { if (!r.name) continue; try { await zoneAPI.create({ name: r.name, description: r.description, latitude: r.latitude ? Number(r.latitude) : null, longitude: r.longitude ? Number(r.longitude) : null }); ok++; } catch {} }
+      toast.success(`Imported ${ok} zones`); qc.invalidateQueries({ queryKey: ['zones'] });
+    } catch { toast.error('Import failed'); }
+  };
+
   const fields = [
     { key: 'name', label: 'Zone name', required: true, default: editing?.name },
     { key: 'description', label: 'Description', default: editing?.description },
@@ -46,7 +59,12 @@ export default function Zones() {
           <span className="page-title">Zones</span>
           <span className="badge badge-gray" style={{ fontSize: 11 }}>{zones.length}</span>
         </div>
-        <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add Zone</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn" onClick={doExport}><IconDownload size={13} /> Export</button>
+          <button className="btn" onClick={() => importRef.current?.click()}><IconUpload size={13} /> Import</button>
+          <input ref={importRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files[0])} />
+          <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add Zone</button>
+        </div>
       </div>
 
       <div style={{ position: 'relative', maxWidth: 320 }}>

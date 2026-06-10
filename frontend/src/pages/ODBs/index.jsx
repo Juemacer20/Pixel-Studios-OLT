@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { IconBox, IconPlus, IconTrash, IconSearch, IconEdit } from '@tabler/icons-react';
+import { IconBox, IconPlus, IconTrash, IconSearch, IconEdit, IconDownload, IconUpload } from '@tabler/icons-react';
 import { odbAPI } from '../../services/api';
 import ActionModal from '../../components/shared/ActionModal';
 import ConfirmModal from '../../components/shared/ConfirmModal';
+import { downloadCSV, parseCSV, readFileText } from '../../utils/csv';
 import toast from 'react-hot-toast';
 
 export default function ODBs() {
@@ -35,6 +36,18 @@ export default function ODBs() {
     onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
   });
 
+  const importRef = React.useRef(null);
+  const doExport = () => downloadCSV(odbs.map((o) => ({ name: o.name, zone: o.zone || '', ports_total: o.ports_total ?? '', ports_used: o.ports_used ?? '' })), 'odbs.csv');
+  const doImport = async (file) => {
+    if (!file) return;
+    try {
+      const rows = parseCSV(await readFileText(file));
+      let ok = 0;
+      for (const r of rows) { if (!r.name) continue; try { await odbAPI.create({ name: r.name, zone: r.zone, ports_total: r.ports_total ? Number(r.ports_total) : 16, ports_used: r.ports_used ? Number(r.ports_used) : 0 }); ok++; } catch {} }
+      toast.success(`Imported ${ok} ODBs`); qc.invalidateQueries({ queryKey: ['odbs'] });
+    } catch { toast.error('Import failed'); }
+  };
+
   const fields = [
     { key: 'name', label: 'ODB name', required: true, default: editing?.name },
     { key: 'zone', label: 'Zone', default: editing?.zone },
@@ -51,7 +64,12 @@ export default function ODBs() {
           <span className="page-title">ODBs</span>
           <span className="badge badge-gray" style={{ fontSize: 11 }}>{odbs.length}</span>
         </div>
-        <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add ODB (Splitter)</button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button className="btn" onClick={doExport}><IconDownload size={13} /> Export</button>
+          <button className="btn" onClick={() => importRef.current?.click()}><IconUpload size={13} /> Import</button>
+          <input ref={importRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files[0])} />
+          <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add ODB (Splitter)</button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
