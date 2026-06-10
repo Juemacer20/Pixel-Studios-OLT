@@ -1,11 +1,17 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { IconMapPin, IconPlus, IconTrash, IconDownload, IconUpload, IconSearch, IconEdit } from '@tabler/icons-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { IconMapPin, IconPlus, IconTrash, IconSearch, IconEdit } from '@tabler/icons-react';
 import { zoneAPI } from '../../services/api';
+import ActionModal from '../../components/shared/ActionModal';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
 
 export default function Zones() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['zones'],
     queryFn: () => zoneAPI.list().then(r => r.data?.data ?? r.data).catch(() => []),
@@ -14,7 +20,24 @@ export default function Zones() {
   const zones = Array.isArray(data) ? data : [];
   const filtered = useMemo(() =>
     zones.filter(z => z.name?.toLowerCase().includes(search.toLowerCase())), [zones, search]);
-  const totalOnus = zones.reduce((a, z) => a + (z.onus || 0), 0);
+
+  const saveMut = useMutation({
+    mutationFn: (v) => (editing?.id ? zoneAPI.update(editing.id, v) : zoneAPI.create(v)),
+    onSuccess: () => { toast.success('Zone saved'); qc.invalidateQueries({ queryKey: ['zones'] }); setEditing(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Save failed'),
+  });
+  const delMut = useMutation({
+    mutationFn: (id) => zoneAPI.delete(id),
+    onSuccess: () => { toast.success('Zone deleted'); qc.invalidateQueries({ queryKey: ['zones'] }); setDeleting(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
+  });
+
+  const fields = [
+    { key: 'name', label: 'Zone name', required: true, default: editing?.name },
+    { key: 'description', label: 'Description', default: editing?.description },
+    { key: 'latitude', label: 'Latitude', type: 'number', default: editing?.latitude },
+    { key: 'longitude', label: 'Longitude', type: 'number', default: editing?.longitude },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -23,12 +46,7 @@ export default function Zones() {
           <span className="page-title">Zones</span>
           <span className="badge badge-gray" style={{ fontSize: 11 }}>{zones.length}</span>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-primary" onClick={() => toast('Add Zone — próximamente')}><IconPlus size={13} /> Add Zone</button>
-          <button className="btn" onClick={() => toast('Delete unused zones — próximamente')}><IconTrash size={13} /> Delete unused zones</button>
-          <button className="btn" onClick={() => toast('Export — próximamente')}><IconDownload size={13} /> Export</button>
-          <button className="btn" onClick={() => toast('Import — próximamente')}><IconUpload size={13} /> Import</button>
-        </div>
+        <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add Zone</button>
       </div>
 
       <div style={{ position: 'relative', maxWidth: 320 }}>
@@ -45,13 +63,13 @@ export default function Zones() {
           <table className="table-base">
             <thead><tr><th>Name</th><th style={{ textAlign: 'right' }}>ONUs</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
             <tbody>
-              {filtered.map((z, i) => (
-                <tr key={i}>
+              {filtered.map((z) => (
+                <tr key={z.id}>
                   <td><IconMapPin size={12} style={{ color: 'var(--text-muted)', verticalAlign: -1, marginRight: 6 }} />{z.name}</td>
-                  <td style={{ textAlign: 'right' }}><span className="badge badge-blue">{z.onus ?? 0}</span></td>
+                  <td style={{ textAlign: 'right' }}><span className="badge badge-blue">{z.ont_count ?? z.onus ?? 0}</span></td>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => toast('Edit — próximamente')}><IconEdit size={12} /></button>
-                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => toast('Delete — próximamente')}><IconTrash size={12} /></button>
+                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => setEditing(z)}><IconEdit size={12} /></button>
+                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => setDeleting(z)}><IconTrash size={12} /></button>
                   </td>
                 </tr>
               ))}
@@ -59,6 +77,26 @@ export default function Zones() {
           </table>
         )}
       </div>
+
+      <ActionModal
+        open={!!editing}
+        title={editing?.id ? 'Edit zone' : 'Add zone'}
+        fields={fields}
+        confirmLabel={editing?.id ? 'Save' : 'Create'}
+        loading={saveMut.isPending}
+        onClose={() => !saveMut.isPending && setEditing(null)}
+        onConfirm={(v) => saveMut.mutate(v)}
+      />
+      <ConfirmModal
+        open={!!deleting}
+        title="Delete zone"
+        message={`Delete zone "${deleting?.name}"?`}
+        danger
+        loading={delMut.isPending}
+        confirmLabel="Delete"
+        onClose={() => !delMut.isPending && setDeleting(null)}
+        onConfirm={() => delMut.mutate(deleting.id)}
+      />
     </div>
   );
 }

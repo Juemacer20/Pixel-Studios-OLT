@@ -1,19 +1,48 @@
 import React, { useState, useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { IconBox, IconPlus, IconTrash, IconDownload, IconUpload, IconSearch, IconEdit } from '@tabler/icons-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { IconBox, IconPlus, IconTrash, IconSearch, IconEdit } from '@tabler/icons-react';
 import { odbAPI } from '../../services/api';
+import ActionModal from '../../components/shared/ActionModal';
+import ConfirmModal from '../../components/shared/ConfirmModal';
 import toast from 'react-hot-toast';
 
 export default function ODBs() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [usageFilter, setUsageFilter] = useState('');
+  const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
+
   const { data, isLoading } = useQuery({
     queryKey: ['odbs'],
     queryFn: () => odbAPI.list().then(r => r.data?.data ?? r.data).catch(() => []),
     retry: 1,
   });
   const odbs = Array.isArray(data) ? data : [];
-  const filtered = useMemo(() =>
-    odbs.filter(o => o.name?.toLowerCase().includes(search.toLowerCase())), [odbs, search]);
+  const filtered = useMemo(() => odbs.filter(o =>
+    o.name?.toLowerCase().includes(search.toLowerCase()) &&
+    (!usageFilter || (o.usage ?? 0) >= Number(usageFilter))
+  ), [odbs, search, usageFilter]);
+
+  const saveMut = useMutation({
+    mutationFn: (v) => (editing?.id ? odbAPI.update(editing.id, v) : odbAPI.create(v)),
+    onSuccess: () => { toast.success('ODB saved'); qc.invalidateQueries({ queryKey: ['odbs'] }); setEditing(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Save failed'),
+  });
+  const delMut = useMutation({
+    mutationFn: (id) => odbAPI.delete(id),
+    onSuccess: () => { toast.success('ODB deleted'); qc.invalidateQueries({ queryKey: ['odbs'] }); setDeleting(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
+  });
+
+  const fields = [
+    { key: 'name', label: 'ODB name', required: true, default: editing?.name },
+    { key: 'zone', label: 'Zone', default: editing?.zone },
+    { key: 'ports_total', label: 'Number of ports', type: 'number', default: editing?.ports_total ?? 16 },
+    { key: 'ports_used', label: 'Ports used', type: 'number', default: editing?.ports_used ?? 0 },
+    { key: 'latitude', label: 'Latitude', type: 'number', default: editing?.latitude },
+    { key: 'longitude', label: 'Longitude', type: 'number', default: editing?.longitude },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -22,17 +51,19 @@ export default function ODBs() {
           <span className="page-title">ODBs</span>
           <span className="badge badge-gray" style={{ fontSize: 11 }}>{odbs.length}</span>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn btn-primary" onClick={() => toast('Add ODB — próximamente')}><IconPlus size={13} /> Add ODB (Splitter)</button>
-          <button className="btn" onClick={() => toast('Delete unused ODBs — próximamente')}><IconTrash size={13} /> Delete unused ODBs</button>
-          <button className="btn" onClick={() => toast('Export — próximamente')}><IconDownload size={13} /> Export</button>
-          <button className="btn" onClick={() => toast('Import — próximamente')}><IconUpload size={13} /> Import</button>
-        </div>
+        <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add ODB (Splitter)</button>
       </div>
 
-      <div style={{ position: 'relative', maxWidth: 320 }}>
-        <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-        <input className="input-base" style={{ paddingLeft: 28 }} placeholder="Search ODB…" value={search} onChange={e => setSearch(e.target.value)} />
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <div style={{ position: 'relative', maxWidth: 320, flex: '1 1 200px' }}>
+          <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input className="input-base" style={{ paddingLeft: 28 }} placeholder="Search ODB…" value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <select className="input-base" style={{ maxWidth: 170 }} value={usageFilter} onChange={e => setUsageFilter(e.target.value)}>
+          <option value="">Usage: Any</option>
+          <option value="50">≥ 50%</option><option value="75">≥ 75%</option>
+          <option value="90">≥ 90%</option><option value="100">Capacity exceeded</option>
+        </select>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -42,17 +73,19 @@ export default function ODBs() {
           <div className="empty-state"><IconBox size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />No ODBs found</div>
         ) : (
           <table className="table-base">
-            <thead><tr><th>Name</th><th style={{ textAlign: 'center' }}>Nr of ports</th><th>Zone</th><th style={{ textAlign: 'right' }}>ONUs</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
+            <thead><tr><th>Name</th><th style={{ textAlign: 'center' }}>Ports</th><th>Zone</th><th style={{ textAlign: 'center' }}>Usage</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
             <tbody>
-              {filtered.slice(0, 300).map((o, i) => (
-                <tr key={i}>
+              {filtered.slice(0, 400).map((o) => (
+                <tr key={o.id}>
                   <td><IconBox size={12} style={{ color: 'var(--text-muted)', verticalAlign: -1, marginRight: 6 }} />{o.name}</td>
-                  <td style={{ textAlign: 'center' }}>{o.ports ?? '—'}</td>
+                  <td style={{ textAlign: 'center' }}>{o.ports_used ?? 0}/{o.ports_total ?? '—'}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{o.zone || '—'}</td>
-                  <td style={{ textAlign: 'right' }}><span className="badge badge-blue">{o.onus ?? 0}</span></td>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => toast('Edit — próximamente')}><IconEdit size={12} /></button>
-                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => toast('Delete — próximamente')}><IconTrash size={12} /></button>
+                    <span className={`badge ${(o.usage ?? 0) >= 90 ? 'badge-red' : (o.usage ?? 0) >= 75 ? 'badge-orange' : 'badge-blue'}`}>{o.usage ?? 0}%</span>
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => setEditing(o)}><IconEdit size={12} /></button>
+                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => setDeleting(o)}><IconTrash size={12} /></button>
                   </td>
                 </tr>
               ))}
@@ -60,6 +93,26 @@ export default function ODBs() {
           </table>
         )}
       </div>
+
+      <ActionModal
+        open={!!editing}
+        title={editing?.id ? 'Edit ODB' : 'Add ODB'}
+        fields={fields}
+        confirmLabel={editing?.id ? 'Save' : 'Create'}
+        loading={saveMut.isPending}
+        onClose={() => !saveMut.isPending && setEditing(null)}
+        onConfirm={(v) => saveMut.mutate(v)}
+      />
+      <ConfirmModal
+        open={!!deleting}
+        title="Delete ODB"
+        message={`Delete ODB "${deleting?.name}"?`}
+        danger
+        loading={delMut.isPending}
+        confirmLabel="Delete"
+        onClose={() => !delMut.isPending && setDeleting(null)}
+        onConfirm={() => delMut.mutate(deleting.id)}
+      />
     </div>
   );
 }
