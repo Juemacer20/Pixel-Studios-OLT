@@ -62,4 +62,23 @@ router.get('/:id/mac-table', ctrl.getMACTable);
 router.post('/:id/provision', checkRole('noc'), ctrl.provision);
 router.post('/:id/wan-config', checkRole('noc'), ctrl.wanConfig);
 
+// ── ONU actions (Telnet to OLT, audit-logged) ───────────────────────────────
+router.post('/:id/change-type',      checkRole('noc'), ctrl.ontAction('changeType'));
+router.post('/:id/speed-profile',    checkRole('noc'), ctrl.ontAction('speedProfile'));
+router.post('/:id/enable',           checkRole('noc'), ctrl.ontAction('enable'));
+router.post('/:id/disable',          checkRole('noc'), ctrl.ontAction('disable'));
+router.post('/:id/start',            checkRole('noc'), ctrl.ontAction('start'));
+router.post('/:id/stop',             checkRole('noc'), ctrl.ontAction('stop'));
+router.post('/:id/resync',           checkRole('noc'), ctrl.ontAction('resync'));
+router.post('/:id/restore-defaults', checkRole('noc'), ctrl.ontAction('restoreDefaults'));
+router.post('/:id/web-user-pass',    checkRole('noc'), ctrl.ontAction('webUserPass'));
+router.post('/:id/replace-by-sn',    checkRole('noc'), ctrl.ontAction('replaceBySN'));
+router.post('/:id/move',             checkRole('noc'), ctrl.ontAction('move'));
+router.post('/:id/update-vlans',     checkRole('noc'), ctrl.ontAction('updateVLANs'));
+router.get('/:id/running-config',    ctrl.ontAction('runningConfig'));
+router.get('/:id/sw-info',           ctrl.ontAction('swInfo'));
+// DB-only actions
+router.patch('/:id/external-id',     checkRole('noc'), ctrl.updateExternalId);
+router.post('/:id/update-location',  checkRole('noc'), ctrl.updateLocationDetails);
+
 module.exports = router;

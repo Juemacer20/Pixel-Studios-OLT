@@ -343,6 +343,177 @@ class MA5800 {
   async detectPortType(portId) {
     return { portId, type: 'GPON' };
   }
+
+  // ── ONU action layer (write commands via raw Telnet session) ─────────────────
+  //
+  // Huawei MA5800 ONT commands require the `interface gpon 0/<board>` context.
+  // Existing ONTs lack board/port/onu_id in DB, so each action resolves the ONT's
+  // physical location by serial number at execution time via `display ont info by-sn`.
+
+  /**
+   * Open a Telnet session, log in, run `fn(collect)` where `collect(cmd)` sends a
+   * command and returns its full (paginated) output, then close. Mirrors the raw
+   * socket pattern used in getOpticalInfo. `opts.config` enters `enable`+`config`.
+   */
+  async _session(fn, opts = {}) {
+    const net = require('net');
+    const creds = this.telnet._getCredentials();
+    if (!creds.password) throw Object.assign(new Error('No telnet credentials for OLT'), { status: 400 });
+
+    const PROMPT = /MA5800[^#>\r\n]*[#>]/;
+    const MORE = /---- More|More \( Press/;
+    const CR_PROMPT = /\{ <cr>/;
+    const FAILURE = /Failure|Error|invalid|Unknown command|incomplete/i;
+
+    const sock = new net.Socket();
+    let buf = '';
+    sock.on('data', d => { for (const b of d) { if (b < 0xf0) buf += String.fromCharCode(b); } });
+
+    const waitFor = (regexes, timeoutMs) => new Promise((resolve) => {
+      const start = Date.now();
+      const iv = setInterval(() => {
+        const hit = regexes.find(r => r.test(buf));
+        if (hit) { clearInterval(iv); resolve(hit); }
+        else if (Date.now() - start > timeoutMs) { clearInterval(iv); resolve(null); }
+      }, 80);
+    });
+
+    const collect = async (cmd, pageTimeout = 12000) => {
+      buf = '';
+      sock.write(cmd + '\r\n');
+      let out = '';
+      let hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+      while (true) {
+        out += buf; buf = '';
+        if (hit === CR_PROMPT) { sock.write('\r\n'); }
+        else if (hit === MORE) { sock.write(' '); }
+        else break;
+        hit = await waitFor([CR_PROMPT, MORE, PROMPT], pageTimeout);
+        if (hit === null) { out += buf; buf = ''; break; }
+      }
+      return out;
+    };
+
+    try {
+      await new Promise((res, rej) => {
+        const to = setTimeout(() => rej(new Error('connect timeout')), 15000);
+        sock.once('error', e => { clearTimeout(to); rej(e); });
+        sock.connect(23, this.olt.ip, () => { clearTimeout(to); res(); });
+      });
+      await waitFor([/User name:|Username:|Login:/i], 10000);
+      buf = ''; sock.write((creds.username || 'admin') + '\r\n');
+      await waitFor([/User password:|Password:/i], 8000);
+      buf = ''; sock.write(creds.password + '\r\n');
+      await waitFor([/MA5800[^#>\r\n]*>/], 10000);
+      buf = ''; sock.write('enable\r\n');
+      await waitFor([/MA5800[^#>\r\n]*#/], 6000);
+      if (opts.config !== false) {
+        buf = ''; sock.write('config\r\n');
+        await waitFor([/MA5800\(config\)#/], 6000);
+      }
+      const result = await fn(collect, { FAILURE });
+      sock.destroy();
+      return result;
+    } catch (e) {
+      try { sock.destroy(); } catch {}
+      throw e;
+    }
+  }
+
+  /** Resolve {board, port, onu_id} from a serial number. Returns null if not found. */
+  async _resolveBySn(serial, collect) {
+    const out = await collect(`display ont info by-sn ${serial}`);
+    // F/S/P : 0/ 2/1   and   ONT-ID : 12
+    const fsp = out.match(/F\/S\/P\s*:\s*(\d+)\s*\/\s*(\d+)\s*\/\s*(\d+)/i);
+    const id = out.match(/ONT-ID\s*:\s*(\d+)/i);
+    if (!fsp || !id) return null;
+    return { board: parseInt(fsp[2]), port: parseInt(fsp[3]), onu_id: parseInt(id[1]) };
+  }
+
+  /**
+   * Run a sequence of ONT action commands against an ONT identified by serial.
+   * `buildCmds({board, port, onu_id})` returns an array of command strings to run
+   * inside `interface gpon 0/<board>`. Saves config at the end.
+   */
+  async _ontAction(serial, location, buildCmds) {
+    return this._session(async (collect, { FAILURE }) => {
+      let loc = location && location.board != null && location.onu_id != null ? location : null;
+      if (!loc) loc = await this._resolveBySn(serial, collect);
+      if (!loc) throw Object.assign(new Error(`ONT ${serial} not found on OLT`), { status: 404 });
+
+      await collect(`interface gpon 0/${loc.board}`);
+      const outputs = [];
+      let failed = false;
+      for (const cmd of buildCmds(loc)) {
+        const out = await collect(cmd);
+        outputs.push({ cmd, out: out.trim().slice(-400) });
+        if (FAILURE.test(out)) failed = true;
+      }
+      await collect('quit');
+      await collect('save');
+      return { success: !failed, location: loc, outputs };
+    });
+  }
+
+  // Action command builders ----------------------------------------------------
+  changeOntType(serial, { lineProfileId, srvProfileId }, location) {
+    return this._ontAction(serial, location, (l) => {
+      const cmds = [];
+      if (lineProfileId) cmds.push(`ont modify ${l.port} ${l.onu_id} ont-lineprofile-id ${lineProfileId}`);
+      if (srvProfileId) cmds.push(`ont modify ${l.port} ${l.onu_id} ont-srvprofile-id ${srvProfileId}`);
+      return cmds.length ? cmds : [`ont modify ${l.port} ${l.onu_id}`];
+    });
+  }
+
+  configureSpeedProfile(serial, { svlanId, userVlan, gemport = 1, tagTransform = 'translate', upstreamKbps, downstreamKbps }, location) {
+    return this._ontAction(serial, location, (l) => {
+      const cmds = [];
+      if (svlanId) cmds.push(`ont port vlan ${l.port} ${l.onu_id} eth 1 vlan ${userVlan || svlanId}`);
+      if (upstreamKbps && downstreamKbps) {
+        cmds.push(`traffic-limit ont ${l.port} ${l.onu_id} gemport ${gemport} upstream ${upstreamKbps} downstream ${downstreamKbps}`);
+      }
+      return cmds.length ? cmds : [`display ont info ${l.port} ${l.onu_id}`];
+    });
+  }
+
+  enableONT(serial, location)  { return this._ontAction(serial, location, (l) => [`ont activate ${l.port} ${l.onu_id}`]); }
+  disableONT(serial, location) { return this._ontAction(serial, location, (l) => [`ont deactivate ${l.port} ${l.onu_id}`]); }
+  startONT(serial, location)   { return this._ontAction(serial, location, (l) => [`ont activate ${l.port} ${l.onu_id}`]); }
+  stopONT(serial, location)    { return this._ontAction(serial, location, (l) => [`ont deactivate ${l.port} ${l.onu_id}`]); }
+  resyncONT(serial, location)  { return this._ontAction(serial, location, (l) => [`ont reset ${l.port} ${l.onu_id}`]); }
+  restoreDefaults(serial, location) { return this._ontAction(serial, location, (l) => [`ont factory-reset ${l.port} ${l.onu_id}`]); }
+
+  changeWebUserPass(serial, { webUser = 'admin', webPassword }, location) {
+    return this._ontAction(serial, location, (l) => [
+      `ont wan-config ${l.port} ${l.onu_id} ip-index 0 username ${webUser} password ${webPassword}`,
+    ]);
+  }
+
+  replaceBySN(serial, { newSn }, location) {
+    return this._ontAction(serial, location, (l) => [`ont replace ${l.port} ${l.onu_id} sn-auth ${newSn} omci`]);
+  }
+
+  moveONT(serial, { targetBoard, targetPort }, location) {
+    return this._ontAction(serial, location, (l) => [`ont move ${l.port} ${l.onu_id} 0 ${targetBoard} ${targetPort}`]);
+  }
+
+  updateVLANs(serial, { vlanId, ethPort = 1 }, location) {
+    return this._ontAction(serial, location, (l) => [`ont port vlan ${l.port} ${l.onu_id} eth ${ethPort} vlan ${vlanId}`]);
+  }
+
+  /** Delete the ONT from the OLT entirely. */
+  deleteONTFromOLT(serial, location) {
+    return this._ontAction(serial, location, (l) => [`ont delete ${l.port} ${l.onu_id}`]);
+  }
+
+  // Read-only actions -----------------------------------------------------------
+  async getRunningConfig(serial, location) {
+    return this._ontAction(serial, location, (l) => [`display ont info ${l.port} ${l.onu_id}`]);
+  }
+
+  async getSwInfo(serial, location) {
+    return this._ontAction(serial, location, (l) => [`display ont version ${l.port} ${l.onu_id}`]);
+  }
 }
 
 module.exports = MA5800;

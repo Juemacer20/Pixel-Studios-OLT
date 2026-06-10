@@ -99,4 +99,32 @@ async function wanConfig(req, res, next) {
   } catch (err) { next(err); }
 }
 
-module.exports = { list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation, getDHCPLeases, getMACTable: getMACTableCtrl, provision, wanConfig };
+// Generic ONU action handler factory — `action` is one of ontService.ACTION_TO_ADAPTER keys.
+function ontAction(action) {
+  return async (req, res, next) => {
+    try {
+      const result = await ontService.executeOntAction(req.params.id, action, req.body, req.user?.id);
+      res.json({ data: result });
+    } catch (err) { next(err); }
+  };
+}
+
+async function updateExternalId(req, res, next) {
+  try {
+    const ont = await ontService.updateExternalId(req.params.id, req.body.externalId, req.user?.id);
+    res.json({ data: ont });
+  } catch (err) { next(err); }
+}
+
+async function updateLocationDetails(req, res, next) {
+  try {
+    const ont = await ontService.updateLocationDetails(req.params.id, req.body, req.user?.id);
+    res.json({ data: ont });
+  } catch (err) { next(err); }
+}
+
+module.exports = {
+  list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation,
+  getDHCPLeases, getMACTable: getMACTableCtrl, provision, wanConfig,
+  ontAction, updateExternalId, updateLocationDetails,
+};

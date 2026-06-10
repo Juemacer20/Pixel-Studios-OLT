@@ -100,4 +100,90 @@ async function getDHCPLeases(ontId) {
   return prisma.dHCPLease.findMany({ where: { ont_id: ontId }, orderBy: { created_at: 'desc' } });
 }
 
-module.exports = { getAllONTs, getONTById, createONT, updateONT, deleteONT, getONTSignal, getSignalHistory, rebootONT, updateLocation, getDHCPLeases };
+// ── ONU actions ────────────────────────────────────────────────────────────
+// Maps the public action name to the OLT adapter method that runs the Telnet
+// command(s). DB-only actions (external id, location details) are handled
+// separately below.
+const ACTION_TO_ADAPTER = {
+  changeType: 'changeOntType',
+  speedProfile: 'configureSpeedProfile',
+  enable: 'enableONT',
+  disable: 'disableONT',
+  start: 'startONT',
+  stop: 'stopONT',
+  resync: 'resyncONT',
+  restoreDefaults: 'restoreDefaults',
+  webUserPass: 'changeWebUserPass',
+  replaceBySN: 'replaceBySN',
+  move: 'moveONT',
+  updateVLANs: 'updateVLANs',
+  runningConfig: 'getRunningConfig',
+  swInfo: 'getSwInfo',
+};
+
+async function executeOntAction(id, action, body, userId) {
+  const adapterMethod = ACTION_TO_ADAPTER[action];
+  if (!adapterMethod) throw Object.assign(new Error(`Unknown ONU action: ${action}`), { status: 400 });
+
+  const ont = await prisma.oNT.findUnique({ where: { id }, include: { olt: true } });
+  if (!ont) throw Object.assign(new Error('ONT not found'), { status: 404 });
+
+  const adapter = getAdapter(ont.olt);
+  if (typeof adapter[adapterMethod] !== 'function') {
+    throw Object.assign(new Error(`Action "${action}" is not supported for ${ont.olt.brand} OLTs yet`), { status: 501 });
+  }
+
+  const location = { board: ont.board, port: ont.port, onu_id: ont.onu_id };
+  const result = await adapter[adapterMethod](ont.serial_number, body || {}, location);
+
+  // Persist resolved physical location so future actions skip the by-SN lookup.
+  if (result && result.location && result.location.onu_id != null) {
+    await prisma.oNT.update({
+      where: { id },
+      data: { board: result.location.board, port: result.location.port, onu_id: result.location.onu_id },
+    }).catch((e) => logger.warn(`persist ONT location: ${e.message}`));
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      user_id: userId,
+      action: `ONT_${action.toUpperCase()}`,
+      action_type: 'ONT_ACTION',
+      target: id,
+      target_type: 'ONT',
+      details: { serial: ont.serial_number, olt: ont.olt.name, body: body || {} },
+    },
+  });
+  logger.info(`ONT action ${action} on ${ont.serial_number} (${ont.olt.name}): success=${result?.success}`);
+  return result;
+}
+
+// DB-only actions (no OLT command needed) -------------------------------------
+async function updateExternalId(id, externalId, userId) {
+  const ont = await prisma.oNT.update({ where: { id }, data: { external_id: externalId } });
+  await prisma.auditLog.create({
+    data: { user_id: userId, action: 'ONT_EXTERNAL_ID', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: { externalId } },
+  });
+  return ont;
+}
+
+async function updateLocationDetails(id, body, userId) {
+  const data = {};
+  for (const k of ['zone', 'odb', 'description', 'contact', 'latitude', 'longitude']) {
+    if (body[k] !== undefined) data[k] = body[k];
+  }
+  if (body.name !== undefined) data.description = body.name;
+  if (data.latitude != null) data.latitude = parseFloat(data.latitude);
+  if (data.longitude != null) data.longitude = parseFloat(data.longitude);
+  const ont = await prisma.oNT.update({ where: { id }, data });
+  await prisma.auditLog.create({
+    data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data },
+  });
+  return ont;
+}
+
+module.exports = {
+  getAllONTs, getONTById, createONT, updateONT, deleteONT, getONTSignal, getSignalHistory,
+  rebootONT, updateLocation, getDHCPLeases,
+  executeOntAction, updateExternalId, updateLocationDetails,
+};
