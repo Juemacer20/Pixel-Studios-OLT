@@ -6,6 +6,7 @@ import { useAuthStore } from '../store/authStore';
 export default function Login() {
   const [email,    setEmail]    = useState('admin@itelsa.com.ar');
   const [password, setPassword] = useState('');
+  const [remember, setRemember] = useState(false);
   const [error,    setError]    = useState('');
   const [loading,  setLoading]  = useState(false);
   const setAuth  = useAuthStore(s => s.setAuth);
@@ -16,7 +17,7 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      const { data } = await axios.post('/api/v1/auth/login', { email, password }, { withCredentials: true });
+      const { data } = await axios.post('/api/v1/auth/login', { email, password, remember }, { withCredentials: true });
       setAuth(data.user, data.accessToken);
       navigate('/dashboard', { replace: true });
     } catch (err) {
@@ -106,6 +107,11 @@ export default function Login() {
                 placeholder="••••••••"
               />
             </div>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: 13, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+              <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} />
+              Recordar sesión (30 días)
+            </label>
 
             {error && (
               <div style={{

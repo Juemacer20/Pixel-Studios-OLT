@@ -173,6 +173,13 @@ export const speedProfileAPI = {
   delete: (id) => api.delete(`/speed-profiles/${id}`),
 };
 
+export const authAPI = {
+  listUsers: () => api.get('/auth/users'),
+  register: (data) => api.post('/auth/register', data),
+  updateUser: (id, data) => api.patch(`/auth/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
+};
+
 export const apiKeyAPI = {
   list: () => api.get('/api-keys'),
   create: (data) => api.post('/api-keys', data),

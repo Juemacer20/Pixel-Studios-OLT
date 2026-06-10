@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   IconPlus, IconPencil, IconTrash, IconX, IconCheck,
   IconUsers, IconShieldCheck, IconEye, IconUser,
   IconLock,
 } from '@tabler/icons-react';
+import { authAPI } from '../../services/api';
+import toast from 'react-hot-toast';
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 const INITIAL_USERS = [
@@ -211,27 +214,41 @@ function DeleteModal({ user, onConfirm, onClose }) {
 
 // ── Main ─────────────────────────────────────────────────────────────────────
 export default function Users() {
-  const [users, setUsers]       = useState(INITIAL_USERS);
+  const qc = useQueryClient();
   const [modal, setModal]       = useState(null); // null | { type: 'create'|'edit', user }
   const [delUser, setDelUser]   = useState(null);
 
-  const handleSave = (formUser) => {
-    if (formUser.id) {
-      setUsers(prev => prev.map(u => u.id === formUser.id ? { ...u, ...formUser } : u));
-    } else {
-      setUsers(prev => [...prev, { ...formUser, id: Date.now(), last_login: null }]);
-    }
-    setModal(null);
-  };
+  const { data } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => authAPI.listUsers().then(r => r.data?.data ?? []).catch(() => []),
+    retry: 1,
+  });
+  // Mapear la forma del backend (group/status) a la que usa la UI (role/active).
+  const users = (Array.isArray(data) ? data : []).map(u => ({
+    ...u, role: u.group || 'noc', active: u.status !== 'inactive', last_login: u.last_login || null,
+  }));
 
-  const handleDelete = () => {
-    setUsers(prev => prev.filter(u => u.id !== delUser.id));
-    setDelUser(null);
-  };
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['users'] });
+  const saveMut = useMutation({
+    mutationFn: (fu) => fu.id
+      ? authAPI.updateUser(fu.id, { name: fu.name, group: fu.role, ...(fu.password ? { password: fu.password } : {}) })
+      : authAPI.register({ email: fu.email, password: fu.password, name: fu.name, group: fu.role }),
+    onSuccess: () => { toast.success('Usuario guardado'); invalidate(); setModal(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Error al guardar'),
+  });
+  const delMut = useMutation({
+    mutationFn: (id) => authAPI.deleteUser(id),
+    onSuccess: () => { toast.success('Usuario eliminado'); invalidate(); setDelUser(null); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Error al eliminar'),
+  });
+  const statusMut = useMutation({
+    mutationFn: ({ id, active }) => authAPI.updateUser(id, { status: active ? 'active' : 'inactive' }),
+    onSuccess: invalidate,
+  });
 
-  const toggleActive = (id) => {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, active: !u.active } : u));
-  };
+  const handleSave = (formUser) => saveMut.mutate(formUser);
+  const handleDelete = () => delMut.mutate(delUser.id);
+  const toggleActive = (id) => { const u = users.find(x => x.id === id); statusMut.mutate({ id, active: !u.active }); };
 
   // Stats
   const total    = users.length;
