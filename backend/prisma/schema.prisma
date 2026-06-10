@@ -479,6 +479,17 @@ model User {
   @@map("users")
 }
 
+model SavedOnu {
+  id            String   @id @default(uuid())
+  serial_number String
+  name          String?
+  olt_id        String?
+  olt_name      String?
+  created_at    DateTime @default(now())
+
+  @@map("saved_onus")
+}
+
 model OltTrafficHistory {
   id        String   @id @default(uuid())
   olt_id    String

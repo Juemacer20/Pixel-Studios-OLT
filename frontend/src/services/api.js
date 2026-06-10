@@ -103,6 +103,9 @@ export const ontAPI = {
   authorize:       (data) => api.post('/onts/authorize', data),
   batch:           (data) => api.post('/onts/batch', data),
   batchStatus:     (jobId) => api.get(`/onts/batch/${jobId}`),
+  savedList:       () => api.get('/onts/saved'),
+  savedAdd:        (data) => api.post('/onts/saved', data),
+  savedDelete:     (id) => api.delete(`/onts/saved/${id}`),
 };
 
 export const alertAPI = {

@@ -40,6 +40,23 @@ router.get('/unconfigured', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Saved ONUs (para autorización posterior) — antes de /:id
+router.get('/saved', async (req, res, next) => {
+  try { res.json({ data: await prisma.savedOnu.findMany({ orderBy: { created_at: 'desc' } }) }); }
+  catch (e) { next(e); }
+});
+router.post('/saved', checkRole('noc'), async (req, res, next) => {
+  try {
+    const { serial_number, name, olt_id, olt_name } = req.body;
+    if (!serial_number) return res.status(400).json({ error: 'serial_number required' });
+    res.status(201).json({ data: await prisma.savedOnu.create({ data: { serial_number, name, olt_id, olt_name } }) });
+  } catch (e) { next(e); }
+});
+router.delete('/saved/:id', checkRole('noc'), async (req, res, next) => {
+  try { await prisma.savedOnu.delete({ where: { id: req.params.id } }); res.json({ message: 'deleted' }); }
+  catch (e) { next(e); }
+});
+
 // Authorize a new ONU (must be before /:id)
 router.post('/authorize', checkRole('noc'), ctrl.authorize);
 // Batch operations (must be before /:id)

@@ -177,7 +177,7 @@ function AuthorizeModal({ ont, onClose, onSuccess }) {
 }
 
 /* ─── OLT Card ────────────────────────────────────────────────────────────── */
-function OLTCard({ group, onAuthorize, onWizard }) {
+function OLTCard({ group, onAuthorize, onWizard, onSave }) {
   const [collapsed, setCollapsed] = useState(false);
   const { olt, onts } = group;
 
@@ -265,6 +265,7 @@ function OLTCard({ group, onAuthorize, onWizard }) {
                       onClick={() => onWizard(ont)}>
                       Wizard
                     </button>
+                    <button className="btn-icon" style={{ marginLeft: 6 }} title="Save for later" onClick={() => onSave(ont)}>★</button>
                   </td>
                 </tr>
               ))}
@@ -361,6 +362,18 @@ export default function Unconfigured() {
     mutationFn: () => autoActionAPI.runNow(),
     onSuccess: (r) => { const d = r.data?.data || {}; toast.success(`Auto-authorize: ${d.authorized ?? 0} autorizadas${d.dryRun ? ' (dry-run)' : ''}`); },
     onError: (e) => toast.error(e?.response?.data?.error || 'Run failed'),
+  });
+
+  const { data: savedResp } = useQuery({ queryKey: ['saved-onus'], queryFn: () => ontAPI.savedList().then(r => r.data?.data ?? []).catch(() => []) });
+  const saved = Array.isArray(savedResp) ? savedResp : [];
+  const saveMut = useMutation({
+    mutationFn: (ont) => ontAPI.savedAdd({ serial_number: ont.serial_number, name: ont.description, olt_id: ont.olt?.id, olt_name: ont.olt?.name }),
+    onSuccess: () => { toast.success('ONU saved for later'); queryClient.invalidateQueries({ queryKey: ['saved-onus'] }); },
+    onError: () => toast.error('Save failed'),
+  });
+  const unsaveMut = useMutation({
+    mutationFn: (id) => ontAPI.savedDelete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['saved-onus'] }),
   });
 
   /* ── Queries ── */
@@ -469,6 +482,7 @@ export default function Unconfigured() {
               group={group}
               onAuthorize={setModalONT}
               onWizard={(ont) => navigate(`/onu/authorize?sn=${encodeURIComponent(ont.serial_number)}`)}
+              onSave={(ont) => saveMut.mutate(ont)}
             />
           ))}
         </div>
@@ -491,6 +505,31 @@ export default function Unconfigured() {
           {selectedOLTs.length > 0 && (
             <span style={{ color: 'var(--text-muted)' }}> (filtered)</span>
           )}
+        </div>
+      )}
+
+      {/* Saved ONUs for later authorization */}
+      {saved.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="sol-card-h"><span>★ Saved ONUs for later authorization</span></div>
+          <table className="table-base">
+            <thead><tr><th>Name</th><th>SN</th><th>OLT</th><th style={{ width: 120, textAlign: 'center' }}>Action</th></tr></thead>
+            <tbody>
+              {saved.map((s) => (
+                <tr key={s.id}>
+                  <td>{s.name || '—'}</td>
+                  <td className="mono" style={{ fontSize: 11 }}>{s.serial_number}</td>
+                  <td>{s.olt_name || '—'}</td>
+                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    <button className="btn" style={{ padding: '3px 10px', fontSize: 11 }}
+                      onClick={() => navigate(`/onu/authorize?sn=${encodeURIComponent(s.serial_number)}`)}>Authorize</button>
+                    <button className="btn-icon" style={{ marginLeft: 6, color: 'var(--red)' }} title="Remove"
+                      onClick={() => unsaveMut.mutate(s.id)}><IconX size={13} /></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
