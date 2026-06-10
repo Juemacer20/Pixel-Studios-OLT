@@ -85,6 +85,7 @@ export const ontAPI = {
   swInfo:          (id) => api.get(`/onts/${id}/sw-info`),
   externalId:      (id, externalId) => api.patch(`/onts/${id}/external-id`, { externalId }),
   updateLocationDetails: (id, data) => api.post(`/onts/${id}/update-location`, data),
+  authorize:       (data) => api.post('/onts/authorize', data),
 };
 
 export const alertAPI = {
@@ -123,25 +124,36 @@ export const ztpAPI = {
 export const zoneAPI = {
   list: () => api.get('/zones'),
   create: (data) => api.post('/zones', data),
+  update: (id, data) => api.put(`/zones/${id}`, data),
   delete: (id) => api.delete(`/zones/${id}`),
 };
 
 export const odbAPI = {
   list: () => api.get('/odbs'),
   create: (data) => api.post('/odbs', data),
+  update: (id, data) => api.put(`/odbs/${id}`, data),
   delete: (id) => api.delete(`/odbs/${id}`),
 };
 
 export const onuTypeAPI = {
   list: () => api.get('/onu-types'),
   create: (data) => api.post('/onu-types', data),
+  update: (id, data) => api.put(`/onu-types/${id}`, data),
   delete: (id) => api.delete(`/onu-types/${id}`),
 };
 
 export const authPresetAPI = {
   list: () => api.get('/auth-presets'),
   create: (data) => api.post('/auth-presets', data),
+  update: (id, data) => api.put(`/auth-presets/${id}`, data),
   delete: (id) => api.delete(`/auth-presets/${id}`),
+};
+
+export const speedProfileAPI = {
+  list: () => api.get('/speed-profiles'),
+  create: (data) => api.post('/speed-profiles', data),
+  update: (id, data) => api.put(`/speed-profiles/${id}`, data),
+  delete: (id) => api.delete(`/speed-profiles/${id}`),
 };
 
 export const graphsAPI = {
