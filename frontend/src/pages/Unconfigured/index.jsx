@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import {
   IconRefresh, IconX, IconCheck, IconChevronDown, IconChevronUp,
-  IconPlugConnected, IconWifi,
+  IconPlugConnected, IconWifi, IconWand, IconHistory, IconPlayerPlay,
 } from '@tabler/icons-react';
-import { ontAPI, oltAPI } from '../../services/api';
+import { ontAPI, oltAPI, autoActionAPI } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
 import SignalValue from '../../components/shared/SignalValue';
 import toast from 'react-hot-toast';
@@ -176,7 +177,7 @@ function AuthorizeModal({ ont, onClose, onSuccess }) {
 }
 
 /* ─── OLT Card ────────────────────────────────────────────────────────────── */
-function OLTCard({ group, onAuthorize }) {
+function OLTCard({ group, onAuthorize, onWizard }) {
   const [collapsed, setCollapsed] = useState(false);
   const { olt, onts } = group;
 
@@ -247,18 +248,22 @@ function OLTCard({ group, onAuthorize }) {
                       {formatRelative(ont.last_seen)}
                     </span>
                   </td>
-                  <td style={{ textAlign: 'center' }}>
+                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                     <button
                       className="btn"
                       style={{
-                        padding: '3px 12px', fontSize: 11,
+                        padding: '3px 10px', fontSize: 11,
                         background: 'rgba(31,184,184,0.12)',
                         borderColor: 'var(--cyan)',
                         color: 'var(--cyan)',
                       }}
                       onClick={() => onAuthorize(ont)}
                     >
-                      Authorize
+                      Quick
+                    </button>
+                    <button className="btn" style={{ padding: '3px 10px', fontSize: 11, marginLeft: 6 }}
+                      onClick={() => onWizard(ont)}>
+                      Wizard
                     </button>
                   </td>
                 </tr>
@@ -348,8 +353,15 @@ function OLTFilter({ olts, selected, onChange }) {
 /* ─── Main page ───────────────────────────────────────────────────────────── */
 export default function Unconfigured() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedOLTs, setSelectedOLTs] = useState([]);
   const [modalONT, setModalONT]         = useState(null);
+
+  const runNowMut = useMutation({
+    mutationFn: () => autoActionAPI.runNow(),
+    onSuccess: (r) => { const d = r.data?.data || {}; toast.success(`Auto-authorize: ${d.authorized ?? 0} autorizadas${d.dryRun ? ' (dry-run)' : ''}`); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Run failed'),
+  });
 
   /* ── Queries ── */
   const { data: resp, isLoading, isFetching, refetch } = useQuery({
@@ -426,6 +438,15 @@ export default function Unconfigured() {
         </div>
       </div>
 
+      {/* Auto-actions toolbar */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        <button className="btn" onClick={() => navigate('/auth-presets')}><IconWand size={13} /> Authorization Presets</button>
+        <button className="btn" onClick={() => runNowMut.mutate()} disabled={runNowMut.isPending}>
+          <IconPlayerPlay size={13} /> {runNowMut.isPending ? 'Running…' : 'Run auto-authorize now'}
+        </button>
+        <button className="btn" onClick={() => navigate('/reports/tasks')}><IconHistory size={13} /> Task history</button>
+      </div>
+
       {/* Body */}
       {isLoading ? (
         <div className="empty-state">
@@ -447,6 +468,7 @@ export default function Unconfigured() {
               key={group.olt?.id}
               group={group}
               onAuthorize={setModalONT}
+              onWizard={(ont) => navigate(`/onu/authorize?sn=${encodeURIComponent(ont.serial_number)}`)}
             />
           ))}
         </div>
