@@ -762,20 +762,39 @@ export default function ONTs() {
     setSelected(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
   const clearSel = () => setSelected(new Set());
 
-  /* ── Batch actions ── */
-  const handleBatchReboot = () => {
-    if (!confirm(`¿Reiniciar ${selected.size} ONT(s) seleccionados?`)) return;
-    selected.forEach(id => rebootMut.mutate(id));
-    clearSel();
+  /* ── Batch actions (cola en backend: POST /onts/batch) ── */
+  const [batchAction, setBatchAction] = useState('reboot');
+  const [batchBusy, setBatchBusy] = useState(false);
+
+  const pollBatch = async (jobId) => {
+    for (let i = 0; i < 60; i++) {
+      await new Promise(r => setTimeout(r, 2000));
+      try {
+        const r = await ontAPI.batchStatus(jobId);
+        const s = r.data?.data;
+        if (s && (s.state === 'completed' || s.state === 'failed')) {
+          const res = s.result || {};
+          toast.success(`Batch ${s.state}: ${res.processed ?? 0} OK, ${res.failed ?? 0} failed`);
+          qc.invalidateQueries({ queryKey: ['onts'] });
+          return;
+        }
+      } catch { /* sigue intentando */ }
+    }
   };
-  const handleBatchDelete = () => {
-    if (!confirm(`¿Eliminar ${selected.size} ONT(s)? Esta acción no se puede deshacer.`)) return;
-    selected.forEach(id => deleteMut.mutate(id));
-    clearSel();
-  };
-  const handleBatchPing = () => {
-    toast.success(`Ping masivo enviado a ${selected.size} ONT(s) (simulado)`);
-    clearSel();
+
+  const submitBatch = async (action) => {
+    const destructive = ['delete', 'disable', 'stop', 'restoreDefaults'].includes(action);
+    if (destructive && !confirm(`Apply "${action}" to ${selected.size} ONU(s)? This may interrupt service.`)) return;
+    setBatchBusy(true);
+    try {
+      const r = await ontAPI.batch({ ontIds: [...selected], action });
+      const jobId = r.data?.data?.jobId;
+      toast.success(`Batch queued (${selected.size} ONUs) — job ${jobId}`);
+      clearSel();
+      pollBatch(jobId);
+    } catch (e) {
+      toast.error(e?.response?.data?.error || 'Batch failed');
+    } finally { setBatchBusy(false); }
   };
 
   /* ── Row actions ── */
@@ -1103,14 +1122,20 @@ export default function ONTs() {
             {selected.size} selected
           </span>
           <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
-          <button className="btn" style={{ fontSize: 12 }} onClick={handleBatchReboot}>
-            <IconPower size={13} /> Reboot
-          </button>
-          <button className="btn" style={{ fontSize: 12 }} onClick={handleBatchPing}>
-            <IconGauge size={13} /> Ping
-          </button>
-          <button className="btn btn-danger" style={{ fontSize: 12 }} onClick={handleBatchDelete}>
-            <IconTrash size={13} /> Delete
+          <select className="input-base" style={{ fontSize: 12, height: 30 }} value={batchAction}
+            onChange={e => setBatchAction(e.target.value)} disabled={batchBusy}>
+            <option value="reboot">Reboot</option>
+            <option value="enable">Enable</option>
+            <option value="disable">Disable</option>
+            <option value="start">Start</option>
+            <option value="stop">Stop</option>
+            <option value="resync">Resync config</option>
+            <option value="restoreDefaults">Restore defaults</option>
+            <option value="delete">Delete</option>
+          </select>
+          <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={batchBusy}
+            onClick={() => submitBatch(batchAction)}>
+            {batchBusy ? 'Queuing…' : `Apply to ${selected.size}`}
           </button>
           <button className="btn-icon" onClick={clearSel} title="Cancel">
             <IconX size={13} />

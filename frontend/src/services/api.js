@@ -86,6 +86,8 @@ export const ontAPI = {
   externalId:      (id, externalId) => api.patch(`/onts/${id}/external-id`, { externalId }),
   updateLocationDetails: (id, data) => api.post(`/onts/${id}/update-location`, data),
   authorize:       (data) => api.post('/onts/authorize', data),
+  batch:           (data) => api.post('/onts/batch', data),
+  batchStatus:     (jobId) => api.get(`/onts/batch/${jobId}`),
 };
 
 export const alertAPI = {
