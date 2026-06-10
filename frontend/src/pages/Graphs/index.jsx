@@ -7,6 +7,7 @@ import SignalCard from '../../components/graphs/SignalCard';
 import OltCard from '../../components/graphs/OltCard';
 import PonCard from '../../components/graphs/PonCard';
 import TrafficCard from '../../components/graphs/TrafficCard';
+import ColorPicker from '../../components/graphs/ColorPicker';
 import GraphModal from '../../components/graphs/GraphModal';
 
 const TABS = ['OLT', 'Uplink', 'PON', 'Traffic', 'Signal'];
@@ -77,7 +78,7 @@ function OLTTab({ selectedOlt }) {
 
 function nameOf(olts, id) { return (Array.isArray(olts) ? olts : []).find(o => o.id === id)?.name || ''; }
 
-function UplinkTab({ selectedOlt, olts }) {
+function UplinkTab({ selectedOlt, olts, color }) {
   const { data, isLoading } = useQuery({
     queryKey: ['graphs-uplink', selectedOlt],
     queryFn: () => api.get('/graphs/uplink', { params: { range: '24h', ...(selectedOlt ? { olt_id: selectedOlt } : {}) } }).then(r => r.data?.data ?? r.data),
@@ -88,7 +89,7 @@ function UplinkTab({ selectedOlt, olts }) {
   if (!groups.length) return <div className="empty-state">No uplink traffic yet — el polling SNMP guarda datos cada 5 min</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} />)}
+      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} color={color} />)}
     </div>
   );
 }
@@ -118,7 +119,7 @@ function PONTab({ selectedOlt }) {
   );
 }
 
-function TrafficTab({ selectedOlt, olts }) {
+function TrafficTab({ selectedOlt, olts, color }) {
   const { data, isLoading } = useQuery({
     queryKey: ['graphs-traffic', selectedOlt],
     queryFn: () => api.get('/graphs/traffic', { params: { range: '24h', ...(selectedOlt ? { olt_id: selectedOlt } : {}) } }).then(r => r.data?.data ?? r.data),
@@ -129,7 +130,7 @@ function TrafficTab({ selectedOlt, olts }) {
   if (!groups.length) return <div className="empty-state">No traffic data yet — el polling SNMP guarda datos cada 5 min</div>;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} />)}
+      {groups.map((g, i) => <TrafficCard key={i} group={g} oltName={nameOf(olts, g.oltId)} color={color} />)}
     </div>
   );
 }
@@ -166,6 +167,7 @@ function SignalTab({ selectedOlt }) {
 export default function Graphs() {
   const [activeTab, setActiveTab] = useState('Signal');
   const [selectedOlt, setSelectedOlt] = useState('');
+  const [chartColor, setChartColor] = useState('#23a85a');
 
   const { data: oltsRaw } = useQuery({
     queryKey: ['olts', {}],
@@ -210,12 +212,15 @@ export default function Graphs() {
             </button>
           ))}
         </div>
+        {(activeTab === 'Traffic' || activeTab === 'Uplink') && (
+          <ColorPicker value={chartColor} onChange={setChartColor} />
+        )}
       </div>
 
       {activeTab === 'OLT'     && <OLTTab selectedOlt={selectedOlt || null} />}
-      {activeTab === 'Uplink'  && <UplinkTab selectedOlt={selectedOlt || null} olts={olts} />}
+      {activeTab === 'Uplink'  && <UplinkTab selectedOlt={selectedOlt || null} olts={olts} color={chartColor} />}
       {activeTab === 'PON'     && <PONTab selectedOlt={selectedOlt || null} />}
-      {activeTab === 'Traffic' && <TrafficTab selectedOlt={selectedOlt || null} olts={olts} />}
+      {activeTab === 'Traffic' && <TrafficTab selectedOlt={selectedOlt || null} olts={olts} color={chartColor} />}
       {activeTab === 'Signal'  && <SignalTab selectedOlt={selectedOlt || null} />}
     </div>
   );
