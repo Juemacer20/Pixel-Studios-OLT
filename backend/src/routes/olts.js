@@ -46,6 +46,13 @@ router.get('/:id/compare', checkRole('noc'), async (req, res, next) => {
     res.json({ data: await scanAndCompare(req.params.id) });
   } catch (e) { next(e); }
 });
+// Aplica la corrección (sincroniza DB desde la OLT, solo DB)
+router.post('/:id/compare/fix', checkRole('admin'), async (req, res, next) => {
+  try {
+    const { applyFix } = require('../services/configComparisonService');
+    res.json({ data: await applyFix(req.params.id, req.user?.id) });
+  } catch (e) { next(e); }
+});
 router.post('/:id/command', checkRole('noc'), commands, ctrl.sendCommand);
 router.get('/:id/config', checkRole('noc'), cfgCtrl.read);
 router.post('/:id/config', checkRole('noc'), cfgCtrl.write);

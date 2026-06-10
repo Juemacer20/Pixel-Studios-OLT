@@ -30,6 +30,19 @@ export default function ConfigComparison() {
     } finally { setBusy(false); }
   };
 
+  const fix = async () => {
+    if (!oltId || !confirm('Sync DB from OLT? Crea las ONUs faltantes y marca offline las ausentes (no toca la OLT).')) return;
+    setBusy(true);
+    try {
+      const r = await oltAPI.compareFix(oltId);
+      const d = r.data?.data;
+      toast.success(`Fixed: ${d.created} created, ${d.markedOffline} offline`);
+      await scan();
+    } catch (e) {
+      toast.error(e?.response?.data?.error || 'Fix failed');
+    } finally { setBusy(false); }
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="page-header" style={{ marginBottom: 0 }}>
@@ -44,6 +57,11 @@ export default function ConfigComparison() {
         <button className="btn btn-primary" onClick={scan} disabled={busy}>
           <IconRefresh size={13} /> {busy ? 'Scanning…' : 'Scan & Compare'}
         </button>
+        {result && result.counts.mismatches > 0 && (
+          <button className="btn" style={{ borderColor: 'var(--orange)', color: 'var(--orange)' }} onClick={fix} disabled={busy}>
+            Fix (sync DB)
+          </button>
+        )}
         {result && (
           <span style={{ marginLeft: 'auto', fontSize: 12, color: 'var(--text-muted)' }}>
             DB: {result.counts.db} · OLT: {result.counts.olt} · Mismatches: <b style={{ color: result.counts.mismatches ? 'var(--orange)' : 'var(--green)' }}>{result.counts.mismatches}</b>

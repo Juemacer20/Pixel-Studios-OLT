@@ -49,4 +49,43 @@ async function scanAndCompare(oltId) {
   };
 }
 
-module.exports = { scanAndCompare };
+// Aplica la corrección sincronizando la DB con la OLT (solo DB, sin Telnet de
+// escritura): crea las ONUs presentes en la OLT y faltantes en DB, y marca como
+// OFFLINE las que están en DB pero ya no en la OLT.
+async function applyFix(oltId, userId) {
+  const olt = await prisma.oLT.findUnique({ where: { id: oltId } });
+  if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
+
+  const adapter = getAdapter(olt);
+  let live = [];
+  try { await adapter.connect(); live = await adapter.listONTs(); }
+  finally { await adapter.disconnect().catch(() => {}); }
+
+  const dbOnts = await prisma.oNT.findMany({ where: { olt_id: oltId }, select: { id: true, serial_number: true } });
+  const dbSns = new Set(dbOnts.map((o) => o.serial_number));
+  const liveSns = new Set(live.map((o) => o.serial_number));
+
+  let created = 0, markedOffline = 0;
+  for (const l of live) {
+    if (!l.serial_number || dbSns.has(l.serial_number)) continue;
+    await prisma.oNT.create({
+      data: {
+        olt_id: oltId, serial_number: l.serial_number,
+        status: (l.status || 'OFFLINE').toUpperCase() === 'ONLINE' ? 'ONLINE' : 'OFFLINE',
+        board: l.slot ?? null, port: l.pon_port ?? null, onu_id: l.onu_id ?? null, last_seen: new Date(),
+      },
+    }).then(() => created++).catch(() => {});
+  }
+  for (const o of dbOnts) {
+    if (!liveSns.has(o.serial_number)) {
+      await prisma.oNT.update({ where: { id: o.id }, data: { status: 'OFFLINE' } }).then(() => markedOffline++).catch(() => {});
+    }
+  }
+  await prisma.auditLog.create({
+    data: { user_id: userId, action: 'CONFIG_FIX', action_type: 'OLT_ACTION', target: oltId, target_type: 'OLT', details: { created, markedOffline } },
+  }).catch(() => {});
+  logger.info(`configFix ${olt.name}: created=${created} offline=${markedOffline}`);
+  return { oltId, oltName: olt.name, created, markedOffline };
+}
+
+module.exports = { scanAndCompare, applyFix };

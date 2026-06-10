@@ -47,6 +47,7 @@ export const oltAPI = {
   delete: (id) => api.delete(`/olts/${id}`),
   status: (id) => api.get(`/olts/${id}/status`),
   compare: (id) => api.get(`/olts/${id}/compare`),
+  compareFix: (id) => api.post(`/olts/${id}/compare/fix`),
   ports: (id) => api.get(`/olts/${id}/ports`),
   portONTs: (id, port) => api.get(`/olts/${id}/ports/${port}/onts`),
   scan: (id) => api.post(`/olts/${id}/scan`),
