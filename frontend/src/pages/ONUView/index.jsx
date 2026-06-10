@@ -14,6 +14,8 @@ import EthernetPorts from '../../components/onts/EthernetPorts';
 import ServicesConfig from '../../components/onts/ServicesConfig';
 import WANConfig from '../../components/onts/WANConfig';
 import DHCPLeases from '../../components/onts/DHCPLeases';
+import ConfirmModal from '../../components/shared/ConfirmModal';
+import ActionModal from '../../components/shared/ActionModal';
 import toast from 'react-hot-toast';
 
 // ── Las 33 funciones por ONU (SmartOLT /onu/view) ──
@@ -70,22 +72,92 @@ export default function ONUView() {
     retry: 1,
   });
 
-  const rebootMut = useMutation({
-    mutationFn: () => ontAPI.reboot(id),
-    onSuccess: () => toast.success('Reboot sent'),
-    onError: () => toast.error('Reboot failed'),
-  });
-  const deleteMut = useMutation({
-    mutationFn: () => ontAPI.delete(id),
-    onSuccess: () => { toast.success('ONU deleted'); qc.invalidateQueries({ queryKey: ['onts'] }); navigate('/onts'); },
-    onError: () => toast.error('Delete failed'),
-  });
+  const [active, setActive] = React.useState(null);   // { type:'confirm'|'modal', name, cfg }
+  const [busy, setBusy] = React.useState(false);
+  const [readResult, setReadResult] = React.useState(null);
+
+  // Catálogo de acciones de ONU. type: confirm | modal | read | soon.
+  const ACTIONS = {
+    'Reboot':                          { type: 'confirm', msg: 'Reboot this ONU?', run: () => ontAPI.reboot(id) },
+    'Enable ONU':                      { type: 'confirm', msg: 'Enable this ONU on the OLT?', run: () => ontAPI.enable(id) },
+    'Disable ONU':                     { type: 'confirm', danger: true, msg: 'Disable this ONU? It will lose service.', run: () => ontAPI.disable(id) },
+    'Start ONU':                       { type: 'confirm', msg: 'Start (activate) this ONU?', run: () => ontAPI.start(id) },
+    'Stop ONU':                        { type: 'confirm', danger: true, msg: 'Stop (deactivate) this ONU?', run: () => ontAPI.stop(id) },
+    'Recreate OLT config for this ONU':{ type: 'confirm', msg: 'Recreate (resync) the OLT config for this ONU?', run: () => ontAPI.resync(id) },
+    'Restore to factory defaults':     { type: 'confirm', danger: true, msg: 'Restore this ONU to factory defaults?', run: () => ontAPI.restoreDefaults(id) },
+    'Delete':                          { type: 'confirm', danger: true, msg: 'Delete this ONU? This cannot be undone.', run: () => ontAPI.delete(id), after: () => { qc.invalidateQueries({ queryKey: ['onts'] }); navigate('/onts'); } },
+
+    'Change ONU type':       { type: 'modal', confirmLabel: 'Change', fields: [
+      { key: 'lineProfileId', label: 'ONT line-profile ID', type: 'number' },
+      { key: 'srvProfileId', label: 'ONT srv-profile ID', type: 'number' },
+    ], run: (v) => ontAPI.changeType(id, v) },
+    'Update ONU external ID':{ type: 'modal', confirmLabel: 'Save', fields: [
+      { key: 'externalId', label: 'External ID', required: true },
+    ], run: (v) => ontAPI.externalId(id, v.externalId) },
+    'Configure speed profiles':{ type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'svlanId', label: 'S-VLAN', type: 'number' },
+      { key: 'userVlan', label: 'User VLAN', type: 'number' },
+      { key: 'upstreamKbps', label: 'Upstream (Kbps)', type: 'number' },
+      { key: 'downstreamKbps', label: 'Downstream (Kbps)', type: 'number' },
+    ], run: (v) => ontAPI.speedProfile(id, v) },
+    'Change web user pass':  { type: 'modal', confirmLabel: 'Save', fields: [
+      { key: 'webUser', label: 'Web user', default: 'admin' },
+      { key: 'webPassword', label: 'Web password', type: 'password', required: true },
+    ], run: (v) => ontAPI.webUserPass(id, v) },
+    'Move ONU':              { type: 'modal', confirmLabel: 'Move', fields: [
+      { key: 'targetBoard', label: 'Target board', type: 'number', required: true },
+      { key: 'targetPort', label: 'Target port', type: 'number', required: true },
+    ], run: (v) => ontAPI.move(id, v) },
+    'Replace ONU by SN':     { type: 'modal', confirmLabel: 'Replace', fields: [
+      { key: 'newSn', label: 'New serial number', required: true },
+    ], run: (v) => ontAPI.replaceBySN(id, v) },
+    'Update attached VLANs': { type: 'modal', confirmLabel: 'Apply', fields: [
+      { key: 'vlanId', label: 'VLAN ID', type: 'number', required: true },
+      { key: 'ethPort', label: 'Ethernet port', type: 'number', default: 1 },
+    ], run: (v) => ontAPI.updateVLANs(id, v) },
+    'Update location details':{ type: 'modal', confirmLabel: 'Save', fields: [
+      { key: 'name', label: 'Name' },
+      { key: 'zone', label: 'Zone' },
+      { key: 'odb', label: 'ODB' },
+      { key: 'contact', label: 'Contact' },
+      { key: 'latitude', label: 'Latitude', type: 'number' },
+      { key: 'longitude', label: 'Longitude', type: 'number' },
+    ], run: (v) => ontAPI.updateLocationDetails(id, v) },
+
+    'Get status':            { type: 'read', title: 'ONU status', run: () => ontAPI.signal(id) },
+    'Show running config':   { type: 'read', title: 'Running config', run: () => ontAPI.runningConfig(id) },
+  };
+
+  const exec = async (cfg, values) => {
+    setBusy(true);
+    try {
+      await cfg.run(values);
+      toast.success(`${cfg.name} OK`);
+      qc.invalidateQueries({ queryKey: ['ont', id] });
+      if (cfg.after) cfg.after();
+      setActive(null);
+    } catch (e) {
+      toast.error(e?.response?.data?.error || `${cfg.name} failed`);
+    } finally { setBusy(false); }
+  };
+
+  const execRead = async (cfg) => {
+    setBusy(true);
+    try {
+      const r = await cfg.run();
+      setReadResult({ title: cfg.title, data: r.data?.data ?? r.data });
+    } catch (e) {
+      toast.error(e?.response?.data?.error || `${cfg.name} failed`);
+    } finally { setBusy(false); }
+  };
 
   const runAction = (name) => {
-    if (name === 'Reboot') { if (confirm('Reboot this ONU?')) rebootMut.mutate(); return; }
-    if (name === 'Delete') { if (confirm('Delete this ONU? This cannot be undone.')) deleteMut.mutate(); return; }
-    // TODO: cablear cada acción a su endpoint en el backend (OLT driver)
-    toast(`${name} — próximamente`, { icon: '⚙️' });
+    const cfg = ACTIONS[name];
+    if (!cfg || cfg.type === 'soon') { toast(`${name} — próximamente`, { icon: '⚙️' }); return; }
+    const withName = { ...cfg, name };
+    if (cfg.type === 'confirm') setActive({ type: 'confirm', cfg: withName });
+    else if (cfg.type === 'modal') setActive({ type: 'modal', cfg: withName });
+    else if (cfg.type === 'read') execRead(withName);
   };
 
   const o = ont || {};
@@ -186,6 +258,51 @@ export default function ONUView() {
           </div>
         </div>
       </div>
+      )}
+
+      {/* Confirm-style actions */}
+      <ConfirmModal
+        open={active?.type === 'confirm'}
+        title={active?.cfg?.name}
+        message={active?.cfg?.msg}
+        danger={active?.cfg?.danger}
+        loading={busy}
+        confirmLabel={active?.cfg?.danger ? 'Yes, proceed' : 'Confirm'}
+        onClose={() => !busy && setActive(null)}
+        onConfirm={() => exec(active.cfg)}
+      />
+
+      {/* Form-style actions */}
+      <ActionModal
+        open={active?.type === 'modal'}
+        title={active?.cfg?.name}
+        fields={active?.cfg?.fields || []}
+        confirmLabel={active?.cfg?.confirmLabel}
+        confirmColor={active?.cfg?.danger ? 'var(--red)' : 'var(--accent)'}
+        loading={busy}
+        onClose={() => !busy && setActive(null)}
+        onConfirm={(values) => exec(active.cfg, values)}
+      />
+
+      {/* Read-only result (Get status / running config / SW info) */}
+      {readResult && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'center',
+          justifyContent: 'center', background: 'rgba(0,0,0,0.65)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setReadResult(null); }}>
+          <div style={{ width: 640, maxWidth: '92vw', maxHeight: '85vh', overflow: 'auto',
+            background: 'var(--sidebar-bg)', border: '1px solid var(--border-light)', borderRadius: 8,
+            boxShadow: '0 16px 40px rgba(0,0,0,0.5)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 14, fontWeight: 600 }}>{readResult.title}</span>
+              <button className="btn-icon" onClick={() => setReadResult(null)}>✕</button>
+            </div>
+            <pre style={{ padding: 16, fontSize: 12, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+              color: 'var(--text-secondary)', margin: 0 }}>
+              {typeof readResult.data === 'string' ? readResult.data : JSON.stringify(readResult.data, null, 2)}
+            </pre>
+          </div>
+        </div>
       )}
     </div>
   );

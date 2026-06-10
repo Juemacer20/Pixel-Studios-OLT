@@ -68,6 +68,23 @@ export const ontAPI = {
   updateLocation: (id, lat, lng) => api.put(`/onts/${id}/location`, { latitude: lat, longitude: lng }),
   dhcpLeases: (id) => api.get(`/onts/${id}/dhcp-leases`),
   unconfigured: (params) => api.get('/onts/unconfigured', { params }),
+  // ONU actions
+  changeType:      (id, data) => api.post(`/onts/${id}/change-type`, data),
+  speedProfile:    (id, data) => api.post(`/onts/${id}/speed-profile`, data),
+  enable:          (id) => api.post(`/onts/${id}/enable`),
+  disable:         (id) => api.post(`/onts/${id}/disable`),
+  start:           (id) => api.post(`/onts/${id}/start`),
+  stop:            (id) => api.post(`/onts/${id}/stop`),
+  resync:          (id) => api.post(`/onts/${id}/resync`),
+  restoreDefaults: (id) => api.post(`/onts/${id}/restore-defaults`),
+  webUserPass:     (id, data) => api.post(`/onts/${id}/web-user-pass`, data),
+  replaceBySN:     (id, data) => api.post(`/onts/${id}/replace-by-sn`, data),
+  move:            (id, data) => api.post(`/onts/${id}/move`, data),
+  updateVLANs:     (id, data) => api.post(`/onts/${id}/update-vlans`, data),
+  runningConfig:   (id) => api.get(`/onts/${id}/running-config`),
+  swInfo:          (id) => api.get(`/onts/${id}/sw-info`),
+  externalId:      (id, externalId) => api.patch(`/onts/${id}/external-id`, { externalId }),
+  updateLocationDetails: (id, data) => api.post(`/onts/${id}/update-location`, data),
 };
 
 export const alertAPI = {
