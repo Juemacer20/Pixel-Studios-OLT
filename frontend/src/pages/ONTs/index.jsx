@@ -619,6 +619,10 @@ export default function ONTs() {
   const [filterPort,   setFilterPort]   = useState('');
   const [filterSignal, setFilterSignal] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+  const [filterZone,   setFilterZone]   = useState('');
+  const [filterVlan,   setFilterVlan]   = useState('');
+  const [filterMode,   setFilterMode]   = useState('');
+  const [showMore,     setShowMore]     = useState(false);
   const [sortState,    setSortState]    = useState(['serial_number', 'asc']);
   const [page,         setPage]         = useState(1);
   const [selected,     setSelected]     = useState(new Set());
@@ -719,6 +723,9 @@ export default function ONTs() {
       if (filterStatus === 'ztp') list = list.filter(o => ['ztp','pending'].includes((o.status||'').toLowerCase()));
       else                        list = list.filter(o => (o.status||'').toLowerCase() === filterStatus);
     }
+    if (filterZone) list = list.filter(o => (o.zone || '') === filterZone);
+    if (filterVlan) list = list.filter(o => String(o.vlan ?? '') === filterVlan);
+    if (filterMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterMode.toLowerCase()));
 
     const [key, dir] = sortState;
     const GET = {
@@ -741,7 +748,10 @@ export default function ONTs() {
       });
     }
     return list;
-  }, [rawONTs, search, filterOLT, filterPort, filterSignal, filterStatus, sortState]);
+  }, [rawONTs, search, filterOLT, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, sortState]);
+
+  const zoneOpts = useMemo(() => [...new Set(rawONTs.map(o => o.zone).filter(Boolean))].sort(), [rawONTs]);
+  const vlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.vlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
 
   /* ── Pagination ── */
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -942,13 +952,38 @@ export default function ONTs() {
           ))}
         </div>
 
+        <button className="btn" style={{ fontSize: 11 }} onClick={() => setShowMore(s => !s)}>
+          {showMore ? '− Less filters' : '+ More filters'}
+        </button>
+
         {/* Clear */}
-        {hasFilters && (
-          <button className="btn-icon" onClick={() => { setSearch(''); setFilterOLT(''); setFilterPort(''); setFilterSignal(''); setFilterStatus(''); setPage(1); }} title="Limpiar filtros">
+        {(hasFilters || filterZone || filterVlan || filterMode) && (
+          <button className="btn-icon" onClick={() => { setSearch(''); setFilterOLT(''); setFilterPort(''); setFilterSignal(''); setFilterStatus(''); setFilterZone(''); setFilterVlan(''); setFilterMode(''); setPage(1); }} title="Limpiar filtros">
             <IconX size={13} />
           </button>
         )}
       </div>
+
+      {/* Advanced filters */}
+      {showMore && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+          <select className="select-base" style={{ minWidth: 140 }} value={filterZone} onChange={e => { setFilterZone(e.target.value); setPage(1); }}>
+            <option value="">All zones</option>
+            {zoneOpts.map(z => <option key={z} value={z}>{z}</option>)}
+          </select>
+          <select className="select-base" style={{ minWidth: 120 }} value={filterVlan} onChange={e => { setFilterVlan(e.target.value); setPage(1); }}>
+            <option value="">All VLANs</option>
+            {vlanOpts.map(v => <option key={v} value={String(v)}>{v}</option>)}
+          </select>
+          <select className="select-base" style={{ minWidth: 130 }} value={filterMode} onChange={e => { setFilterMode(e.target.value); setPage(1); }}>
+            <option value="">Any mode</option>
+            <option value="bridge">Bridging</option>
+            <option value="route">Routing</option>
+            <option value="pppoe">PPPoE</option>
+            <option value="dhcp">DHCP</option>
+          </select>
+        </div>
+      )}
 
       {/* Table card */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
