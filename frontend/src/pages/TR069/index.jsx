@@ -1,11 +1,70 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { tr069API } from '../../services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { tr069API, tr069API2 } from '../../services/api';
 import {
   IconX, IconRefresh, IconUpload, IconTerminal2,
-  IconChevronRight, IconChevronDown, IconWifi,
+  IconChevronRight, IconChevronDown, IconWifi, IconPlus, IconTrash, IconShieldLock,
 } from '@tabler/icons-react';
 import StatusBadge from '../../components/shared/StatusBadge';
+import ActionModal from '../../components/shared/ActionModal';
+import toast from 'react-hot-toast';
+
+const arr = (r) => r?.data?.data ?? r?.data ?? [];
+
+// ── VPN tunnels + TR-069 profiles CRUD ──
+function VpnAndProfiles() {
+  const qc = useQueryClient();
+  const [modal, setModal] = useState(null); // 'vpn' | 'profile'
+  const { data: tunnels } = useQuery({ queryKey: ['vpn-tunnels'], queryFn: () => tr069API2.vpnTunnels().then(arr).catch(() => []) });
+  const { data: profiles } = useQuery({ queryKey: ['tr069-profiles'], queryFn: () => tr069API2.profiles().then(arr).catch(() => []) });
+
+  const vpnCreate = useMutation({ mutationFn: (v) => tr069API2.createTunnel(v),
+    onSuccess: () => { toast.success('Tunnel created'); qc.invalidateQueries({ queryKey: ['vpn-tunnels'] }); setModal(null); }, onError: () => toast.error('Failed') });
+  const vpnDel = useMutation({ mutationFn: (id) => tr069API2.deleteTunnel(id),
+    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['vpn-tunnels'] }); } });
+  const profCreate = useMutation({ mutationFn: (v) => tr069API2.createProfile(v),
+    onSuccess: () => { toast.success('Profile created'); qc.invalidateQueries({ queryKey: ['tr069-profiles'] }); setModal(null); }, onError: () => toast.error('Failed') });
+  const profDel = useMutation({ mutationFn: (id) => tr069API2.deleteProfile(id),
+    onSuccess: () => { toast.success('Deleted'); qc.invalidateQueries({ queryKey: ['tr069-profiles'] }); } });
+
+  const Section = ({ title, items, cols, render, onAdd }) => (
+    <div className="card" style={{ padding: 0, flex: '1 1 360px' }}>
+      <div className="sol-card-h"><span><IconShieldLock size={13} style={{ verticalAlign: -2 }} /> {title}</span>
+        <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={onAdd}><IconPlus size={12} /> Add</button></div>
+      <table className="table-base">
+        <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}<th style={{ width: 40 }} /></tr></thead>
+        <tbody>
+          {items.length === 0 && <tr><td colSpan={cols.length + 1} className="empty-state">None</td></tr>}
+          {items.map(render)}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  return (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      <Section title="VPN tunnels" items={Array.isArray(tunnels) ? tunnels : []} cols={['Name', 'Subnet', 'Status']}
+        onAdd={() => setModal('vpn')} render={(t) => (
+          <tr key={t.id}><td>{t.name}</td><td className="mono" style={{ fontSize: 11 }}>{t.subnet || '—'}</td>
+            <td><span className="badge badge-green">{t.status}</span></td>
+            <td><button className="btn-icon" onClick={() => vpnDel.mutate(t.id)}><IconTrash size={13} /></button></td></tr>
+        )} />
+      <Section title="TR-069 profiles" items={Array.isArray(profiles) ? profiles : []} cols={['Name', 'ACS URL', 'Status']}
+        onAdd={() => setModal('profile')} render={(p) => (
+          <tr key={p.id}><td>{p.name}</td><td className="mono" style={{ fontSize: 11 }}>{p.acsUrl || '—'}</td>
+            <td><span className="badge badge-green">{p.status}</span></td>
+            <td><button className="btn-icon" onClick={() => profDel.mutate(p.id)}><IconTrash size={13} /></button></td></tr>
+        )} />
+
+      <ActionModal open={modal === 'vpn'} title="Add VPN tunnel" confirmLabel="Create" loading={vpnCreate.isPending}
+        fields={[{ key: 'name', label: 'Name', required: true }, { key: 'subnet', label: 'Subnet (CIDR)' }]}
+        onClose={() => setModal(null)} onConfirm={(v) => vpnCreate.mutate({ ...v, oltIds: '[]' })} />
+      <ActionModal open={modal === 'profile'} title="Add TR-069 profile" confirmLabel="Create" loading={profCreate.isPending}
+        fields={[{ key: 'name', label: 'Name', required: true }, { key: 'acsUrl', label: 'ACS URL' }]}
+        onClose={() => setModal(null)} onConfirm={(v) => profCreate.mutate(v)} />
+    </div>
+  );
+}
 
 function ParamTree({ data, depth = 0 }) {
   const [open, setOpen] = useState(depth < 2);
@@ -187,6 +246,9 @@ export default function TR069() {
         <div className="stat-item"><div className="stat-label">Offline</div><div className="stat-value" style={{ color: 'var(--text-muted)', fontSize: 16 }}>{allDevices.length - online}</div></div>
         <div className="stat-item"><div className="stat-label">With pending task</div><div className="stat-value" style={{ color: 'var(--orange)', fontSize: 16 }}>{pending}</div></div>
       </div>
+
+      {/* VPN tunnels + TR-069 profiles */}
+      <VpnAndProfiles />
 
       {/* Search */}
       <div style={{ maxWidth: 320 }}>
