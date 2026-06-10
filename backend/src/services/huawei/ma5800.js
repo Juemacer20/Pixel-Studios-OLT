@@ -514,6 +514,61 @@ class MA5800 {
   async getSwInfo(serial, location) {
     return this._ontAction(serial, location, (l) => [`display ont version ${l.port} ${l.onu_id}`]);
   }
+
+  /**
+   * Authorize (provision) a new ONU on the OLT.
+   * data: { board, port, serial, onuId?, lineProfileId, srvProfileId, name,
+   *         svlanId, userVlan, gemport, tagTransform, upstreamKbps, downstreamKbps }
+   * If onuId is omitted, picks the next free ONT-ID on the port.
+   */
+  async authorizeONT(data) {
+    const board = data.board;
+    const port = data.port;
+    if (board == null || port == null || !data.serial) {
+      throw Object.assign(new Error('board, port and serial are required to authorize'), { status: 400 });
+    }
+    return this._session(async (collect, { FAILURE }) => {
+      await collect(`interface gpon 0/${board}`);
+
+      // Resolve a free ONT-ID on the port if not provided.
+      let onuId = data.onuId;
+      if (onuId == null) {
+        const info = await collect(`display ont info ${port} all`);
+        const used = [...info.matchAll(/^\s*\d+\s+(\d+)\s+/gm)].map((m) => parseInt(m[1]));
+        onuId = used.length ? Math.max(...used) + 1 : 0;
+      }
+
+      const outputs = [];
+      let failed = false;
+      const lp = data.lineProfileId || 1;
+      let addCmd = `ont add ${port} ${onuId} sn-auth ${data.serial} omci ont-lineprofile-id ${lp}`;
+      if (data.srvProfileId) addCmd += ` ont-srvprofile-id ${data.srvProfileId}`;
+      if (data.name) addCmd += ` desc "${String(data.name).slice(0, 32)}"`;
+      let out = await collect(addCmd);
+      outputs.push({ cmd: addCmd, out: out.trim().slice(-400) });
+      if (FAILURE.test(out)) failed = true;
+
+      // Native VLAN on eth1 if a user VLAN was given.
+      if (data.userVlan || data.svlanId) {
+        const vcmd = `ont port native-vlan ${port} ${onuId} eth 1 vlan ${data.userVlan || data.svlanId}`;
+        out = await collect(vcmd);
+        outputs.push({ cmd: vcmd, out: out.trim().slice(-300) });
+      }
+      await collect('quit'); // leave interface context for service-port
+
+      // Service-port binds the ONU to the S-VLAN.
+      if (data.svlanId) {
+        const tt = data.tagTransform || 'translate';
+        const spcmd = `service-port vlan ${data.svlanId} gpon 0/${board}/${port} ont ${onuId} gemport ${data.gemport || 1} multi-service user-vlan ${data.userVlan || data.svlanId} tag-transform ${tt}`;
+        out = await collect(spcmd);
+        outputs.push({ cmd: spcmd, out: out.trim().slice(-300) });
+        if (FAILURE.test(out)) failed = true;
+      }
+
+      await collect('save');
+      return { success: !failed, location: { board, port, onu_id: onuId }, outputs };
+    });
+  }
 }
 
 module.exports = MA5800;

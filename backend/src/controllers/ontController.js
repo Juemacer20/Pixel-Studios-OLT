@@ -123,8 +123,15 @@ async function updateLocationDetails(req, res, next) {
   } catch (err) { next(err); }
 }
 
+async function authorize(req, res, next) {
+  try {
+    const result = await ontService.authorizeONT(req.body, req.user?.id);
+    res.status(201).json({ data: result });
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   list, getOne, create, update, remove, getSignal, getSignalHistory, reboot, updateLocation,
   getDHCPLeases, getMACTable: getMACTableCtrl, provision, wanConfig,
-  ontAction, updateExternalId, updateLocationDetails,
+  ontAction, updateExternalId, updateLocationDetails, authorize,
 };

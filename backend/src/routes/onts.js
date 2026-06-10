@@ -40,6 +40,9 @@ router.get('/unconfigured', async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// Authorize a new ONU (must be before /:id)
+router.post('/authorize', checkRole('noc'), ctrl.authorize);
+
 router.get('/:id', ctrl.getOne);
 router.put('/:id', checkRole('noc'), ctrl.update);
 router.patch('/:id', checkRole('noc'), async (req, res, next) => {

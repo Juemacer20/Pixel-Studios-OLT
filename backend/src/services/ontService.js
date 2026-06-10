@@ -182,8 +182,66 @@ async function updateLocationDetails(id, body, userId) {
   return ont;
 }
 
+// Authorize (provision) a new ONU: send to OLT, then persist ONT + Client.
+async function authorizeONT(data, userId) {
+  const olt = await prisma.oLT.findUnique({ where: { id: data.oltId } });
+  if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
+  if (!data.serialNumber) throw Object.assign(new Error('serialNumber is required'), { status: 400 });
+
+  const adapter = getAdapter(olt);
+  if (typeof adapter.authorizeONT !== 'function') {
+    throw Object.assign(new Error(`Authorize is not supported for ${olt.brand} OLTs yet`), { status: 501 });
+  }
+
+  const result = await adapter.authorizeONT({
+    board: data.board, port: data.port, serial: data.serialNumber, onuId: data.onuId,
+    lineProfileId: data.lineProfileId, srvProfileId: data.srvProfileId, name: data.name,
+    svlanId: data.svlanId, userVlan: data.cvlanId || data.userVlan, gemport: data.gemport,
+    tagTransform: data.tagTransform,
+    upstreamKbps: data.uploadSpeed, downstreamKbps: data.downloadSpeed,
+  });
+
+  const loc = result.location || {};
+  // Upsert ONT (an unconfigured stub may already exist for this serial).
+  const ont = await prisma.oNT.upsert({
+    where: { serial_number: data.serialNumber },
+    update: {
+      olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
+      vlan: data.svlanId, board: loc.board, port: loc.port, onu_id: loc.onu_id,
+      zone: data.zone, odb: data.odb, last_seen: new Date(),
+      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
+      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
+    },
+    create: {
+      olt_id: data.oltId, serial_number: data.serialNumber, description: data.name,
+      model: data.onuTypeId, status: 'ONLINE', vlan: data.svlanId,
+      board: loc.board, port: loc.port, onu_id: loc.onu_id, zone: data.zone, odb: data.odb,
+      last_seen: new Date(),
+      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
+      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
+    },
+  });
+
+  if (data.name || data.address || data.contact) {
+    await prisma.client.upsert({
+      where: { ont_id: ont.id },
+      update: { name: data.name || 'Cliente', address: data.address, phone: data.contact },
+      create: { ont_id: ont.id, name: data.name || 'Cliente', address: data.address, phone: data.contact },
+    }).catch((e) => logger.warn(`authorize client upsert: ${e.message}`));
+  }
+
+  await prisma.auditLog.create({
+    data: {
+      user_id: userId, action: 'AUTHORIZE_ONT', action_type: 'ONT_ACTION', target: ont.id, target_type: 'ONT',
+      details: { serial: data.serialNumber, olt: olt.name, location: loc },
+    },
+  });
+  logger.info(`Authorized ONU ${data.serialNumber} on ${olt.name}: success=${result.success}`);
+  return { ont, result };
+}
+
 module.exports = {
   getAllONTs, getONTById, createONT, updateONT, deleteONT, getONTSignal, getSignalHistory,
   rebootONT, updateLocation, getDHCPLeases,
-  executeOntAction, updateExternalId, updateLocationDetails,
+  executeOntAction, updateExternalId, updateLocationDetails, authorizeONT,
 };
