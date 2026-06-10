@@ -1,9 +1,49 @@
 const express = require('express');
-const { verifyToken } = require('../middleware/auth');
+const multer = require('multer');
+const { verifyToken, checkRole } = require('../middleware/auth');
 const prisma = require('../config/database');
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(verifyToken);
+
+// Parser CSV mínimo (sin dependencias): primera fila = encabezados.
+function parseCSV(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+  const headers = lines[0].split(',').map((h) => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  return lines.slice(1).map((line) => {
+    const cells = line.split(',');
+    const row = {};
+    headers.forEach((h, i) => { row[h] = (cells[i] || '').trim(); });
+    return row;
+  });
+}
+
+// POST /api/v1/reports/import — actualiza ONTs por serial desde un CSV (solo DB).
+router.post('/import', checkRole('noc'), upload.single('file'), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: 'CSV file required (field "file")' });
+    const rows = parseCSV(req.file.buffer.toString('utf8'));
+    const UPDATABLE = ['zone', 'odb', 'external_id', 'contact', 'mgmt_ip', 'description'];
+    let processed = 0, failed = 0; const errors = [];
+    for (const row of rows) {
+      const sn = row.serial_number || row.serial || row.sn;
+      if (!sn) { failed++; errors.push('row without serial'); continue; }
+      const data = {};
+      for (const k of UPDATABLE) if (row[k] !== undefined && row[k] !== '') data[k] = row[k];
+      if (row.name && !data.description) data.description = row.name;
+      try {
+        await prisma.oNT.update({ where: { serial_number: sn }, data });
+        processed++;
+      } catch (e) { failed++; errors.push(`${sn}: ${e.code === 'P2025' ? 'not found' : e.message}`); }
+    }
+    await prisma.auditLog.create({
+      data: { user_id: req.user?.id, action: 'IMPORT_CSV', action_type: 'IMPORT', details: { rows: rows.length, processed, failed } },
+    }).catch(() => {});
+    res.json({ data: { total: rows.length, processed, failed, errors: errors.slice(0, 100) } });
+  } catch (err) { next(err); }
+});
 
 // GET /api/v1/reports/signal-summary  (existing)
 router.get('/signal-summary', async (req, res, next) => {

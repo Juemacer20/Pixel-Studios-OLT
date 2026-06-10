@@ -12,6 +12,7 @@ import {
 import { dashboardAPI, oltAPI } from '../../services/api';
 import { useAlerts } from '../../hooks/useAlerts';
 import { useAlertStore } from '../../store/alertStore';
+import SignalDegradationTable from '../../components/dashboard/SignalDegradationTable';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 function relativeTime(iso) {
@@ -244,6 +245,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          <SignalDegradationTable />
         </div>
 
         {/* right column */}

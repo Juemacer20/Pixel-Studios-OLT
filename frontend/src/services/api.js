@@ -46,6 +46,7 @@ export const oltAPI = {
   update: (id, data) => api.put(`/olts/${id}`, data),
   delete: (id) => api.delete(`/olts/${id}`),
   status: (id) => api.get(`/olts/${id}/status`),
+  compare: (id) => api.get(`/olts/${id}/compare`),
   ports: (id) => api.get(`/olts/${id}/ports`),
   portONTs: (id, port) => api.get(`/olts/${id}/ports/${port}/onts`),
   scan: (id) => api.post(`/olts/${id}/scan`),
@@ -110,6 +111,8 @@ export const dashboardAPI = {
   ponOutage: () => api.get('/dashboard/pon-outage'),
   networkStatus: (range) => api.get('/dashboard/network-status', { params: { range } }),
   authPerDay: () => api.get('/dashboard/authorizations-per-day'),
+  signalDegradation: () => api.get('/dashboard/signal-degradation'),
+  activityFeed: () => api.get('/dashboard/activity-feed'),
 };
 
 export const tr069API = {
@@ -169,6 +172,7 @@ export const reportsAPI = {
   tasks:          (params) => api.get('/reports/tasks', { params }),
   authorizations: (params) => api.get('/reports/authorizations', { params }),
   exportData:     (params) => api.get('/reports/export-data', { params }),
+  importCSV:      (formData) => api.post('/reports/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
 export default api;

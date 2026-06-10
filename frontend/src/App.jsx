@@ -19,6 +19,7 @@ const SpeedProfiles    = React.lazy(() => import('./pages/SpeedProfiles'));
 const ReportsTasks     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsTasks })));
 const ReportsAuths     = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsAuthorizations })));
 const ReportsExport    = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsExport })));
+const ReportsImport    = React.lazy(() => import('./pages/Reports').then(m => ({ default: m.ReportsImport })));
 const Settings         = React.lazy(() => import('./pages/Settings'));
 const Users            = React.lazy(() => import('./pages/Users'));
 const Zones            = React.lazy(() => import('./pages/Zones'));
@@ -29,6 +30,7 @@ const Graphs           = React.lazy(() => import('./pages/Graphs'));
 const Unconfigured     = React.lazy(() => import('./pages/Unconfigured'));
 const Diagnostics      = React.lazy(() => import('./pages/Diagnostics'));
 const AuthorizeONU     = React.lazy(() => import('./pages/AuthorizeONU'));
+const ConfigComparison = React.lazy(() => import('./pages/ConfigComparison'));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
@@ -63,6 +65,7 @@ function AppLayout() {
               <Route path="/reports/tasks"       element={<ReportsTasks />} />
               <Route path="/reports/authorizations" element={<ReportsAuths />} />
               <Route path="/reports/export"      element={<ReportsExport />} />
+              <Route path="/reports/import"      element={<ReportsImport />} />
               <Route path="/settings"        element={<Settings />} />
               <Route path="/users"           element={<Users />} />
               <Route path="/zones"           element={<Zones />} />
@@ -72,6 +75,7 @@ function AppLayout() {
               <Route path="/graphs"          element={<Graphs />} />
               <Route path="/onu/unconfigured" element={<Unconfigured />} />
               <Route path="/onu/authorize"   element={<AuthorizeONU />} />
+              <Route path="/config-comparison" element={<ConfigComparison />} />
               <Route path="/diagnostics"     element={<Diagnostics />} />
             </Routes>
           </React.Suspense>

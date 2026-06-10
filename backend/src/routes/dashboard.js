@@ -170,4 +170,41 @@ router.get('/authorizations-per-day', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// GET /api/v1/dashboard/signal-degradation — ONUs con señal degradada, agrupadas por OLT.
+router.get('/signal-degradation', async (req, res, next) => {
+  try {
+    const onts = await prisma.oNT.findMany({
+      where: { rx_power: { not: null, lt: -25 } },
+      select: { rx_power: true, board: true, port: true, olt: { select: { name: true } } },
+      take: 5000,
+    });
+    const groups = {};
+    for (const o of onts) {
+      const key = `${o.olt?.name || '—'}|${o.board ?? '-'}/${o.port ?? '-'}`;
+      if (!groups[key]) groups[key] = { oltName: o.olt?.name || '—', boardPort: `${o.board ?? '-'}/${o.port ?? '-'}`, vals: [] };
+      groups[key].vals.push(o.rx_power);
+    }
+    const rows = Object.values(groups).map((g) => {
+      const worst = Math.min(...g.vals);
+      const avg = g.vals.reduce((a, b) => a + b, 0) / g.vals.length;
+      return {
+        severity: worst < -27 ? 'critical' : 'warning',
+        oltName: g.oltName, boardPort: g.boardPort,
+        avgDelta: Math.abs(avg + 22), maxDelta: Math.abs(worst + 22),
+        degraded: g.vals.length, events: g.vals.length,
+        lastScan: new Date().toISOString(),
+      };
+    }).sort((a, b) => b.maxDelta - a.maxDelta).slice(0, 50);
+    res.json({ data: { rows } });
+  } catch (err) { next(err); }
+});
+
+// GET /api/v1/dashboard/activity-feed — últimas acciones del audit log.
+router.get('/activity-feed', async (req, res, next) => {
+  try {
+    const items = await prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take: 20 });
+    res.json({ data: items });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

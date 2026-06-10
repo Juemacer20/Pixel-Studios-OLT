@@ -715,3 +715,58 @@ export default function Reports() {
     </div>
   );
 }
+
+// ── Reports › Import (CSV bulk update por serial) ──
+export function ReportsImport() {
+  const [file, setFile] = useState(null);
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (!file) return;
+    setBusy(true); setResults(null);
+    try {
+      const { reportsAPI } = await import('../../services/api');
+      const fd = new FormData();
+      fd.append('file', file);
+      const r = await reportsAPI.importCSV(fd);
+      setResults(r.data?.data);
+    } catch (e) {
+      setResults({ error: e?.response?.data?.error || 'Import failed' });
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="page-header"><span className="page-title">Reports › Import</span></div>
+      <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12, maxWidth: 560 }}>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary)', margin: 0 }}>
+          Upload a CSV to bulk-update ONUs by serial. Columns: <code>serial_number</code> (required),
+          and any of <code>zone, odb, external_id, contact, mgmt_ip, name</code>.
+        </p>
+        <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files[0])} />
+        <div>
+          <button className="btn btn-primary" disabled={!file || busy} onClick={submit}>
+            {busy ? 'Importing…' : 'Import CSV'}
+          </button>
+        </div>
+        {results && (
+          results.error ? (
+            <div style={{ color: 'var(--red)', fontSize: 13 }}>{results.error}</div>
+          ) : (
+            <div style={{ fontSize: 13 }}>
+              <div>Total rows: <b>{results.total}</b></div>
+              <div style={{ color: 'var(--green)' }}>Processed: {results.processed}</div>
+              <div style={{ color: results.failed ? 'var(--orange)' : 'var(--text-muted)' }}>Failed: {results.failed}</div>
+              {results.errors?.length > 0 && (
+                <pre style={{ marginTop: 8, maxHeight: 220, overflow: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>
+                  {results.errors.join('\n')}
+                </pre>
+              )}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
