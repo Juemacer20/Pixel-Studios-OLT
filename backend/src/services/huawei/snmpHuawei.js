@@ -76,7 +76,10 @@ class SNMPHuawei {
   }
 
   connect() {
-    this.session = snmpConfig.createSession(this.olt.ip, this.olt.community || 'public');
+    // La community de lectura se carga en la columna `snmp_read`; `community`
+    // suele quedar en su default 'public' (que no responde). Preferir snmp_read.
+    const readCommunity = this.olt.snmp_read || this.olt.community || 'public';
+    this.session = snmpConfig.createSession(this.olt.ip, readCommunity);
     return this;
   }
 
