@@ -8,8 +8,8 @@ const logger = require('../middleware/logger');
 const router = express.Router();
 
 // Credenciales base (fallback si la DB no tiene el usuario). Sobrescribibles por env.
-const RW_HASH = process.env.AUTH_RW_HASH || '$2a$10$vWu0KmJu.ds638zi3QfIe.5l9L70S7Y3umKzucRCUk1QrWcj7Nz3q';
-const RO_HASH = process.env.AUTH_RO_HASH || '$2a$10$vWu0KmJu.ds638zi3QfIe.5l9L70S7Y3umKzucRCUk1QrWcj7Nz3q';
+const RW_HASH = process.env.AUTH_RW_HASH || '$2a$10$uOf5LE50T4XBc7MykSaxeuJOEKB.1TW4y65Aew.OIPytUOe2NpEDi';
+const RO_HASH = process.env.AUTH_RO_HASH || '$2a$10$uOf5LE50T4XBc7MykSaxeuJOEKB.1TW4y65Aew.OIPytUOe2NpEDi';
 const SEED_USERS = [
   { email: process.env.AUTH_RW_EMAIL || 'admin@itelsa.com.ar', password_hash: RW_HASH, group: 'admin', name: 'Administrador ITELSA' },
   { email: process.env.AUTH_RO_EMAIL || 'lectura@itelsa.com.ar', password_hash: RO_HASH, group: 'readonly', name: 'Lectura ITELSA' },
