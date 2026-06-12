@@ -2,6 +2,30 @@ const SNMPHuawei = require('./snmpHuawei');
 const TelnetHuawei = require('./telnetHuawei');
 const logger = require('../../middleware/logger');
 
+// Parser de la descripción SmartOLT (.43.1.9), formato típico:
+//   "<extid>___<cliente>_zone_<zona>_descr_<descr>_odb_<odb>_"
+function parseSmartoltDesc(s) {
+  if (!s || typeof s !== 'string') return {};
+  const between = (a, b) => {
+    const i = s.indexOf(a); if (i < 0) return null;
+    const from = i + a.length;
+    const j = b ? s.indexOf(b, from) : -1;
+    const v = (j >= 0 ? s.slice(from, j) : s.slice(from)).trim();
+    return v || null;
+  };
+  let zone = between('_zone_', '_descr_');
+  const descr = between('_descr_', '_odb_');
+  let odb = between('_odb_', null);
+  if (odb) { const k = odb.indexOf('_extid_'); if (k >= 0) odb = odb.slice(0, k); odb = odb.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || null; }
+  if (zone) zone = zone.replace(/_/g, ' ').replace(/\s+/g, ' ').trim() || null;
+  const head = s.indexOf('_zone_') >= 0 ? s.slice(0, s.indexOf('_zone_')) : s;
+  let external_id = null, contact = null;
+  const parts = head.split('___');
+  if (parts.length >= 2) { external_id = parts[0].trim() || null; contact = parts.slice(1).join(' ').replace(/_/g, ' ').trim() || null; }
+  else { contact = head.replace(/_/g, ' ').trim() || null; }
+  return { external_id, contact, zone, descr, odb };
+}
+
 class MA5800 {
   constructor(olt) {
     this.olt = olt;
@@ -29,27 +53,36 @@ class MA5800 {
   }
 
   async listONTs() {
-    // Descubrimiento por SNMP (inventario + estado + RX + temperatura).
-    // Telnet queda solo como fallback si SNMP no devuelve nada.
+    // SCAN RÁPIDO: lista de ONTs por TELNET + info de cliente/zona/ODB por SNMP.
+    // La óptica (RX/TX/temp) NO se trae acá: la llena el poll de señal cada 5 min
+    // (adapter.getOpticalInfo por telnet), para que agregar/editar una OLT sea ágil.
+    let onts = [];
     try {
-      if (!this.snmp.session) this.snmp.connect();
-      const snmpOnts = await this.snmp.listONTsBySNMP();
-      if (snmpOnts.length) {
-        // Solo ONTs activas (con señal). Las provisionadas offline se ignoran.
-        const online = snmpOnts.filter((o) => o.status === 'ONLINE');
-        logger.info(`MA5800 listONTs ${this.olt.ip}: ${online.length} online (de ${snmpOnts.length} provisionadas) por SNMP`);
-        return online;
-      }
-      logger.warn(`MA5800 listONTs ${this.olt.ip}: SNMP vacío, cae a telnet`);
-    } catch (e) {
-      logger.warn(`MA5800 listONTs ${this.olt.ip}: SNMP falló (${e.message}), cae a telnet`);
-    }
-    try {
-      return await this._listONTsDirectTelnet();
+      onts = await this._listONTsDirectTelnet();
     } catch (err) {
-      logger.error(`MA5800 listONTs ${this.olt.ip}: ${err.message}`);
+      logger.error(`MA5800 listONTs telnet ${this.olt.ip}: ${err.message}`);
       return [];
     }
+    if (!onts.length) return [];
+
+    // Info cliente/zona/ODB por SNMP (descripción .43.1.9, rápida)
+    try {
+      if (!this.snmp.session) this.snmp.connect();
+      const items = onts.map((o) => ({ slot: o.slot, port: o.pon_port, ontId: o.onu_id }));
+      const descMap = await this.snmp.getDescriptionsForOnts(items);
+      let filled = 0;
+      for (const o of onts) {
+        const p = parseSmartoltDesc(descMap.get(`${o.slot}/${o.pon_port}/${o.onu_id}`));
+        if (p.external_id) o.external_id = p.external_id;
+        if (p.contact) o.contact = p.contact;
+        if (p.zone) o.zone = p.zone;
+        if (p.odb) o.odb = p.odb;
+        if (p.contact || p.zone || p.odb) filled++;
+      }
+      logger.info(`MA5800 listONTs ${this.olt.ip}: ${onts.length} ONTs (telnet), cliente/zona SNMP en ${filled}`);
+    } catch (e) { logger.warn(`MA5800 info SNMP ${this.olt.ip}: ${e.message}`); }
+
+    return onts;
   }
 
   async _listONTsDirectTelnet() {
@@ -174,10 +207,10 @@ class MA5800 {
    * (derived from the ONT scan) to avoid probing all 16 ports blindly.
    * Returns rows: { slot, port, ont_id, rx_power, tx_power, olt_rx_power, temperature, voltage, bias_current, distance }.
    */
-  async getOpticalInfo() {
-    // La óptica (RX/temperatura) ahora viene por SNMP en listONTs(). Se desactiva el
-    // enriquecimiento por telnet para que el scan sea 100% SNMP. (TX no lo expone SNMP.)
-    return [];
+  // Óptica por telnet (rápido, comando en bloque por puerto). La usa el poll de
+  // señal cada 5 min (signalHistory). El scan NO la llama (scan rápido).
+  async getOpticalInfo(slotPorts) {
+    return this._getOpticalInfoTelnet(slotPorts);
   }
 
   async _getOpticalInfoTelnet(slotPorts) {
