@@ -26,6 +26,22 @@ function parseSmartoltDesc(s) {
   return { external_id, contact, zone, descr, odb };
 }
 
+// Per-OLT Telnet serialization. Huawei OLTs expose a small, fixed pool of VTY
+// (Telnet) slots — typically 5. If concurrent jobs (signalHistory, autoAuthorize)
+// or several app instances open sessions to the same OLT at once, the pool is
+// exhausted and new logins are refused. This module-level lock guarantees only
+// ONE Telnet session is open to a given OLT IP at a time, queueing the rest.
+const _oltChains = new Map();
+function withOltLock(ip, fn) {
+  const prev = _oltChains.get(ip) || Promise.resolve();
+  const result = prev.catch(() => {}).then(() => fn());
+  const gate = result.catch(() => {});
+  _oltChains.set(ip, gate);
+  // Drop the entry once this is the tail of the chain, to avoid unbounded growth.
+  gate.then(() => { if (_oltChains.get(ip) === gate) _oltChains.delete(ip); });
+  return result;
+}
+
 class MA5800 {
   constructor(olt) {
     this.olt = olt;
@@ -42,6 +58,28 @@ class MA5800 {
   async disconnect() {
     this.snmp.disconnect();
     await this.telnet.disconnect().catch(() => {});
+  }
+
+  /**
+   * Close a raw Telnet socket gracefully. Sending `quit` makes the Huawei OLT
+   * tear down the VTY session immediately; a bare `sock.destroy()` (TCP RST)
+   * leaves the VTY allocated on the OLT until its idle-timeout fires, which is
+   * what silently exhausts the limited VTY pool when many polls cycle sessions.
+   */
+  async _gracefulClose(sock) {
+    if (!sock || sock.destroyed) return;
+    try {
+      sock.write('quit\r\n');                 // leave current view (config/interface)
+      await new Promise(r => setTimeout(r, 200));
+      sock.write('quit\r\n');                 // logout → terminate the session
+      await new Promise((resolve) => {
+        let done = false;
+        const finish = () => { if (!done) { done = true; resolve(); } };
+        sock.once('close', finish);
+        setTimeout(finish, 800);              // cap the wait so we never hang
+      });
+    } catch (e) { /* best-effort */ }
+    try { sock.destroy(); } catch (e) {}
   }
 
   async getSystemInfo() {
@@ -86,6 +124,10 @@ class MA5800 {
   }
 
   async _listONTsDirectTelnet() {
+    return withOltLock(this.olt.ip, () => this._listONTsDirectTelnetImpl());
+  }
+
+  async _listONTsDirectTelnetImpl() {
     const net = require('net');
     const creds = this.telnet._getCredentials();
     logger.info(`MA5800 _listONTsDirectTelnet ${this.olt.ip} user=${creds.username} hasPwd=${!!creds.password}`);
@@ -164,12 +206,12 @@ class MA5800 {
         logger.info(`MA5800 ${this.olt.ip}: slot ${slot} → ${parsed.length} ONTs (total ${allOnts.length})`);
       }
 
-      sock.destroy();
+      await this._gracefulClose(sock);
       logger.info(`MA5800 ${this.olt.ip}: total parsed ${allOnts.length} ONTs`);
       return allOnts;
     } catch (e) {
       logger.error(`MA5800 direct telnet ${this.olt.ip}: ${e.message}`);
-      try { sock.destroy(); } catch {}
+      await this._gracefulClose(sock);
       return [];
     }
   }
@@ -210,7 +252,7 @@ class MA5800 {
   // Óptica por telnet (rápido, comando en bloque por puerto). La usa el poll de
   // señal cada 5 min (signalHistory). El scan NO la llama (scan rápido).
   async getOpticalInfo(slotPorts) {
-    return this._getOpticalInfoTelnet(slotPorts);
+    return withOltLock(this.olt.ip, () => this._getOpticalInfoTelnet(slotPorts));
   }
 
   async _getOpticalInfoTelnet(slotPorts) {
@@ -293,12 +335,12 @@ class MA5800 {
         logger.info(`MA5800 getOpticalInfo ${this.olt.ip}: slot ${slot} port ${port} → ${parsed.length} rows`);
       }
 
-      sock.destroy();
+      await this._gracefulClose(sock);
       logger.info(`MA5800 getOpticalInfo ${this.olt.ip}: total ${allOptical.length} rows`);
       return allOptical;
     } catch (e) {
       logger.error(`MA5800 getOpticalInfo ${this.olt.ip}: ${e.message}`);
-      try { sock.destroy(); } catch {}
+      await this._gracefulClose(sock);
       return [];
     }
   }
@@ -348,13 +390,17 @@ class MA5800 {
   }
 
   async rebootONT(ontId) {
-    try {
-      if (!this.telnet.connected) await this.telnet.connect();
-      const output = await this.telnet.sendCommand(`ont reset ${ontId}`);
-      return { success: true, output };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
+    return withOltLock(this.olt.ip, async () => {
+      try {
+        if (!this.telnet.connected) await this.telnet.connect();
+        const output = await this.telnet.sendCommand(`ont reset ${ontId}`);
+        return { success: true, output };
+      } catch (e) {
+        return { success: false, error: e.message };
+      } finally {
+        await this.telnet.disconnect().catch(() => {});
+      }
+    });
   }
 
   async getActiveAlerts() {
@@ -394,8 +440,14 @@ class MA5800 {
   }
 
   async sendCommand(cmd) {
-    if (!this.telnet.connected) await this.telnet.connect();
-    return this.telnet.sendCommand(cmd);
+    return withOltLock(this.olt.ip, async () => {
+      try {
+        if (!this.telnet.connected) await this.telnet.connect();
+        return await this.telnet.sendCommand(cmd);
+      } finally {
+        await this.telnet.disconnect().catch(() => {});
+      }
+    });
   }
 
   async detectPortType(portId) {
@@ -414,6 +466,10 @@ class MA5800 {
    * socket pattern used in getOpticalInfo. `opts.config` enters `enable`+`config`.
    */
   async _session(fn, opts = {}) {
+    return withOltLock(this.olt.ip, () => this._sessionImpl(fn, opts));
+  }
+
+  async _sessionImpl(fn, opts = {}) {
     const net = require('net');
     const creds = this.telnet._getCredentials();
     if (!creds.password) throw Object.assign(new Error('No telnet credentials for OLT'), { status: 400 });
@@ -470,10 +526,10 @@ class MA5800 {
         await waitFor([/MA5800\(config\)#/], 6000);
       }
       const result = await fn(collect, { FAILURE });
-      sock.destroy();
+      await this._gracefulClose(sock);
       return result;
     } catch (e) {
-      try { sock.destroy(); } catch {}
+      await this._gracefulClose(sock);
       throw e;
     }
   }
