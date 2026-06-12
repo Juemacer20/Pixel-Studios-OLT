@@ -23,7 +23,7 @@ async function main() {
     { name: 'Premium 100/30', download_mbps: 100, upload_mbps: 30, burst_down: 150, burst_up: 45 },
     { name: 'Empresarial 200/100', download_mbps: 200, upload_mbps: 100, burst_down: 300, burst_up: 150 },
     { name: 'Gigabit 1000/500', download_mbps: 1000, upload_mbps: 500, burst_down: 1000, burst_up: 500 },
-  ].map(sp => prisma.speedProfile.upsert({ where: { name: sp.name }, create: sp, update: sp })));
+  ].map(sp => prisma.speedProfile.create({ data: sp })));
   console.log(`✅ ${speedProfiles.length} speed profiles`);
 
   // Service profiles
