@@ -12,12 +12,16 @@ router.post('/', checkRole('noc'), ctrl.create);
 router.get('/unconfigured', async (req, res, next) => {
   try {
     const { olt_id } = req.query;
+    // El scan de ONTs puede dejar description = nombre auto-generado como
+    // "gpon-onu_0/1/0", "0/1/0:1" (Huawei) o "GPON0/1:1" (VSOL SNMP).
+    // Se considera "sin configurar" solo si description es nulo o tiene formato auto-generado.
     const where = {
       ...(olt_id ? { olt_id } : {}),
       OR: [
         { description: null },
         { description: { startsWith: 'gpon-onu_' } },
         { description: { startsWith: '0/' } },
+        { description: { startsWith: 'GPON' } },
       ],
     };
 

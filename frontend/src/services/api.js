@@ -233,4 +233,25 @@ export const reportsAPI = {
   importCSV:      (formData) => api.post('/reports/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
+export const vsolAPI = {
+  ports: (oltId) => api.get(`/vsol/${oltId}/ports`),
+  portOnus: (oltId, ponIndex) => api.get(`/vsol/${oltId}/pon/${ponIndex}/onus`),
+  onuDetail: (oltId, ponIndex, onuId) => api.get(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}`),
+  onuOptical: (oltId, ponIndex, onuId) => api.get(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/optical`),
+  onuStats: (oltId, ponIndex, onuId) => api.get(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/stats`),
+  onuEth: (oltId, ponIndex, onuId) => api.get(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/eth`),
+  addOnu: (oltId, ponIndex, data) => api.post(`/vsol/${oltId}/pon/${ponIndex}/onu`, data),
+  activateOnu: (oltId, ponIndex, onuId) => api.post(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/activate`),
+  deactivateOnu: (oltId, ponIndex, onuId) => api.post(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/deactivate`),
+  rebootOnu: (oltId, ponIndex, onuId) => api.post(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/reboot`),
+  deleteOnu: (oltId, ponIndex, onuId) => api.delete(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}`),
+  setOnuDescription: (oltId, ponIndex, onuId, description) => api.put(`/vsol/${oltId}/pon/${ponIndex}/onu/${onuId}/description`, { description }),
+  profiles: (oltId) => api.get(`/vsol/${oltId}/profiles`),
+  config: (oltId) => api.get(`/vsol/${oltId}/config`),
+  configText: (oltId) => api.get(`/vsol/${oltId}/config/text`),
+  saveConfig: (oltId) => api.post(`/vsol/${oltId}/config/save`),
+  autofind: (oltId) => api.get(`/vsol/${oltId}/autofind`),
+  batch: (oltId, action, data) => api.post(`/vsol/${oltId}/batch/${action}`, data),
+};
+
 export default api;

@@ -2,31 +2,50 @@ import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  IconRefresh, IconX, IconCheck, IconChevronDown, IconChevronUp,
-  IconPlugConnected, IconWifi, IconWand, IconHistory, IconPlayerPlay,
+  IconRefresh, IconX, IconCheck, IconPlugConnected, IconWand, IconHistory, IconPlayerPlay,
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI, autoActionAPI } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
-import SignalValue from '../../components/shared/SignalValue';
 import toast from 'react-hot-toast';
 
-/* ─── Helpers ─────────────────────────────────────────────────────────────── */
+const panelGreen = {
+  border: '1px solid #3d8b3d',
+  borderRadius: 4, marginBottom: 16, background: 'var(--panel-bg)',
+  boxShadow: '0 1px 1px rgba(0,0,0,0.05)',
+};
+const panelHeading = {
+  background: 'linear-gradient(180deg, #3d8b3d 0%, #2d6b2d 100%)',
+  color: '#fff', padding: '10px 15px', fontSize: 13, fontWeight: 700,
+  borderBottom: '1px solid #2d6b2d', borderRadius: '3px 3px 0 0',
+  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+};
+const tableCls = {
+  width: '100%', borderCollapse: 'collapse', fontSize: 13,
+};
+const thCls = {
+  padding: '8px 10px', borderBottom: '2px solid #2d6b2d', fontSize: 11,
+  fontWeight: 700, textTransform: 'uppercase', color: '#2d6b2d', textAlign: 'left',
+  whiteSpace: 'nowrap',
+};
+const tdCls = {
+  padding: '8px 10px', borderBottom: '1px solid var(--border)', color: 'var(--text-primary)',
+  verticalAlign: 'middle', fontSize: 12,
+};
+
 function formatRelative(iso) {
   if (!iso) return '—';
   const diff = Date.now() - new Date(iso).getTime();
   const s = Math.floor(diff / 1000);
-  if (s < 60)  return `${s}s ago`;
+  if (s < 60)  return `${s}s`;
   const m = Math.floor(s / 60);
-  if (m < 60)  return `${m}m ago`;
+  if (m < 60)  return `${m}m`;
   const h = Math.floor(m / 60);
-  if (h < 24)  return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
+  if (h < 24)  return `${h}h`;
+  return `${Math.floor(h / 24)}d`;
 }
 
-/* ─── Authorize Modal ─────────────────────────────────────────────────────── */
 function AuthorizeModal({ ont, onClose, onSuccess }) {
-  const [name, setName]   = useState('');
-  const [notes, setNotes] = useState('');
+  const [name, setName] = useState('');
   const nameRef = useRef(null);
 
   useEffect(() => {
@@ -40,134 +59,37 @@ function AuthorizeModal({ ont, onClose, onSuccess }) {
     mutationFn: () => ontAPI.patch(ont.id, { description: name.trim() }),
     onSuccess: () => {
       toast.success(`ONT ${ont.serial_number} authorized as "${name.trim()}"`);
-      onSuccess(ont.id);
-      onClose();
+      onSuccess(ont.id); onClose();
     },
     onError: () => toast.error('Failed to authorize ONT'),
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!name.trim()) return;
-    authMut.mutate();
-  };
+  const handleSubmit = (e) => { e.preventDefault(); if (!name.trim()) return; authMut.mutate(); };
 
   return (
     <>
-      <div
-        style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)',
-          zIndex: 400, backdropFilter: 'blur(2px)',
-        }}
-        onClick={onClose}
-      />
+      <div className="drawer-overlay" onClick={onClose} />
       <div style={{
-        position: 'fixed', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 401, width: 460, maxWidth: '95vw',
+        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        zIndex: 401, width: 420, maxWidth: '95vw',
         background: 'var(--panel-bg)', border: '1px solid var(--border)',
-        borderRadius: 10, boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
-        display: 'flex', flexDirection: 'column',
+        borderRadius: 8, boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
       }}>
-        {/* Header */}
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '14px 20px', borderBottom: '1px solid var(--border)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <IconPlugConnected size={16} style={{ color: 'var(--cyan)' }} />
-            <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>
-              Authorize ONT
-            </span>
-          </div>
-          <button className="btn-icon" onClick={onClose}>
-            <IconX size={14} />
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}>Authorize ONT</span>
+          <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
         </div>
-
-        {/* Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-          {/* Readonly info */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>OLT</div>
-              <div style={{
-                padding: '7px 10px', background: 'var(--content-bg)',
-                border: '1px solid var(--border)', borderRadius: 5,
-                fontSize: 12, color: 'var(--text-secondary)',
-              }}>
-                {ont.olt?.name || '—'}
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Interface</div>
-              <div style={{
-                padding: '7px 10px', background: 'var(--content-bg)',
-                border: '1px solid var(--border)', borderRadius: 5,
-                fontSize: 11, color: 'var(--text-secondary)', fontFamily: 'monospace',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              }}>
-                {ont.description || '—'}
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Serial Number</div>
-            <div style={{
-              padding: '7px 10px', background: 'var(--content-bg)',
-              border: '1px solid var(--border)', borderRadius: 5,
-              fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'monospace',
-            }}>
-              {ont.serial_number}
-            </div>
-          </div>
-
-          {/* Editable fields */}
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-              Client Name <span style={{ color: 'var(--red)' }}>*</span>
-            </label>
-            <input
-              ref={nameRef}
-              className="input-base"
-              placeholder="e.g. Juan Garcia"
-              value={name}
-              onChange={e => setName(e.target.value)}
-              required
-            />
-          </div>
-
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
-              Notes <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>(optional)</span>
-            </label>
-            <textarea
-              className="input-base"
-              style={{ resize: 'vertical', minHeight: 60, fontFamily: 'inherit' }}
-              placeholder="Installation notes, address, etc."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-            />
-          </div>
-
-          {/* Footer buttons */}
+        <form onSubmit={handleSubmit} style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div><label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Serial Number</label>
+            <div className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{ont.serial_number}</div></div>
+          <div><label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>OLT</label>
+            <div style={{ fontSize: 12 }}>{ont._olt?.name || ont.olt?.name || '—'}</div></div>
+          <div><label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>Client Name <span style={{ color: 'var(--red)' }}>*</span></label>
+            <input ref={nameRef} className="input-base" placeholder="e.g. Juan Garcia" value={name} onChange={e => setName(e.target.value)} required /></div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', paddingTop: 4 }}>
-            <button type="button" className="btn" onClick={onClose}>
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn"
-              disabled={!name.trim() || authMut.isPending}
-              style={{
-                background: 'rgba(31,184,184,0.15)',
-                borderColor: 'var(--cyan)',
-                color: 'var(--cyan)',
-              }}
-            >
-              <IconCheck size={13} />
-              {authMut.isPending ? 'Authorizing…' : 'Authorize'}
+            <button type="button" className="btn" onClick={onClose}>Cancel</button>
+            <button type="submit" className="btn btn-success" disabled={!name.trim() || authMut.isPending}>
+              <IconCheck size={13} /> {authMut.isPending ? 'Authorizing…' : 'Authorize'}
             </button>
           </div>
         </form>
@@ -176,187 +98,11 @@ function AuthorizeModal({ ont, onClose, onSuccess }) {
   );
 }
 
-/* ─── OLT Card ────────────────────────────────────────────────────────────── */
-function OLTCard({ group, onAuthorize, onWizard, onSave }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const { olt, onts } = group;
-
-  return (
-    <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-      {/* Card header */}
-      <div
-        style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '10px 16px', borderBottom: collapsed ? 'none' : '1px solid var(--border)',
-          cursor: 'pointer', userSelect: 'none',
-        }}
-        onClick={() => setCollapsed(c => !c)}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <IconWifi size={14} style={{ color: 'var(--cyan)', flexShrink: 0 }} />
-          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>
-            {olt?.name || `OLT #${olt?.id}`}
-          </span>
-          <span style={{
-            padding: '1px 8px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: 'rgba(255,165,0,0.12)', color: 'var(--orange)',
-            border: '1px solid rgba(255,165,0,0.25)',
-          }}>
-            {onts.length} unconfigured
-          </span>
-        </div>
-        <button className="btn-icon" style={{ padding: 4 }}>
-          {collapsed ? <IconChevronDown size={13} /> : <IconChevronUp size={13} />}
-        </button>
-      </div>
-
-      {/* Table */}
-      {!collapsed && (
-        <div style={{ overflowX: 'auto' }}>
-          <table className="table-base">
-            <thead>
-              <tr>
-                <th>Interface</th>
-                <th>SN</th>
-                <th>Status</th>
-                <th style={{ textAlign: 'right' }}>Rx Power</th>
-                <th>Last Seen</th>
-                <th style={{ textAlign: 'center', width: 100 }}>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {onts.map(ont => (
-                <tr key={ont.id}>
-                  <td>
-                    <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                      {ont.description || '—'}
-                    </span>
-                  </td>
-                  <td>
-                    <span className="mono" style={{ fontSize: 12, color: 'var(--text-primary)' }}>
-                      {ont.serial_number}
-                    </span>
-                  </td>
-                  <td>
-                    <StatusBadge status={ont.status} />
-                  </td>
-                  <td style={{ textAlign: 'right' }}>
-                    <SignalValue value={ont.rx_power} size="sm" />
-                  </td>
-                  <td>
-                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                      {formatRelative(ont.last_seen)}
-                    </span>
-                  </td>
-                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    <button
-                      className="btn"
-                      style={{
-                        padding: '3px 10px', fontSize: 11,
-                        background: 'rgba(31,184,184,0.12)',
-                        borderColor: 'var(--cyan)',
-                        color: 'var(--cyan)',
-                      }}
-                      onClick={() => onAuthorize(ont)}
-                    >
-                      Quick
-                    </button>
-                    <button className="btn" style={{ padding: '3px 10px', fontSize: 11, marginLeft: 6 }}
-                      onClick={() => onWizard(ont)}>
-                      Wizard
-                    </button>
-                    <button className="btn-icon" style={{ marginLeft: 6 }} title="Save for later" onClick={() => onSave(ont)}>★</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── OLT multi-select filter ─────────────────────────────────────────────── */
-function OLTFilter({ olts, selected, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-
-  useEffect(() => {
-    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, []);
-
-  const label = selected.length === 0
-    ? 'All OLTs'
-    : selected.length === 1
-      ? olts.find(o => String(o.id) === selected[0])?.name || 'OLT'
-      : `${selected.length} OLTs`;
-
-  const toggle = (id) => {
-    const sid = String(id);
-    onChange(selected.includes(sid)
-      ? selected.filter(x => x !== sid)
-      : [...selected, sid]
-    );
-  };
-
-  return (
-    <div ref={ref} style={{ position: 'relative' }}>
-      <button
-        className="btn"
-        style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140 }}
-        onClick={() => setOpen(o => !o)}
-      >
-        <span style={{ flex: 1, textAlign: 'left', fontSize: 12 }}>{label}</span>
-        <IconChevronDown size={12} />
-      </button>
-      {open && (
-        <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
-          background: 'var(--panel-bg)', border: '1px solid var(--border)',
-          borderRadius: 6, zIndex: 100, minWidth: 200,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-          padding: '4px 0',
-        }}>
-          <div
-            style={{ padding: '6px 14px', cursor: 'pointer', fontSize: 12, color: 'var(--text-secondary)' }}
-            onClick={() => { onChange([]); setOpen(false); }}
-          >
-            All OLTs
-          </div>
-          {olts.map(o => {
-            const sid = String(o.id);
-            const checked = selected.includes(sid);
-            return (
-              <div
-                key={o.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 14px', cursor: 'pointer', fontSize: 12,
-                  color: checked ? 'var(--cyan)' : 'var(--text-secondary)',
-                  background: checked ? 'rgba(31,184,184,0.08)' : 'transparent',
-                }}
-                onClick={() => toggle(o.id)}
-              >
-                <input type="checkbox" className="checkbox" readOnly checked={checked} style={{ pointerEvents: 'none' }} />
-                {o.name}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ─── Main page ───────────────────────────────────────────────────────────── */
 export default function Unconfigured() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [selectedOLTs, setSelectedOLTs] = useState([]);
-  const [modalONT, setModalONT]         = useState(null);
+  const [selectedOLT, setSelectedOLT] = useState('');
+  const [modalONT, setModalONT] = useState(null);
 
   const runNowMut = useMutation({
     mutationFn: () => autoActionAPI.runNow(),
@@ -368,7 +114,7 @@ export default function Unconfigured() {
   const saved = Array.isArray(savedResp) ? savedResp : [];
   const saveMut = useMutation({
     mutationFn: (ont) => ontAPI.savedAdd({ serial_number: ont.serial_number, name: ont.description, olt_id: ont.olt?.id, olt_name: ont.olt?.name }),
-    onSuccess: () => { toast.success('ONU saved for later'); queryClient.invalidateQueries({ queryKey: ['saved-onus'] }); },
+    onSuccess: () => { toast.success('ONU saved'); queryClient.invalidateQueries({ queryKey: ['saved-onus'] }); },
     onError: () => toast.error('Save failed'),
   });
   const unsaveMut = useMutation({
@@ -376,34 +122,27 @@ export default function Unconfigured() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['saved-onus'] }),
   });
 
-  /* ── Queries ── */
   const { data: resp, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['onts-unconfigured'],
-    queryFn: () =>
-      ontAPI.unconfigured()
-        .then(r => r.data?.data || { groups: [], total: 0 }),
-    refetchInterval: 60000,
-    retry: 1,
+    queryFn: () => ontAPI.unconfigured().then(r => r.data?.data || { groups: [], total: 0 }),
+    refetchInterval: 60000, retry: 1,
   });
 
   const { data: oltsResp } = useQuery({
     queryKey: ['olts-list'],
-    queryFn: () =>
-      oltAPI.list().then(r => r.data?.data || r.data?.results || r.data || []).catch(() => []),
+    queryFn: () => oltAPI.list().then(r => r.data?.data || r.data?.results || r.data || []).catch(() => []),
     retry: 1,
   });
 
   const allGroups = resp?.groups || [];
-  const total     = resp?.total  || 0;
-  const olts      = Array.isArray(oltsResp) ? oltsResp : [];
+  const total = resp?.total || 0;
+  const olts = Array.isArray(oltsResp) ? oltsResp : allGroups.map(g => g.olt).filter(Boolean);
 
-  /* ── Filter by selected OLTs ── */
   const visibleGroups = useMemo(() => {
-    if (selectedOLTs.length === 0) return allGroups;
-    return allGroups.filter(g => selectedOLTs.includes(String(g.olt?.id)));
-  }, [allGroups, selectedOLTs]);
+    if (!selectedOLT) return allGroups;
+    return allGroups.filter(g => String(g.olt?.id) === selectedOLT);
+  }, [allGroups, selectedOLT]);
 
-  /* ── On successful authorize: remove that ONT from cache ── */
   const handleAuthorizeSuccess = useCallback((ontId) => {
     queryClient.setQueryData(['onts-unconfigured'], (old) => {
       if (!old) return old;
@@ -411,129 +150,127 @@ export default function Unconfigured() {
         .map(g => ({ ...g, onts: g.onts.filter(o => o.id !== ontId) }))
         .filter(g => g.onts.length > 0);
       const total = groups.reduce((acc, g) => acc + g.onts.length, 0);
-      if (old.data) return { ...old, data: { groups, total } };
-      return { groups, total };
+      return old.data ? { ...old, data: { groups, total } } : { groups, total };
     });
   }, [queryClient]);
 
-  /* ── Build OLT list for filter from groups if API list is empty ── */
-  const filterOLTs = useMemo(() => {
-    if (olts.length > 0) return olts;
-    return allGroups.map(g => g.olt).filter(Boolean);
-  }, [olts, allGroups]);
-
-  const visibleTotal = visibleGroups.reduce((acc, g) => acc + g.onts.length, 0);
-
-  /* ─────────────────── RENDER ─────────────────── */
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-      {/* Page header */}
+      {/* Header */}
       <div className="page-header" style={{ marginBottom: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="page-title">Unconfigured ONUs</span>
-          <span style={{
-            padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-            background: total > 0 ? 'rgba(255,165,0,0.12)' : 'rgba(100,100,100,0.12)',
-            color: total > 0 ? 'var(--orange)' : 'var(--text-muted)',
-            border: `1px solid ${total > 0 ? 'rgba(255,165,0,0.25)' : 'var(--border)'}`,
-          }}>
-            {total} unconfigured
-          </span>
-          {isFetching && !isLoading && <span className="polling-dot" title="Updating…" />}
+          <span className="page-title">Unconfigured ONTs</span>
+          {total > 0 ? (
+            <span style={{ background: 'rgba(210,153,34,0.15)', color: '#d29922', border: '1px solid rgba(210,153,34,0.3)', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>{total} pendientes</span>
+          ) : (
+            <span style={{ background: 'rgba(52,211,153,0.15)', color: '#34d399', border: '1px solid rgba(52,211,153,0.3)', borderRadius: 4, padding: '2px 8px', fontSize: 12, fontWeight: 600 }}>Sin pendientes</span>
+          )}
+          {isFetching && !isLoading && <span className="polling-dot" />}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <OLTFilter olts={filterOLTs} selected={selectedOLTs} onChange={setSelectedOLTs} />
-          <button className="btn" onClick={() => refetch()} disabled={isFetching}>
-            <IconRefresh size={13} style={{ animation: isFetching ? 'spin-slow 0.7s linear infinite' : 'none' }} />
-            Refresh
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select className="input-base" style={{ width: 180, fontSize: 12 }} value={selectedOLT} onChange={e => setSelectedOLT(e.target.value)}>
+            <option value="">All OLTs</option>
+            {olts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+          <button className="btn" onClick={() => refetch()} disabled={isFetching}><IconRefresh size={13} /> Refresh</button>
+          <button className="btn" onClick={() => saveMut.mutate(null)} style={{ opacity: 0.7 }}><IconHistory size={13} /> Configure actions</button>
+          <button className="btn" onClick={() => navigate('/reports/tasks')}><IconHistory size={13} /> Task history</button>
+          <button className="btn" onClick={() => navigate('/auth-presets')}><IconWand size={13} /> Authorization Presets</button>
+          <button className="btn btn-success" onClick={() => runNowMut.mutate()} disabled={runNowMut.isPending}>
+            <IconPlayerPlay size={13} /> {runNowMut.isPending ? 'Running…' : 'Run auto-authorize'}
           </button>
         </div>
       </div>
 
-      {/* Auto-actions toolbar */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-        <button className="btn" onClick={() => navigate('/auth-presets')}><IconWand size={13} /> Authorization Presets</button>
-        <button className="btn" onClick={() => runNowMut.mutate()} disabled={runNowMut.isPending}>
-          <IconPlayerPlay size={13} /> {runNowMut.isPending ? 'Running…' : 'Run auto-authorize now'}
-        </button>
-        <button className="btn" onClick={() => navigate('/reports/tasks')}><IconHistory size={13} /> Task history</button>
-      </div>
-
-      {/* Body */}
+      {/* Loading / Empty */}
       {isLoading ? (
-        <div className="empty-state">
-          <span className="spinner" style={{ width: 24, height: 24, margin: '0 auto 10px', display: 'block' }} />
-          Scanning for unconfigured ONUs…
-        </div>
+        <div className="empty-state"><span className="spinner" style={{ width: 24, height: 24, margin: '0 auto 10px', display: 'block' }} />Scanning for unconfigured ONUs…</div>
       ) : visibleGroups.length === 0 ? (
-        <div className="empty-state">
-          <IconPlugConnected size={36} style={{ margin: '0 auto 12px', opacity: 0.2, display: 'block' }} />
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>No unconfigured ONUs found</div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            All ONUs are already configured, or none have been discovered yet.
+        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div style={{ padding: '10px 15px', background: '#3d8b3d', color: '#fff', fontWeight: 700, fontSize: 13 }}>
+            <IconPlugConnected size={14} style={{ marginRight: 6 }} />No unconfigured ONTs
+          </div>
+          <div className="empty-state" style={{ padding: 30 }}>
+            <IconPlugConnected size={36} style={{ margin: '0 auto 12px', opacity: 0.2, display: 'block' }} />
+            <div style={{ fontWeight: 600, marginBottom: 4 }}>All ONTs are configured</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>No ONTs pending authorization.</div>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {visibleGroups.map(group => (
-            <OLTCard
-              key={group.olt?.id}
-              group={group}
-              onAuthorize={setModalONT}
-              onWizard={(ont) => navigate(`/onu/authorize?sn=${encodeURIComponent(ont.serial_number)}`)}
-              onSave={(ont) => saveMut.mutate(ont)}
-            />
-          ))}
-        </div>
+        /* ── Panels by OLT (SmartOLT style) ── */
+        visibleGroups.map(group => (
+          <div key={group.olt?.id || 'unknown'} style={panelGreen}>
+            <div style={panelHeading}>
+              <span><IconPlugConnected size={14} style={{ marginRight: 6 }} />{group.olt?.name || 'Unknown OLT'} <span style={{ fontSize: 11, opacity: 0.8 }}>({group.onts.length})</span></span>
+              <span style={{ fontSize: 11, opacity: 0.85, cursor: 'pointer' }} onClick={() => navigate(`/olts/${group.olt?.id}/configured`)}>View all →</span>
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={tableCls}>
+                <thead>
+                  <tr>
+                    <th style={thCls}>PON type</th>
+                    <th style={thCls}>Board</th>
+                    <th style={thCls}>Port</th>
+                    <th style={thCls}>PON Description</th>
+                    <th style={thCls}>SN</th>
+                    <th style={thCls}>Type</th>
+                    <th style={{ ...thCls, textAlign: 'center' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {group.onts.map((ont, i) => (
+                    <tr key={ont.id}
+                      style={{ background: i % 2 === 0 ? 'var(--panel-bg)' : 'rgba(127,150,180,0.04)' }}>
+                      <td style={tdCls}><span className="label label-green" style={{ fontSize: 10 }}>GPON</span></td>
+                      <td style={tdCls}>{ont.board ?? ont.description?.match(/^GPON0\/(\d+)/)?.[1] ?? '0'}</td>
+                      <td style={tdCls}>{ont.port ?? ont.description?.match(/^GPON0\/\d+:(\d+)/)?.[1] ?? '—'}</td>
+                      <td style={tdCls}><span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{ont.description || '—'}</span></td>
+                      <td style={tdCls}><span className="mono" style={{ fontSize: 11 }}>{ont.serial_number}</span></td>
+                      <td style={tdCls}>{ont.model || '—'}</td>
+                      <td style={{ ...tdCls, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                        <button className="btn btn-success btn-xs" style={{ padding: '2px 10px', fontSize: 11 }}
+                          onClick={() => setModalONT(ont)}>
+                          <IconCheck size={11} /> Authorize
+                        </button>
+                        <button className="btn btn-xs" style={{ padding: '2px 6px', fontSize: 10, marginLeft: 4, color: 'var(--text-muted)' }}
+                          onClick={() => saveMut.mutate(ont)} title="Add for later authorization">+</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ))
       )}
 
-      {/* Bottom stat */}
-      {!isLoading && visibleGroups.length > 0 && (
-        <div style={{
-          padding: '10px 16px',
-          background: 'var(--content-bg)',
-          border: '1px solid var(--border)',
-          borderRadius: 8,
-          fontSize: 12, color: 'var(--text-secondary)',
-          display: 'flex', alignItems: 'center', gap: 6,
-        }}>
-          <span style={{ color: 'var(--orange)', fontWeight: 600 }}>{visibleTotal}</span>
-          {' '}total unconfigured across{' '}
-          <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{visibleGroups.length}</span>
-          {' '}OLT{visibleGroups.length !== 1 ? 's' : ''}
-          {selectedOLTs.length > 0 && (
-            <span style={{ color: 'var(--text-muted)' }}> (filtered)</span>
-          )}
-        </div>
-      )}
-
-      {/* Saved ONUs for later authorization */}
+      {/* ── Saved ONUs ── */}
       {saved.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="sol-card-h"><span>★ Saved ONUs for later authorization</span></div>
-          <table className="table-base">
-            <thead><tr><th>Name</th><th>SN</th><th>OLT</th><th style={{ width: 120, textAlign: 'center' }}>Action</th></tr></thead>
-            <tbody>
-              {saved.map((s) => (
-                <tr key={s.id}>
-                  <td>{s.name || '—'}</td>
-                  <td className="mono" style={{ fontSize: 11 }}>{s.serial_number}</td>
-                  <td>{s.olt_name || '—'}</td>
-                  <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                    <button className="btn" style={{ padding: '3px 10px', fontSize: 11 }}
-                      onClick={() => navigate(`/onu/authorize?sn=${encodeURIComponent(s.serial_number)}`)}>Authorize</button>
-                    <button className="btn-icon" style={{ marginLeft: 6, color: 'var(--red)' }} title="Remove"
-                      onClick={() => unsaveMut.mutate(s.id)}><IconX size={13} /></button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div style={panelGreen}>
+          <div style={panelHeading}><span>★ Saved ONUs</span></div>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={tableCls}>
+              <thead><tr><th style={thCls}>Name</th><th style={thCls}>SN</th><th style={thCls}>OLT</th><th style={{ ...thCls, textAlign: 'center' }}>Action</th></tr></thead>
+              <tbody>
+                {saved.map((s, i) => (
+                  <tr key={s.id} style={{ background: i % 2 === 0 ? 'var(--panel-bg)' : 'rgba(127,150,180,0.04)' }}>
+                    <td style={tdCls}>{s.name || '—'}</td>
+                    <td style={{ ...tdCls, fontFamily: 'monospace', fontSize: 11 }}>{s.serial_number}</td>
+                    <td style={tdCls}>{s.olt_name || '—'}</td>
+                    <td style={{ ...tdCls, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <button className="btn btn-success btn-xs" style={{ padding: '2px 10px', fontSize: 11 }}
+                        onClick={() => navigate(`/onu/authorize?sn=${encodeURIComponent(s.serial_number)}`)}>View</button>
+                      <button className="btn btn-xs" style={{ padding: '2px 6px', fontSize: 10, marginLeft: 4, color: 'var(--red)' }}
+                        onClick={() => unsaveMut.mutate(s.id)}><IconX size={11} /></button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Authorize Modal */}
       {modalONT && (
         <AuthorizeModal
           ont={modalONT}

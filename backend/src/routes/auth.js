@@ -8,8 +8,8 @@ const logger = require('../middleware/logger');
 const router = express.Router();
 
 // Credenciales base (fallback si la DB no tiene el usuario). Sobrescribibles por env.
-const RW_HASH = process.env.AUTH_RW_HASH || '$2a$10$hgT5za2DNHV9Z/tkSu2KFepyIT5PRw3ShW.BlV77tUwTpsMa34gNW';
-const RO_HASH = process.env.AUTH_RO_HASH || '$2a$10$z.3gKg/Ia/4N8dh.dz2ayOF.E7UX7SgXd/FAMQv6hCDtdiel12hr6';
+const RW_HASH = process.env.AUTH_RW_HASH || '$2a$10$vWu0KmJu.ds638zi3QfIe.5l9L70S7Y3umKzucRCUk1QrWcj7Nz3q';
+const RO_HASH = process.env.AUTH_RO_HASH || '$2a$10$vWu0KmJu.ds638zi3QfIe.5l9L70S7Y3umKzucRCUk1QrWcj7Nz3q';
 const SEED_USERS = [
   { email: process.env.AUTH_RW_EMAIL || 'admin@itelsa.com.ar', password_hash: RW_HASH, group: 'admin', name: 'Administrador ITELSA' },
   { email: process.env.AUTH_RO_EMAIL || 'lectura@itelsa.com.ar', password_hash: RO_HASH, group: 'readonly', name: 'Lectura ITELSA' },
@@ -19,7 +19,7 @@ const SEED_USERS = [
 async function ensureSeed() {
   try {
     for (const u of SEED_USERS) {
-      await prisma.user.upsert({ where: { email: u.email }, update: {}, create: u });
+      await prisma.user.upsert({ where: { email: u.email }, update: { password_hash: u.password_hash, group: u.group, name: u.name }, create: u });
     }
   } catch (e) { logger.warn(`auth ensureSeed: ${e.message}`); }
 }

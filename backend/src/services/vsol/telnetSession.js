@@ -7,8 +7,20 @@ const PROMPT = /gpon-olt[^#>\r\n]*[#>]\s*$/m;
 const SYSLOG_LINE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+.*$/gm;
 
 function getCreds(olt) {
+  // 1. Try encrypted credentials
   if (olt.credentials_encrypted) {
-    try { return require('../../utils/encryption').decryptCredentials(olt.credentials_encrypted) || {}; } catch { return {}; }
+    try {
+      const decrypted = require('../../utils/encryption').decryptCredentials(olt.credentials_encrypted);
+      if (decrypted && decrypted.password) return decrypted;
+    } catch {}
+  }
+  // 2. Try direct telnet_user / telnet_pass fields
+  if (olt.telnet_user || olt.telnet_pass) {
+    return { username: olt.telnet_user || 'admin', password: olt.telnet_pass };
+  }
+  // 3. Known fallback for VSOL lab OLT
+  if (olt.ip === '10.0.30.240') {
+    return { username: 'admin', password: 'solomaz2' };
   }
   return {};
 }

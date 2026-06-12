@@ -45,7 +45,7 @@ function walk(session, oid, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     const results = [];
     const t = setTimeout(() => resolve(results), timeoutMs);
-    session.walk(oid, 20, (varbinds) => {
+    session.walk(oid, 50, (varbinds) => {
       varbinds.forEach((vb) => {
         if (!snmp.isVarbindError(vb)) results.push(vb);
       });

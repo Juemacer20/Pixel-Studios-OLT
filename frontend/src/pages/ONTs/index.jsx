@@ -2,13 +2,14 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Line,
-} from 'recharts';
-import {
-  IconSearch, IconRefresh, IconTrash, IconPower, IconGauge,
-  IconFilter, IconX, IconChevronDown, IconChevronUp,
-  IconWifi, IconUser, IconDownload, IconUpload, IconEye,
+  IconSearch, IconTrash, IconPower, IconGauge,
+  IconChevronDown, IconChevronRight,
+  IconWifi, IconDownload, IconUpload, IconEye, IconInfoCircle,
+  IconWorld, IconPlug, IconLinkOff, IconBan, IconBroadcast,
+  IconHistory, IconHierarchy, IconArrowsRandom,
+  IconArrowsExchange, IconSettings, IconKey, IconMapPin, IconLock,
+  IconServer, IconCopy, IconGitFork, IconTags, IconVectorTriangle,
+  IconFileCode, IconIdBadge, IconCircleCheck, IconAlertTriangle,
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
@@ -623,10 +624,26 @@ export default function ONTs() {
   const [filterVlan,   setFilterVlan]   = useState('');
   const [filterMode,   setFilterMode]   = useState('');
   const [showMore,     setShowMore]     = useState(false);
-  const [sortState,    setSortState]    = useState(['serial_number', 'asc']);
+  const [sortState,    setSortState]    = useState(['id', 'desc']);
   const [page,         setPage]         = useState(1);
   const [selected,     setSelected]     = useState(new Set());
   const [drawerONT,    setDrawerONT]    = useState(null);
+  const [batchPanel,   setBatchPanel]   = useState(false);
+  const [filterOnuType, setFilterOnuType] = useState('');
+  const [filterOdb,    setFilterOdb]    = useState('');
+  const [filterWanMode, setFilterWanMode] = useState('');
+  const [filterMgmtIpMode, setFilterMgmtIpMode] = useState('');
+  const [filterTr069, setFilterTr069] = useState('');
+  const [filterVoip, setFilterVoip] = useState('');
+  const [filterCatv, setFilterCatv] = useState('');
+  const [filterConfigMethod, setFilterConfigMethod] = useState('');
+  const [filterIpProtocol, setFilterIpProtocol] = useState('');
+  const [filterDownloadSpeed, setFilterDownloadSpeed] = useState('');
+  const [filterUploadSpeed, setFilterUploadSpeed] = useState('');
+  const [filterLastStatusChange, setFilterLastStatusChange] = useState('');
+  const [filterShouldRebuild, setFilterShouldRebuild] = useState('');
+  const [batchForm, setBatchForm] = useState({});
+  const updBatch = (k, v) => setBatchForm(p => ({...p, [k]: v}));
 
   /* ── Queries ── */
   const { data: ontsResp, isLoading, isFetching, refetch } = useQuery({
@@ -718,7 +735,10 @@ export default function ONTs() {
     }
     if (filterOLT)    list = list.filter(o => String(o.olt?.id) === filterOLT);
     if (filterPort)   list = list.filter(o => o.description === filterPort);
-    if (filterSignal) list = list.filter(o => getSignalMeta(o.rx_power).key === filterSignal);
+    if (filterSignal) {
+      const signalKeyMap = { 'good': 'optimal', 'warning': 'warn', 'critical': 'critical' };
+      list = list.filter(o => getSignalMeta(o.rx_power).key === (signalKeyMap[filterSignal] || filterSignal));
+    }
     if (filterStatus) {
       if (filterStatus === 'ztp') list = list.filter(o => ['ztp','pending'].includes((o.status||'').toLowerCase()));
       else                        list = list.filter(o => (o.status||'').toLowerCase() === filterStatus);
@@ -726,10 +746,23 @@ export default function ONTs() {
     if (filterZone) list = list.filter(o => (o.zone || '') === filterZone);
     if (filterVlan) list = list.filter(o => String(o.vlan ?? '') === filterVlan);
     if (filterMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterMode.toLowerCase()));
+    if (filterOnuType) list = list.filter(o => (o.model || '').toLowerCase().includes(filterOnuType.toLowerCase()));
+    if (filterOdb) list = list.filter(o => (o.odb || '') === filterOdb);
+    if (filterWanMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterWanMode.toLowerCase()));
+    if (filterMgmtIpMode) list = list.filter(o => (o.mgmt_ip_mode || '').toLowerCase() === filterMgmtIpMode.toLowerCase());
+    if (filterTr069) list = list.filter(o => (o.tr069_profile_id || '').toLowerCase().includes(filterTr069.toLowerCase()));
+    if (filterVoip) list = list.filter(o => (o.voip_mode || '').toLowerCase() === filterVoip.toLowerCase());
+    if (filterCatv) list = list.filter(o => String(o.catv_enabled ?? '') === filterCatv);
+    if (filterConfigMethod) list = list.filter(o => (o.config_method || '').toLowerCase() === filterConfigMethod.toLowerCase());
+    if (filterDownloadSpeed) list = list.filter(o => (o.download_speed || '').toLowerCase().includes(filterDownloadSpeed.toLowerCase()));
+    if (filterUploadSpeed) list = list.filter(o => (o.upload_speed || '').toLowerCase().includes(filterUploadSpeed.toLowerCase()));
+    if (filterLastStatusChange) list = list.filter(o => o.last_status_change?.includes(filterLastStatusChange));
+    if (filterShouldRebuild) list = list.filter(o => (o.should_rebuild || '').toLowerCase() === filterShouldRebuild.toLowerCase());
 
     const [key, dir] = sortState;
     const GET = {
-      serial_number: o => o.serial_number,
+      id:            o => o.id || '',
+      serial_number: o => o.serial_number || '',
       client:        o => o.client?.name || '',
       olt:           o => o.olt?.name || '',
       pon_port:      o => o.description || '',
@@ -738,6 +771,12 @@ export default function ONTs() {
       distance:      o => o.distance ?? 0,
       status:        o => o.status || '',
       last_seen:     o => o.last_seen || '',
+      provisioned_at: o => o.provisioned_at || '',
+      zone:          o => o.zone || '',
+      odb:           o => o.odb || '',
+      model:         o => o.model || '',
+      vlan:          o => o.vlan ?? '',
+      wan_mode:      o => o.wan_mode || '',
     };
     if (GET[key]) {
       list.sort((a, b) => {
@@ -748,10 +787,12 @@ export default function ONTs() {
       });
     }
     return list;
-  }, [rawONTs, search, filterOLT, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, sortState]);
+  }, [rawONTs, search, filterOLT, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, filterOnuType, filterOdb, filterWanMode, filterMgmtIpMode, filterTr069, filterVoip, filterCatv, filterConfigMethod, filterDownloadSpeed, filterUploadSpeed, filterLastStatusChange, filterShouldRebuild, sortState]);
 
   const zoneOpts = useMemo(() => [...new Set(rawONTs.map(o => o.zone).filter(Boolean))].sort(), [rawONTs]);
   const vlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.vlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
+  const onuTypeOpts = useMemo(() => [...new Set(rawONTs.map(o => o.model).filter(Boolean))].sort(), [rawONTs]);
+  const odbOpts = useMemo(() => [...new Set(rawONTs.map(o => o.odb).filter(Boolean))].sort(), [rawONTs]);
 
   /* ── Pagination ── */
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -820,23 +861,20 @@ export default function ONTs() {
   };
 
   /* ── Filter options ── */
-  const STATUS_PILLS = [
-    { key: '',        label: 'All'          },
-    { key: 'online',  label: 'Online'       },
-    { key: 'offline', label: 'Offline'      },
-    { key: 'los',     label: 'LOS'          },
-    { key: 'ztp',     label: 'Unconfigured' },
+  const STATUS_ICONS = [
+    { key: 'online',  label: 'Online',  icon: IconWorld,   color: 'text-green' },
+    { key: 'pwrfail', label: 'Power Fail', icon: IconPlug, color: 'text-grey' },
+    { key: 'los',     label: 'LOS',     icon: IconLinkOff, color: 'text-red' },
+    { key: 'offline', label: 'Offline', icon: IconWorld,   color: 'text-grey' },
+    { key: 'disabled',label: 'Disabled',icon: IconBan,     color: 'text-grey' },
   ];
-  const SIGNAL_OPTS = [
-    { key: '',         label: 'Signal: Any' },
-    { key: 'optimal',  label: 'Optimal'     },
-    { key: 'normal',   label: 'Normal'      },
-    { key: 'warn',     label: 'Warning'     },
-    { key: 'critical', label: 'Critical'    },
-    { key: 'unknown',  label: 'Unknown'     },
+  const SIGNAL_ICONS = [
+    { key: 'good',    label: 'Good',    color: 'text-green' },
+    { key: 'warning', label: 'Warning', color: '#d29922' },
+    { key: 'critical',label: 'Critical',color: 'text-red' },
   ];
 
-  const hasFilters = search || filterOLT || filterPort || filterSignal || filterStatus;
+  const hasFilters = search || filterOLT || filterPort || filterSignal || filterStatus || filterZone || filterVlan || filterMode || filterOnuType || filterOdb || filterWanMode || filterMgmtIpMode || filterTr069 || filterVoip || filterCatv || filterConfigMethod || filterDownloadSpeed || filterUploadSpeed || filterLastStatusChange || filterShouldRebuild;
 
   const avgRxMeta  = getSignalMeta(stats.avgRx);
 
@@ -849,339 +887,1024 @@ export default function ONTs() {
 
   /* ─────────────────────────── RENDER ─────────────────────────── */
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+    <div className="container-fluid content-wrap">
 
-      {/* Page header */}
-      <div className="page-header" style={{ marginBottom: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span className="page-title">Configured ONUs</span>
-          <span className="badge badge-gray" style={{ fontSize: 11 }}>{filtered.length}</span>
-          {isFetching && !isLoading && <span className="polling-dot" title="Updating…" />}
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="btn" onClick={() => toast.success('Export ONUs (próximamente)')}>
-            <IconDownload size={13} /> Export
-          </button>
-          <button className="btn" onClick={() => toast.success('Import ONUs (próximamente)')}>
-            <IconUpload size={13} /> Import
-          </button>
-          <button className="btn" onClick={() => refetch()} disabled={isFetching}>
-            <IconRefresh size={13} style={{ animation: isFetching ? 'spin-slow 0.7s linear infinite' : 'none' }} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
+        Configured ONUs
+        <span className="badge badge-gray" style={{ fontSize: 12, marginLeft: 10, verticalAlign: 'middle' }}>{filtered.length}</span>
+        {isFetching && !isLoading && <span className="polling-dot" title="Updating…" style={{ marginLeft: 8 }} />}
+      </h2>
 
-      {/* Stats bar */}
-      <div className="stats-bar">
-        <div className="stat-item">
-          <div className="stat-label">Total ONTs</div>
-          <div className="stat-value">{stats.total}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Online</div>
-          <div className="stat-value" style={{ color: 'var(--green)' }}>{stats.online}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Offline</div>
-          <div className="stat-value" style={{ color: 'var(--text-muted)' }}>{stats.offline}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">LOS</div>
-          <div className="stat-value" style={{ color: stats.los > 0 ? 'var(--red)' : 'var(--text-muted)' }}>{stats.los}</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">Promedio RX</div>
-          <div className="stat-value" style={{ fontSize: 15, color: getSignalCssColor(avgRxMeta.cls) }}>
-            {stats.avgRx != null ? `${stats.avgRx.toFixed(1)} dBm` : '—'}
+      <div className="alert alert-success flash-message" style={{ display: 'none' }} />
+
+      <form className="form-inline configured" onSubmit={e => e.preventDefault()}>
+
+        {/* ═══ Row 1: Search, OLT, Board, Port, Zone, ODB, VLAN ═══ */}
+        <div className="margin-bottom filters-row">
+
+          <div className="form-group">
+            <label className="control-label" htmlFor="free_text">Search</label>
+            <div style={{ position: 'relative' }}>
+              <IconSearch size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }} />
+              <input
+                type="text" className="input form-control input-190 input-search" id="free_text"
+                placeholder="SN, IP, name, address, phone no, ppp usernme"
+                title="You can filter the search by partial name, address, IP, CIDR subnet, IP-range , pppoe user, router mode or phone number"
+                value={search}
+                onChange={e => { setSearch(e.target.value); setPage(1); }}
+                style={{ paddingLeft: 28 }}
+              />
+            </div>
           </div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-label">ZTP Pendientes</div>
-          <div className="stat-value" style={{ color: stats.ztp > 0 ? 'var(--orange)' : 'var(--text-muted)' }}>{stats.ztp}</div>
-        </div>
-      </div>
 
-      {/* Filters row */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        {/* Search */}
-        <div style={{ position: 'relative', flex: '1 1 220px', minWidth: 180 }}>
-          <IconSearch size={13} style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-          <input
-            className="input-base"
-            style={{ paddingLeft: 28 }}
-            placeholder="Search SN, MAC, name, IP…"
-            value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1); }}
-          />
-        </div>
+          <div className="form-group">
+            <label className="control-label" htmlFor="olt">OLT</label>
+            <select name="olt_id" id="olt" className="form-control input-150 select-search text-nowrap"
+              value={filterOLT} onChange={e => { setFilterOLT(e.target.value); setPage(1); }}>
+              <option value="">All OLTs</option>
+              {olts.map(o => <option key={o.id} value={String(o.id)}>{o.name}</option>)}
+            </select>
+          </div>
 
-        {/* OLT */}
-        <select className="select-base" style={{ minWidth: 130 }} value={filterOLT} onChange={e => { setFilterOLT(e.target.value); setPage(1); }}>
-          <option value="">All OLTs</option>
-          {olts.map(o => <option key={o.id} value={String(o.id)}>{o.name}</option>)}
-        </select>
+          <div className="form-group">
+            <label className="control-label" htmlFor="board">Board</label>
+            <select name="board" id="board" className="form-control input-90 select-search text-nowrap">
+              <option value="">Any</option>
+            </select>
+          </div>
 
-        {/* PON port */}
-        <select className="select-base" style={{ minWidth: 130 }} value={filterPort} onChange={e => { setFilterPort(e.target.value); setPage(1); }}>
-          <option value="">All ports</option>
-          {ponPorts.map(p => <option key={p} value={p}>{p}</option>)}
-        </select>
+          <div className="form-group">
+            <label className="control-label" htmlFor="port">Port</label>
+            <select name="port" id="port" className="form-control input-90 select-search text-nowrap"
+              value={filterPort} onChange={e => { setFilterPort(e.target.value); setPage(1); }}>
+              <option value="">All ports</option>
+              {ponPorts.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
 
-        {/* Signal quality */}
-        <select className="select-base" style={{ minWidth: 148 }} value={filterSignal} onChange={e => { setFilterSignal(e.target.value); setPage(1); }}>
-          {SIGNAL_OPTS.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
-        </select>
+          <div className="form-group">
+            <label className="control-label" htmlFor="location">Zone</label>
+            <select name="zone_id" id="location" className="form-control input-90 select-search text-nowrap"
+              value={filterZone} onChange={e => { setFilterZone(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              {zoneOpts.map(z => <option key={z} value={z}>{z}</option>)}
+            </select>
+          </div>
 
-        {/* Status pills */}
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-          {STATUS_PILLS.map(pill => (
-            <button
-              key={pill.key}
-              onClick={() => { setFilterStatus(pill.key); setPage(1); }}
-              style={{
-                padding: '4px 11px', borderRadius: 20, fontSize: 11, fontWeight: 500,
-                cursor: 'pointer', border: '1px solid', transition: 'all 0.12s',
-                borderColor: filterStatus === pill.key ? 'var(--accent)' : 'var(--border)',
-                background:  filterStatus === pill.key ? 'rgba(31,111,235,0.15)' : 'transparent',
-                color:       filterStatus === pill.key ? 'var(--cyan)' : 'var(--text-secondary)',
-              }}
-            >
-              {pill.label}
-            </button>
-          ))}
+          <div className="form-group">
+            <label className="control-label" htmlFor="odb">ODB</label>
+            <select name="odb_id" id="odb" className="form-control input-90 select-search text-nowrap"
+              value={filterOdb} onChange={e => { setFilterOdb(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              {odbOpts.map(z => <option key={z} value={z}>{z}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="control-label" htmlFor="vlan">VLAN</label>
+            <select name="vlan" id="vlan" className="form-control input-90 select-search text-nowrap"
+              value={filterVlan} onChange={e => { setFilterVlan(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              {vlanOpts.map(v => <option key={v} value={String(v)}>{v}</option>)}
+            </select>
+          </div>
+
         </div>
 
-        <button className="btn" style={{ fontSize: 11 }} onClick={() => setShowMore(s => !s)}>
-          {showMore ? '− Less filters' : '+ More filters'}
-        </button>
+        {/* ═══ Row 2: ONU type, Profile, PON type, Status pills, Signal pills, B/R, Batch ═══ */}
+        <div className="margin-bottom filters-row">
 
-        {/* Clear */}
-        {(hasFilters || filterZone || filterVlan || filterMode) && (
-          <button className="btn-icon" onClick={() => { setSearch(''); setFilterOLT(''); setFilterPort(''); setFilterSignal(''); setFilterStatus(''); setFilterZone(''); setFilterVlan(''); setFilterMode(''); setPage(1); }} title="Limpiar filtros">
-            <IconX size={13} />
-          </button>
-        )}
-      </div>
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="onuType">ONU type</label>
+            <select name="onu_type_id" id="onuType" className="form-control input-90 select-search text-nowrap"
+              value={filterOnuType} onChange={e => { setFilterOnuType(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              {onuTypeOpts.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
 
-      {/* Advanced filters */}
-      {showMore && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-          <select className="select-base" style={{ minWidth: 140 }} value={filterZone} onChange={e => { setFilterZone(e.target.value); setPage(1); }}>
-            <option value="">All zones</option>
-            {zoneOpts.map(z => <option key={z} value={z}>{z}</option>)}
-          </select>
-          <select className="select-base" style={{ minWidth: 120 }} value={filterVlan} onChange={e => { setFilterVlan(e.target.value); setPage(1); }}>
-            <option value="">All VLANs</option>
-            {vlanOpts.map(v => <option key={v} value={String(v)}>{v}</option>)}
-          </select>
-          <select className="select-base" style={{ minWidth: 130 }} value={filterMode} onChange={e => { setFilterMode(e.target.value); setPage(1); }}>
-            <option value="">Any mode</option>
-            <option value="bridge">Bridging</option>
-            <option value="route">Routing</option>
-            <option value="pppoe">PPPoE</option>
-            <option value="dhcp">DHCP</option>
-          </select>
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="customTemplate">Profile</label>
+            <select name="custom_template" id="customTemplate" className="form-control input-120 select-search text-nowrap">
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="ponType">PON type</label>
+            <select name="pon_type" id="ponType" className="form-control input-90 select-search text-nowrap">
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div className="form-group pon-type-filter margin-right">
+            <label className="control-label">Status </label>
+            <ul className="pagination">
+              <li className={`status-filter ${filterStatus === 'online' ? 'active' : ''}`} value="online" title="Online"
+                onClick={() => { setFilterStatus('online'); setPage(1); }}>
+                <span><IconWorld size={14} className="text-green" /></span>
+              </li>
+              <li className={`status-filter ${filterStatus === 'pwrfail' ? 'active' : ''}`} value="pwrfail" title="Power Fail"
+                onClick={() => { setFilterStatus('pwrfail'); setPage(1); }}>
+                <span><IconPlug size={14} className="text-grey" /></span>
+              </li>
+              <li className={`status-filter ${filterStatus === 'los' ? 'active' : ''}`} value="los" title="Loss of Signal"
+                onClick={() => { setFilterStatus('los'); setPage(1); }}>
+                <span><IconLinkOff size={14} className="text-red" /></span>
+              </li>
+              <li className={`status-filter ${filterStatus === 'offline' ? 'active' : ''}`} value="offline" title="Offline"
+                onClick={() => { setFilterStatus('offline'); setPage(1); }}>
+                <span><IconWorld size={14} className="text-grey" /></span>
+              </li>
+              <li className={`status-filter ${filterStatus === 'disabled' ? 'active' : ''}`} value="disabled" title="Admin Disabled"
+                onClick={() => { setFilterStatus('disabled'); setPage(1); }}>
+                <span><IconBan size={14} className="text-grey" /></span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="form-group pon-type-filter margin-right">
+            <label className="control-label">Signal </label>
+            <ul className="pagination">
+              <li className={`signal-filter ${filterSignal === 'good' ? 'active' : ''}`} value="good" title="Good"
+                onClick={() => { setFilterSignal('good'); setPage(1); }}>
+                <span><IconBroadcast size={14} className="text-green" /></span>
+              </li>
+              <li className={`signal-filter ${filterSignal === 'warning' ? 'active' : ''}`} value="warning" title="Warning"
+                onClick={() => { setFilterSignal('warning'); setPage(1); }}>
+                <span><IconBroadcast size={14} style={{ color: 'darkorange' }} /></span>
+              </li>
+              <li className={`signal-filter ${filterSignal === 'critical' ? 'active' : ''}`} value="critical" title="Critical"
+                onClick={() => { setFilterSignal('critical'); setPage(1); }}>
+                <span><IconBroadcast size={14} style={{ color: 'red' }} /></span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="form-group pon-type-filter margin-right">
+            <ul className="pagination">
+              <li className={`onu_mode-filter ${filterMode === 'bridge' ? 'active' : ''}`} value="bridging" title="Bridging"
+                onClick={() => { setFilterMode('bridge'); setPage(1); }}>
+                <span>B</span>
+              </li>
+              <li className={`onu_mode-filter ${filterMode === 'route' ? 'active' : ''}`} value="routing" title="Routing"
+                onClick={() => { setFilterMode('route'); setPage(1); }}>
+                <span>R</span>
+              </li>
+            </ul>
+          </div>
+
+          <div className="form-group margin-right">
+            <a id="batch-actions-toggle" className="cursor-pointer text-success" title="Batch actions"
+              onClick={() => setBatchPanel(s => !s)}>
+              <IconGauge size={18} />
+            </a>
+          </div>
+
+        </div>
+
+        {/* ═══ More filters toggle row ═══ */}
+        <div className="more-filters-toggle-row">
+          <a id="more-filters-toggle" className="more-filters-toggle-main" href="#"
+            onClick={e => { e.preventDefault(); setShowMore(s => !s); }}>
+            <IconChevronDown size={13} /> More filters
+          </a>
+          <a id="more-filters-import-export-toggle" className="more-filters-toggle-import-export" href="#"
+            onClick={e => { e.preventDefault(); toast.success('Import / Export (próximamente)'); }}>
+            Import / Export
+          </a>
+        </div>
+
+        {/* ═══ More filters panel ═══ */}
+        <div id="more-filters-section" className="margin-bottom filters-row more-filters-panel"
+          style={{ display: showMore ? 'flex' : 'none' }}>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="mgmtIpMode">Mgmt IP</label>
+            <select name="mgmt_ip_mode" id="mgmtIpMode" className="form-control input-90 select-search text-nowrap"
+              value={filterMgmtIpMode} onChange={e => { setFilterMgmtIpMode(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="inactive">Inactive</option>
+              <option value="static">Static</option>
+              <option value="dhcp">DHCP</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="tr069ProfileId">TR-069</label>
+            <select name="tr069_profile_id" id="tr069ProfileId" className="form-control input-90 select-search text-nowrap"
+              value={filterTr069} onChange={e => { setFilterTr069(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="voipMode">VoIP</label>
+            <select name="voip_mode" id="voipMode" className="form-control input-90 select-search text-nowrap"
+              value={filterVoip} onChange={e => { setFilterVoip(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="catvEnabled">CATV</label>
+            <select name="catv_enabled" id="catvEnabled" className="form-control input-90 select-search text-nowrap"
+              value={filterCatv} onChange={e => { setFilterCatv(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="1">Enabled</option>
+              <option value="0">Disabled</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="routerMode">WAN mode</label>
+            <select name="router_mode" id="routerMode" className="form-control input-120 select-search text-nowrap"
+              value={filterWanMode} onChange={e => { setFilterWanMode(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="Setup via ONU webpage">Setup via ONU webpage</option>
+              <option value="DHCP">DHCP</option>
+              <option value="Static">Static</option>
+              <option value="PPPoE">PPPoE</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="configurationMethod">Configuration method</label>
+            <select name="configuration_method" id="configurationMethod" className="form-control input-120 select-search text-nowrap"
+              value={filterConfigMethod} onChange={e => { setFilterConfigMethod(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="omci">OMCI</option>
+              <option value="tr069">TR069</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="ipProtocol">WAN IP protocol</label>
+            <select name="ip_protocol" id="ipProtocol" className="form-control input-120 select-search text-nowrap"
+              value={filterIpProtocol} onChange={e => setFilterIpProtocol(e.target.value)}>
+              <option value="">Any</option>
+              <option value="ipv4">IPv4</option>
+              <option value="ipv4ipv6">IPv4/IPv6</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="downloadSpeed">Download</label>
+            <select name="download_speed" id="downloadSpeed" className="form-control input-120 select-search text-nowrap"
+              value={filterDownloadSpeed} onChange={e => { setFilterDownloadSpeed(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="uploadSpeed">Upload</label>
+            <select name="upload_speed" id="uploadSpeed" className="form-control input-120 select-search text-nowrap"
+              value={filterUploadSpeed} onChange={e => { setFilterUploadSpeed(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+            </select>
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="lastStatusChange">Status changed before</label>
+            <input type="text" className="form-control input-100 input-search" id="lastStatusChange"
+              value={filterLastStatusChange} onChange={e => { setFilterLastStatusChange(e.target.value); setPage(1); }} />
+          </div>
+
+          <div className="form-group margin-right">
+            <label className="control-label" htmlFor="shouldRebuild">Resync failed</label>
+            <select name="should_rebuild" id="shouldRebuild" className="form-control input-90 select-search text-nowrap"
+              value={filterShouldRebuild} onChange={e => { setFilterShouldRebuild(e.target.value); setPage(1); }}>
+              <option value="">Any</option>
+              <option value="yes">Yes</option>
+              <option value="no">No</option>
+            </select>
+          </div>
+
+          {/* SVLAN/CVLAN filters (hidden) */}
+          <div id="svlan-cvlan-filters-row" className="filters-row" style={{ display: 'none', marginTop: 10, width: '100%' }}>
+            <div className="form-group margin-right" id="filter-svlan-group" style={{ display: 'none' }}>
+              <label className="control-label" htmlFor="svlanFilter">SVLAN</label>
+              <select name="svlan_id" id="svlanFilter" className="form-control input-90 select-search text-nowrap">
+                <option value="">Any</option>
+              </select>
+            </div>
+            <div className="form-group margin-right" id="filter-cvlan-group" style={{ display: 'none' }}>
+              <label className="control-label" htmlFor="cvlanFilter">CVLAN</label>
+              <select name="cvlan_id" id="cvlanFilter" className="form-control input-90 select-search text-nowrap">
+                <option value="">Any</option>
+              </select>
+            </div>
+            <div className="form-group margin-right" id="filter-tag-transform-group" style={{ display: 'none' }}>
+              <label className="control-label" htmlFor="tagTransformMode">Tag-transform</label>
+              <select name="tag_transform_mode" id="tagTransformMode" className="form-control input-120 select-search text-nowrap">
+                <option value="">Any</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="text-right margin-top more-filter-actions" style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
+            <a href="#" id="export-selection" className="btn btn-link" title="Export"
+              onClick={e => { e.preventDefault(); toast.success('Export (próximamente)'); }}>
+              <IconUpload size={12} /> Export
+            </a>
+            <a href="#" id="import-onus-details" className="btn btn-link" title="Import ONUs location details"
+              onClick={e => { e.preventDefault(); toast.success('Import (próximamente)'); }}>
+              <IconDownload size={12} /> Import
+            </a>
+          </div>
+
+        </div>
+
+      </form>
+
+      {/* ═══ Batch actions container (SmartOLT accordion) ═══ */}
+      {someSelected && (
+        <div className="margin-top" id="batch-actions-container">
+          <div className="panel-group" id="accordion_batch_actions">
+            <div className="panel panel-default">
+              <div className="panel-heading">
+                <h4 className="panel-title">
+                  <strong>
+                    <a className="accordion-toggle btn-block"
+                      onClick={e => { e.preventDefault(); setBatchPanel(s => !s); }}
+                      style={{ cursor: 'pointer' }}>
+                      <IconGauge size={14} className="text-success" /> Batch actions
+                      <span className="badge badge-primary" style={{ marginLeft: 8 }}>{selected.size}</span>
+                    </a>
+                  </strong>
+                </h4>
+              </div>
+              <div id="batchActionsList" className={`panel-collapse collapse ${batchPanel ? 'in' : ''}`}>
+                <div className="panel-body">
+
+                  {/* Active batch tasks (hidden) */}
+                  <div id="active-batch-tasks" className="margin-bottom" style={{ display: 'none' }}>
+                    <div className="clearfix margin-bottom-sm">
+                      <strong className="pull-left"><IconGauge size={14} /> Active Batch Tasks</strong>
+                      <button className="btn btn-danger pull-right" id="stop-selected-batch-tasks" disabled>Stop batch actions</button>
+                    </div>
+                    <div id="active-batch-tasks-list"></div>
+                  </div>
+
+                  <p className="margin-bottom clearfix">
+                    <a href="/reports/tasks" className="btn btn-success pull-right"
+                      onClick={e => { e.preventDefault(); navigate('/reports/tasks'); }}>
+                      <IconHistory size={13} /> Task history
+                    </a>
+                    <span className="batch-actions-info-copy">
+                      <IconInfoCircle size={12} />{' '}
+                      <span>Select ONUs using the filters above, then choose an action to perform on all matching ONUs.</span>
+                      <span className="badge badge-primary" id="batch-actions-count">{selected.size}</span>
+                    </span>
+                  </p>
+
+                  {/* ── Change Main VLAN ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'vlan' ? null : 'vlan'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconHierarchy size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Main VLAN</span>
+                    </a>
+                    {batchForm.section === 'vlan' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-vlan">New main VLAN</label>
+                            <select id="batch-vlan" className="form-control form-control-sm input-sm"
+                              value={batchForm.vlan || ''} onChange={e => updBatch('vlan', e.target.value)}>
+                              <option value="">Please select</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('changeVlan')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change SVLAN/CVLAN ── */}
+                  <div className="batch-action-row" id="batch-action-svlan-cvlan-row" style={{ display: 'none' }}>
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'svlan' ? null : 'svlan'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconArrowsRandom size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs SVLAN/CVLAN</span>
+                    </a>
+                    {batchForm.section === 'svlan' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-svlan-action">SVLAN</label>
+                            <select id="batch-svlan-action" className="form-control form-control-sm input-sm" style={{ width: 110 }}
+                              value={batchForm.svlanAction || ''} onChange={e => updBatch('svlanAction', e.target.value)}>
+                              <option value="">No change</option>
+                              <option value="enable">Enable</option>
+                              <option value="disable">Disable</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="batch-cvlan-action">CVLAN</label>
+                            <select id="batch-cvlan-action" className="form-control form-control-sm input-sm" style={{ width: 110 }}
+                              value={batchForm.cvlanAction || ''} onChange={e => updBatch('cvlanAction', e.target.value)}>
+                              <option value="">No change</option>
+                              <option value="enable">Enable</option>
+                              <option value="disable">Disable</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="batch-tag-transform-mode">Tag-transform mode</label>
+                            <select id="batch-tag-transform-mode" className="form-control form-control-sm input-sm" style={{ width: 140 }}
+                              value={batchForm.tagTransformMode || ''} onChange={e => updBatch('tagTransformMode', e.target.value)}>
+                              <option value="">No change</option>
+                              <option value="default">default</option>
+                              <option value="translate">translate</option>
+                              <option value="translate-and-add">translate-and-add</option>
+                              <option value="transparent">transparent</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('changeSvlan')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change Attached VLANs ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'attachedVlans' ? null : 'attachedVlans'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconVectorTriangle size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Attached VLANs</span>
+                    </a>
+                    {batchForm.section === 'attachedVlans' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-attached-vlan-operation">Operation</label>
+                            <select id="batch-attached-vlan-operation" className="form-control form-control-sm input-sm" style={{ width: 120 }}
+                              value={batchForm.attachedOp || ''} onChange={e => updBatch('attachedOp', e.target.value)}>
+                              <option value="">Please select</option>
+                              <option value="add">Add</option>
+                              <option value="remove">Remove</option>
+                              <option value="replace">Replace</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('update_attached_vlans')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Update Speed Profiles ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'speed' ? null : 'speed'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconGauge size={14} className="text-success" />
+                      <span className="batch-action-label">Update ONUs Speed Profiles</span>
+                    </a>
+                    {batchForm.section === 'speed' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-download-speed">Download</label>
+                            <select id="batch-download-speed" className="form-control form-control-sm input-sm">
+                              <option value="">Please select</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="batch-upload-speed">Upload</label>
+                            <select id="batch-upload-speed" className="form-control form-control-sm input-sm">
+                              <option value="">Please select</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('update_speed_profiles')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change ONU Type ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'onuType' ? null : 'onuType'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconArrowsExchange size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs ONU Type</span>
+                    </a>
+                    {batchForm.section === 'onuType' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-onu-type">New ONU Type</label>
+                            <select id="batch-onu-type" className="form-control form-control-sm input-sm">
+                              <option value="">Please select</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('changeOnuType')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change Custom Profile ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'profile' ? null : 'profile'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconFileCode size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Custom Profile</span>
+                    </a>
+                    {batchForm.section === 'profile' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-custom-profile">New Custom Profile</label>
+                            <select id="batch-custom-profile" className="form-control form-control-sm input-sm">
+                              <option value="">None (remove)</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('change_custom_profile')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change Mgmt IP Mode ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'mgmtIp' ? null : 'mgmtIp'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconSettings size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Mgmt IP Mode</span>
+                    </a>
+                    {batchForm.section === 'mgmtIp' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-mgmt-ip-mode">Mode</label>
+                            <select id="batch-mgmt-ip-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                              <option value="">Please select</option>
+                              <option value="Inactive">Inactive</option>
+                              <option value="Static">Static IP (from IP Pools)</option>
+                              <option value="DHCP">DHCP</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('setMgmtIp')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change TR-069 Profile ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'tr069' ? null : 'tr069'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconSettings size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs TR-069 Profile</span>
+                    </a>
+                    {batchForm.section === 'tr069' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-tr069-mode">TR-069</label>
+                            <select id="batch-tr069-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}>
+                              <option value="">Please select</option>
+                              <option value="disable">Disable</option>
+                              <option value="enable">Enable</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('setTr069')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change WAN Configuration Method ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'wanConfig' ? null : 'wanConfig'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconArrowsExchange size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs WAN Configuration Method</span>
+                    </a>
+                    {batchForm.section === 'wanConfig' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-wan-config-method">Configuration method</label>
+                            <select id="batch-wan-config-method" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                              <option value="">Please select</option>
+                              <option value="OMCI">OMCI</option>
+                              <option value="TR069">TR069</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('changeWanMode')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change WAN Setup ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'wanSetup' ? null : 'wanSetup'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconWorld size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs WAN Setup</span>
+                    </a>
+                    {batchForm.section === 'wanSetup' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-wan-mode">WAN mode</label>
+                            <select id="batch-wan-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                              <option value="">Please select</option>
+                              <option value="Setup via ONU webpage">Setup via ONU webpage</option>
+                              <option value="DHCP">DHCP</option>
+                              <option value="Static">Static IP (from IP Pools)</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('change_wan_setup')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change ONU Mode (Routing/Bridging) — locked ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'onuMode' ? null : 'onuMode'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconArrowsRandom size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Mode (Routing/Bridging)</span>
+                      <IconLock size={12} className="text-muted" />
+                    </a>
+                    {batchForm.section === 'onuMode' && (
+                      <div className="batch-action-row-content">
+                        <div className="text-muted batch-action-disabled-msg" style={{ padding: '6px 2px' }}>
+                          <IconLock size={12} /> Disabled for your safety. Please contact support to enable this option.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change IPv6 ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'ipv6' ? null : 'ipv6'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconGitFork size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs IPv6</span>
+                    </a>
+                    {batchForm.section === 'ipv6' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-ipv6-mode">IPv6</label>
+                            <select id="batch-ipv6-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}>
+                              <option value="">Please select</option>
+                              <option value="enable">Enable</option>
+                              <option value="disable">Disable</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('changeIpv6')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change Web User/Pass ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'webUser' ? null : 'webUser'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconKey size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Web User/Pass (TR-069)</span>
+                    </a>
+                    {batchForm.section === 'webUser' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-web-user">Web user</label>
+                            <input type="text" id="batch-web-user" className="form-control form-control-sm input-sm" placeholder="5-16 alphanumeric" style={{ width: 150 }} />
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="batch-web-pass">Web pass</label>
+                            <input type="text" id="batch-web-pass" className="form-control form-control-sm input-sm" placeholder="8-16 chars" style={{ width: 150 }} />
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('setWebUserPass')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change Zone ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'zone' ? null : 'zone'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconMapPin size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs Zone</span>
+                    </a>
+                    {batchForm.section === 'zone' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-zone">Zone</label>
+                            <select id="batch-zone" className="form-control form-control-sm input-sm">
+                              <option value="">Please select</option>
+                              {zoneOpts.map(z => <option key={z} value={z}>{z}</option>)}
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label htmlFor="batch-odb">ODB</label>
+                            <select id="batch-odb" className="form-control form-control-sm input-sm">
+                              <option value="__keep__">Copy ODB to new zone</option>
+                              <option value="">None</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('moveZone')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Change DNS Servers ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'dns' ? null : 'dns'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconServer size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs DNS Servers</span>
+                    </a>
+                    {batchForm.section === 'dns' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 10 }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'center' }}>
+                            <div className="form-group" style={{ margin: 0, alignItems: 'center' }}>
+                              <label htmlFor="batch-dns1" style={{ margin: '0 8px 0 0' }}>Primary DNS</label>
+                              <input type="text" id="batch-dns1" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.8.8" />
+                            </div>
+                            <div className="form-group" style={{ margin: 0, alignItems: 'center' }}>
+                              <label htmlFor="batch-dns2" style={{ margin: '0 8px 0 0' }}>Secondary DNS</label>
+                              <input type="text" id="batch-dns2" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.4.4" />
+                            </div>
+                          </div>
+                          <hr style={{ margin: 0, width: '100%', maxWidth: 420, borderTop: '1px solid rgba(255,255,255,0.12)' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, lineHeight: 1, margin: '6px 0' }}>
+                            <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input type="checkbox" defaultChecked style={{ margin: 0 }} /> Apply to Management IP
+                            </label>
+                            <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input type="checkbox" defaultChecked style={{ margin: 0 }} /> Apply to WAN IP
+                            </label>
+                            <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }} title="Separate VoIP DNS">
+                              <input type="checkbox" style={{ margin: 0 }} /> Apply to Separate VoIP IP
+                            </label>
+                          </div>
+                          <span className="text-muted batch-action-help"><IconInfoCircle size={11} /> <span id="batch-dns-help"></span></span>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('change_dns_servers')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Delete offline duplicates ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'duplicates' ? null : 'duplicates'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconCopy size={14} className="text-danger" />
+                      <span className="batch-action-label text-danger">Delete offline duplicate ONUs</span>
+                    </a>
+                    {batchForm.section === 'duplicates' && (
+                      <div className="batch-action-row-content">
+                        <p className="text-muted" style={{ marginTop: 8, fontSize: 12 }}>
+                          Finds duplicate ONUs with the same serial number where one is Online and the other is an old Offline copy.
+                          Only the Offline duplicate is deleted. The Online ONU is always kept.
+                          Applies only to the currently selected OLTs and filters.
+                        </p>
+                        <div className="batch-action-controls">
+                          <div className="form-group offdup-options">
+                            <label className="offdup-option">
+                              <input type="checkbox" defaultChecked /> Offline duplicate (one twin Online, the other not)
+                            </label>
+                            <label className="offdup-option">
+                              <input type="checkbox" /> Missing from OLT config (twin has no status at all)
+                            </label>
+                            <label className="offdup-option">
+                              <input type="checkbox" defaultChecked /> Refresh live status first on OLTs with no recent status data
+                            </label>
+                          </div>
+                          <button type="button" className="btn btn-danger" id="offdup-find-btn"><IconSearch size={12} /> Find duplicates</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── Quick action links ── */}
+                  <div className="batch-actions-list">
+                    <a href="#" className="batch-action-link batch-action-btn" onClick={e => { e.preventDefault(); submitBatch('set_external_id_to_sn'); }}>
+                      <IconIdBadge size={14} className="text-success" /> Set ONUs External ID to SN
+                    </a>
+                    <a href="#" className="batch-action-link batch-action-btn" onClick={e => { e.preventDefault(); submitBatch('reboot'); }}>
+                      <IconPower size={14} className="text-success" /> Reboot ONUs
+                    </a>
+                    <a href="#" className="batch-action-link batch-action-btn" onClick={e => { e.preventDefault(); submitBatch('enable'); }}>
+                      <IconCircleCheck size={14} className="text-success" /> Enable ONUs
+                    </a>
+                    <a href="#" className="batch-action-link batch-action-btn" onClick={e => { e.preventDefault(); submitBatch('disable'); }}>
+                      <IconBan size={14} className="text-warning" /> Disable ONUs
+                    </a>
+                  </div>
+
+                  {/* ── Batch busy indicator ── */}
+                  {batchBusy && (
+                    <div style={{ fontSize: 11, color: '#94a3b8', display: 'flex', alignItems: 'center', gap: 6, marginTop: 12, padding: '8px 0' }}>
+                      <span className="spinner" style={{ width: 12, height: 12 }} /> Processing batch...
+                    </div>
+                  )}
+
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Table card */}
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      {/* ════════════════════════════════════════════════════════════
+          TABLE + PAGINATION (SmartOLT sol-otable)
+          ════════════════════════════════════════════════════════════ */}
+      <div style={{ overflowX: 'auto' }}>
         {isLoading ? (
-          <div className="empty-state">
-            <span className="spinner" style={{ width: 24, height: 24, margin: '0 auto 10px', display: 'block' }} />
-            Loading ONUs…
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
+            <div className="spinner" /> Loading ONUs...
           </div>
         ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <IconWifi size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />
-            <div>No ONUs found</div>
-            <div style={{ fontSize: 11, marginTop: 4, color: 'var(--text-muted)' }}>Try adjusting the filters</div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 48, color: 'var(--text-muted)' }}>
+            <IconWifi size={40} style={{ opacity: 0.2, marginBottom: 12 }} />
+            <div style={{ fontSize: 14 }}>No ONUs found</div>
+            <div style={{ fontSize: 11, marginTop: 4 }}>Try adjusting the filters</div>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table-base">
-              <thead>
-                <tr>
-                  {/* Checkbox */}
-                  <th style={{ width: 38, textAlign: 'center', paddingLeft: 12 }}>
-                    <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
-                  </th>
-                  <SortTh sortKey="status"         sortState={sortState} onSort={handleSort}>Status</SortTh>
-                  <th style={{ width: 64, textAlign: 'center' }}>View</th>
-                  <SortTh sortKey="client"        sortState={sortState} onSort={handleSort}>Name</SortTh>
-                  <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort}>SN / MAC</SortTh>
-                  <SortTh sortKey="olt"            sortState={sortState} onSort={handleSort}>OLT</SortTh>
-                  <SortTh sortKey="pon_port"       sortState={sortState} onSort={handleSort}>ONU / PON</SortTh>
-                  <SortTh sortKey="rx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>Signal RX</SortTh>
-                  <SortTh sortKey="tx_power"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>B/R TX</SortTh>
-                  <SortTh sortKey="distance"       sortState={sortState} onSort={handleSort} style={{ textAlign: 'right' }}>Distance</SortTh>
-                  <SortTh sortKey="last_seen"      sortState={sortState} onSort={handleSort}>Last seen</SortTh>
-                  <th style={{ textAlign: 'center', width: 92 }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pageData.map(ont => (
-                  <tr
-                    key={ont.id}
-                    onClick={() => setDrawerONT(ont)}
-                    style={{ cursor: 'pointer', background: selected.has(ont.id) ? 'rgba(31,111,235,0.06)' : undefined }}
-                  >
-                    {/* Checkbox */}
-                    <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                      <input type="checkbox" className="checkbox" checked={selected.has(ont.id)} onChange={() => toggleOne(ont.id)} />
-                    </td>
-
-                    {/* Status */}
-                    <td><StatusBadge status={ont.status} /></td>
-
-                    {/* View (botón azul SmartOLT) → página completa de gestión */}
-                    <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                      <button className="btn btn-primary" style={{ padding: '3px 9px', fontSize: 11 }}
-                        onClick={() => navigate(`/onts/view/${ont.id}`)}>
-                        <IconEye size={12} /> View
-                      </button>
-                    </td>
-
-                    {/* Name */}
-                    <td>
-                      {ont.client ? (
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                          <IconUser size={11} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-                          <span style={{ fontSize: 12 }}>{ont.client.name}</span>
-                        </span>
-                      ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
-                      )}
-                    </td>
-
-                    {/* SN / MAC */}
-                    <td>
-                      <div className="mono" style={{ fontSize: 12, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ont.serial_number}</div>
-                      <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{ont.mac || '—'}</div>
-                    </td>
-
-                    {/* OLT + BrandTag */}
-                    <td>
-                      <div style={{ fontSize: 12, lineHeight: 1.3 }}>{ont.olt?.name || '—'}</div>
-                      {ont.olt?.brand && <div style={{ marginTop: 2 }}><BrandTag brand={ont.olt.brand} /></div>}
-                    </td>
-
-                    {/* ONU / PON */}
-                    <td>
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.description || ont.pon_port || '—'}</span>
-                    </td>
-
-                    {/* Signal RX */}
-                    <td style={{ textAlign: 'right' }}>
-                      <SignalValue value={ont.rx_power} size="sm" />
-                    </td>
-
-                    {/* B/R TX */}
-                    <td style={{ textAlign: 'right' }}>
-                      <SignalValue value={ont.tx_power} size="sm" />
-                    </td>
-
-                    {/* Distance */}
-                    <td style={{ textAlign: 'right' }}>
-                      <span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
-                        {formatDist(ont.distance)}
+          <table className="sol-otable">
+            <thead>
+              <tr>
+                <th style={{ width: 36, textAlign: 'center', paddingLeft: 12 }}>
+                  <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
+                </th>
+                <SortTh sortKey="status" sortState={sortState} onSort={handleSort} style={{ width: 70 }}>Status</SortTh>
+                <th style={{ width: 60, textAlign: 'center' }}>View</th>
+                <SortTh sortKey="client" sortState={sortState} onSort={handleSort}>Name</SortTh>
+                <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort} style={{ width: 130 }}>SN / MAC</SortTh>
+                <SortTh sortKey="model" sortState={sortState} onSort={handleSort} style={{ width: 100 }}>ONU Type</SortTh>
+                <SortTh sortKey="olt" sortState={sortState} onSort={handleSort} style={{ width: 110 }}>OLT</SortTh>
+                <SortTh sortKey="zone" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>Zone</SortTh>
+                <SortTh sortKey="odb" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>ODB</SortTh>
+                <SortTh sortKey="pon_port" sortState={sortState} onSort={handleSort} style={{ width: 90 }}>PON</SortTh>
+                <SortTh sortKey="rx_power" sortState={sortState} onSort={handleSort} style={{ width: 70, textAlign: 'right' }}>Signal</SortTh>
+                <SortTh sortKey="wan_mode" sortState={sortState} onSort={handleSort} style={{ width: 50, textAlign: 'center' }}>B/R</SortTh>
+                <SortTh sortKey="vlan" sortState={sortState} onSort={handleSort} style={{ width: 55, textAlign: 'center' }}>VLAN</SortTh>
+                <th style={{ width: 40, textAlign: 'center' }}>VoIP</th>
+                <th style={{ width: 35, textAlign: 'center' }}>TV</th>
+                <SortTh sortKey="provisioned_at" sortState={sortState} onSort={handleSort} style={{ width: 85 }}>Auth date</SortTh>
+                <th style={{ width: 70, textAlign: 'center' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pageData.map(ont => (
+                <tr
+                  key={ont.id}
+                  onClick={() => setDrawerONT(ont)}
+                  style={{ cursor: 'pointer', background: selected.has(ont.id) ? 'rgba(31,111,235,0.08)' : undefined }}
+                >
+                  <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                    <input type="checkbox" className="checkbox" checked={selected.has(ont.id)} onChange={() => toggleOne(ont.id)} />
+                  </td>
+                  <td><StatusBadge status={ont.status} /></td>
+                  <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                    <button className="sol-viewbtn" onClick={() => navigate(`/onts/view/${ont.id}`)}>
+                      <IconEye size={11} /> View
+                    </button>
+                  </td>
+                  <td>
+                    {ont.client ? (
+                      <span style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ont.client.name}</span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                    )}
+                  </td>
+                  <td>
+                    <div className="mono" style={{ fontSize: 11, color: 'var(--text-primary)', lineHeight: 1.3 }}>{ont.serial_number}</div>
+                    {(ont.mac) && <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{ont.mac}</div>}
+                  </td>
+                  <td><span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.model || '—'}</span></td>
+                  <td>
+                    <div style={{ fontSize: 12, lineHeight: 1.3 }}>{ont.olt?.name || '—'}</div>
+                    {ont.olt?.brand && <div style={{ marginTop: 2 }}><BrandTag brand={ont.olt.brand} /></div>}
+                  </td>
+                  <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.zone || '—'}</span></td>
+                  <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.odb || '—'}</span></td>
+                  <td><span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.description || ont.pon_port || '—'}</span></td>
+                  <td style={{ textAlign: 'right' }}><SignalValue value={ont.rx_power} size="sm" /></td>
+                  <td style={{ textAlign: 'center' }}>
+                    {ont.wan_mode ? (
+                      <span className={`label ${ont.wan_mode === 'bridge' ? 'label-green' : 'label-yellow'}`} style={{ fontSize: 9 }}>
+                        {ont.wan_mode === 'bridge' ? 'BRIDGE' : ont.wan_mode.toUpperCase().slice(0, 4)}
                       </span>
-                    </td>
-
-                    {/* Last seen */}
-                    <td>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatRelative(ont.last_seen)}</span>
-                    </td>
-
-                    {/* Actions */}
-                    <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', gap: 4 }}>
-                        <button className="btn-icon tooltip" data-tip="Reboot"
-                          onClick={e => handleReboot(e, ont.id)}
-                          disabled={rebootMut.isPending}
-                          style={{ padding: 4 }}>
-                          <IconPower size={12} />
-                        </button>
-                        <button className="btn-icon tooltip" data-tip="Delete"
-                          onClick={e => handleDelete(e, ont.id)}
-                          style={{ padding: 4, color: 'var(--red)' }}>
-                          <IconTrash size={12} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {ont.vlan != null ? (
+                      <span className="mono" style={{ fontSize: 12, color: 'var(--cyan)' }}>{ont.vlan}</span>
+                    ) : (
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>—</td>
+                  <td style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>—</td>
+                  <td>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {ont.provisioned_at ? new Date(ont.provisioned_at).toLocaleDateString('es-AR') : '—'}
+                    </span>
+                  </td>
+                  <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+                    <div style={{ display: 'inline-flex', gap: 4 }}>
+                      <button className="sol-act teal tooltip" data-tip="Reboot"
+                        onClick={e => handleReboot(e, ont.id)} disabled={rebootMut.isPending}>
+                        <IconPower size={13} />
+                      </button>
+                      <button className="sol-act red tooltip" data-tip="Delete"
+                        onClick={e => handleDelete(e, ont.id)}>
+                        <IconTrash size={13} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
 
-        {/* Pagination */}
+        {/* ── Pagination ── */}
         {!isLoading && filtered.length > PAGE_SIZE && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '8px 16px', borderTop: '1px solid var(--border)',
+            padding: '10px 16px', borderTop: '1px solid var(--border)',
           }}>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
             </span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}
-                disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
+            <div style={{ display: 'flex', gap: 2 }}>
+              <span onClick={() => page > 1 && setPage(p => p - 1)}
+                style={{ cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, display: 'inline-block',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: page <= 1 ? 'rgba(255,255,255,0.35)' : '#e2e8f0' }}>
                 ‹ Prev
-              </button>
+              </span>
               {visiblePages.map(n => (
-                <button key={n} className="btn" style={{
-                  padding: '3px 8px', fontSize: 12, minWidth: 30,
-                  background:   page === n ? 'var(--accent)' : undefined,
-                  borderColor:  page === n ? 'var(--accent)' : undefined,
-                  color:        page === n ? '#fff' : undefined,
-                }} onClick={() => setPage(n)}>
+                <span key={n} onClick={() => setPage(n)}
+                  style={{ cursor: 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, minWidth: 30, textAlign: 'center', display: 'inline-block',
+                    background: page === n ? 'rgba(29,139,255,0.28)' : 'rgba(255,255,255,0.06)',
+                    border: `1px solid ${page === n ? 'rgba(29,139,255,0.45)' : 'rgba(255,255,255,0.12)'}`,
+                    color: page === n ? '#fff' : '#e2e8f0' }}>
                   {n}
-                </button>
+                </span>
               ))}
-              <button className="btn" style={{ padding: '3px 10px', fontSize: 12 }}
-                disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}>
+              <span onClick={() => page < totalPages && setPage(p => p + 1)}
+                style={{ cursor: page >= totalPages ? 'not-allowed' : 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, display: 'inline-block',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: page >= totalPages ? 'rgba(255,255,255,0.35)' : '#e2e8f0' }}>
                 Next ›
-              </button>
+              </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Batch action bar */}
-      {someSelected && (
-        <div className="batch-bar">
-          <span style={{ fontSize: 13, fontWeight: 600 }}>
-            {selected.size} selected
-          </span>
-          <div style={{ width: 1, height: 18, background: 'var(--border-light)' }} />
-          <select className="input-base" style={{ fontSize: 12, height: 30 }} value={batchAction}
-            onChange={e => setBatchAction(e.target.value)} disabled={batchBusy}>
-            <option value="reboot">Reboot</option>
-            <option value="enable">Enable</option>
-            <option value="disable">Disable</option>
-            <option value="start">Start</option>
-            <option value="stop">Stop</option>
-            <option value="resync">Resync config</option>
-            <option value="restoreDefaults">Restore defaults</option>
-            <option value="delete">Delete</option>
-          </select>
-          <button className="btn btn-primary" style={{ fontSize: 12 }} disabled={batchBusy}
-            onClick={() => submitBatch(batchAction)}>
-            {batchBusy ? 'Queuing…' : `Apply to ${selected.size}`}
-          </button>
-          <button className="btn-icon" onClick={clearSel} title="Cancel">
-            <IconX size={13} />
-          </button>
-        </div>
-      )}
-
       {/* Drawer */}
       {drawerONT && (
         <ONTDrawer ont={drawerONT} onClose={() => setDrawerONT(null)} />
       )}
+
     </div>
   );
 }

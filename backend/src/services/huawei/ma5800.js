@@ -29,6 +29,21 @@ class MA5800 {
   }
 
   async listONTs() {
+    // Descubrimiento por SNMP (inventario + estado + RX + temperatura).
+    // Telnet queda solo como fallback si SNMP no devuelve nada.
+    try {
+      if (!this.snmp.session) this.snmp.connect();
+      const snmpOnts = await this.snmp.listONTsBySNMP();
+      if (snmpOnts.length) {
+        // Solo ONTs activas (con señal). Las provisionadas offline se ignoran.
+        const online = snmpOnts.filter((o) => o.status === 'ONLINE');
+        logger.info(`MA5800 listONTs ${this.olt.ip}: ${online.length} online (de ${snmpOnts.length} provisionadas) por SNMP`);
+        return online;
+      }
+      logger.warn(`MA5800 listONTs ${this.olt.ip}: SNMP vacío, cae a telnet`);
+    } catch (e) {
+      logger.warn(`MA5800 listONTs ${this.olt.ip}: SNMP falló (${e.message}), cae a telnet`);
+    }
     try {
       return await this._listONTsDirectTelnet();
     } catch (err) {
@@ -159,7 +174,13 @@ class MA5800 {
    * (derived from the ONT scan) to avoid probing all 16 ports blindly.
    * Returns rows: { slot, port, ont_id, rx_power, tx_power, olt_rx_power, temperature, voltage, bias_current, distance }.
    */
-  async getOpticalInfo(slotPorts) {
+  async getOpticalInfo() {
+    // La óptica (RX/temperatura) ahora viene por SNMP en listONTs(). Se desactiva el
+    // enriquecimiento por telnet para que el scan sea 100% SNMP. (TX no lo expone SNMP.)
+    return [];
+  }
+
+  async _getOpticalInfoTelnet(slotPorts) {
     const net = require('net');
     const creds = this.telnet._getCredentials();
     if (!creds.password) return [];

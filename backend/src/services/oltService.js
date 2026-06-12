@@ -24,18 +24,33 @@ async function getOLTById(id) {
   });
 }
 
+// Dispara el descubrimiento de ONUs en segundo plano. No bloquea el guardado
+// ni lo hace fallar si la OLT no responde (se loguea y la OLT queda guardada).
+// Se ejecuta al CREAR y al EDITAR una OLT (editar funciona como re-escaneo:
+// si al crearla no tenia conexion o aparecieron ONUs nuevas, al editar las trae).
+function autoScanONUs(olt) {
+  if (!olt?.id) return;
+  scanOLTOnts(olt.id)
+    .then((r) => logger.info(`Auto-scan ONUs ${olt.name}: ${r?.saved ?? 0} guardadas / ${r?.scanned ?? 0} detectadas`))
+    .catch((e) => logger.warn(`Auto-scan ONUs ${olt.name || olt.id} fallo: ${e.message}`));
+}
+
 async function createOLT(data) {
   const { credentials, ...rest } = data;
   const oltData = { ...rest };
   if (credentials) oltData.credentials_encrypted = encryptCredentials(credentials);
-  return prisma.oLT.create({ data: oltData });
+  const olt = await prisma.oLT.create({ data: oltData });
+  autoScanONUs(olt);
+  return olt;
 }
 
 async function updateOLT(id, data) {
   const { credentials, ...rest } = data;
   const updateData = { ...rest };
   if (credentials) updateData.credentials_encrypted = encryptCredentials(credentials);
-  return prisma.oLT.update({ where: { id }, data: updateData });
+  const olt = await prisma.oLT.update({ where: { id }, data: updateData });
+  autoScanONUs(olt);
+  return olt;
 }
 
 async function deleteOLT(id) {
@@ -124,6 +139,10 @@ async function scanOLTOnts(id) {
     // Scope lookup to this OLT — serials can repeat across different OLTs
     const existing = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number, olt_id: id } });
     if (existing) {
+      // No sobrescribir description si ya tiene un nombre real (no auto-generado)
+      const desc = ont.interface ?? undefined;
+      const isAutoGen = desc && /^(gpon-onu_|0\/|GPON)/i.test(desc);
+      const keepExisting = existing.description && !isAutoGen;
       const updated = await prisma.oNT.update({
         where: { id: existing.id },
         data: {
@@ -132,7 +151,7 @@ async function scanOLTOnts(id) {
           rx_power: ont.rx_power ?? undefined,
           tx_power: ont.tx_power ?? undefined,
           mac: ont.mac ?? undefined,
-          description: ont.interface ?? undefined,
+          description: keepExisting ? existing.description : desc,
           last_seen: new Date(),
         },
       });
@@ -158,9 +177,12 @@ async function scanOLTOnts(id) {
         if (e.code === 'P2002') {
           const dup = await prisma.oNT.findFirst({ where: { serial_number: ont.serial_number } });
           if (dup) {
+            const desc2 = ont.interface ?? undefined;
+            const isAutoGen2 = desc2 && /^(gpon-onu_|0\/|GPON)/i.test(desc2);
+            const keepExisting2 = dup.description && !isAutoGen2;
             const updated = await prisma.oNT.update({
               where: { id: dup.id },
-              data: { olt_id: id, status: ont.status, mac: ont.mac ?? undefined, description: ont.interface ?? undefined, last_seen: new Date() },
+              data: { olt_id: id, status: ont.status, mac: ont.mac ?? undefined, description: keepExisting2 ? dup.description : desc2, last_seen: new Date() },
             });
             saved.push(updated);
           }

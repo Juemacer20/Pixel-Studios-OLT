@@ -10,6 +10,7 @@ import Login from './pages/Login';
 const Dashboard        = React.lazy(() => import('./pages/Dashboard'));
 const OLTs             = React.lazy(() => import('./pages/OLTs'));
 const OLTConfig        = React.lazy(() => import('./pages/OLTConfig'));
+const OLTNew           = React.lazy(() => import('./pages/OLTNew'));
 const ONTs             = React.lazy(() => import('./pages/ONTs'));
 const ONUView          = React.lazy(() => import('./pages/ONUView'));
 const Clients          = React.lazy(() => import('./pages/Clients'));
@@ -33,6 +34,12 @@ const Unconfigured     = React.lazy(() => import('./pages/Unconfigured'));
 const Diagnostics      = React.lazy(() => import('./pages/Diagnostics'));
 const AuthorizeONU     = React.lazy(() => import('./pages/AuthorizeONU'));
 const ConfigComparison = React.lazy(() => import('./pages/ConfigComparison'));
+const VSOLDashboard   = React.lazy(() => import('./pages/VSOL'));
+const VSOLOnuList     = React.lazy(() => import('./pages/VSOL/OnuList'));
+const VSOLOnuView     = React.lazy(() => import('./pages/VSOL/OnuView'));
+const VSOLProfiles    = React.lazy(() => import('./pages/VSOL/Profiles'));
+const VSOLAutofind    = React.lazy(() => import('./pages/VSOL/Autofind'));
+const VSOLBatch       = React.lazy(() => import('./pages/VSOL/Batch'));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
@@ -56,6 +63,7 @@ function AppLayout() {
               <Route path="/"                element={<Navigate to="/dashboard" replace />} />
               <Route path="/dashboard"       element={<Dashboard />} />
               <Route path="/olts"             element={<OLTs />} />
+              <Route path="/olts/new"         element={<OLTNew />} />
               <Route path="/olts/:id/config" element={<OLTConfig />} />
               <Route path="/onts/view/:id"   element={<ONUView />} />
               <Route path="/onts/*"          element={<ONTs />} />
@@ -81,6 +89,12 @@ function AppLayout() {
               <Route path="/onu/authorize"   element={<AuthorizeONU />} />
               <Route path="/config-comparison" element={<ConfigComparison />} />
               <Route path="/diagnostics"     element={<Diagnostics />} />
+              <Route path="/olts/:id/vsol"              element={<VSOLDashboard />} />
+              <Route path="/olts/:id/vsol/pon/:ponIndex" element={<VSOLOnuList />} />
+              <Route path="/olts/:id/vsol/onu/:ponIndex/:onuId" element={<VSOLOnuView />} />
+              <Route path="/olts/:id/vsol/profiles"     element={<VSOLProfiles />} />
+              <Route path="/olts/:id/vsol/autofind"     element={<VSOLAutofind />} />
+              <Route path="/olts/:id/vsol/batch"        element={<VSOLBatch />} />
             </Routes>
           </React.Suspense>
           </div>

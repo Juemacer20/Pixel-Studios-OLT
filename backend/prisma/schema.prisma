@@ -555,3 +555,65 @@ model Tr069Profile {
 
   @@map("tr069_profiles")
 }
+
+enum ProfileType {
+  LINE
+  SERVICE
+  ALARM
+  TRAFFIC
+  DBA
+}
+
+model VsolProfile {
+  id          String      @id @default(uuid())
+  olt_id      String
+  name        String
+  type        ProfileType
+  raw_data    Json?       // parsed profile parameters
+  description String?
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+
+  @@unique([olt_id, name, type])
+  @@map("vsol_profiles")
+}
+
+model VsolAlert {
+  id            String   @id @default(uuid())
+  olt_id        String
+  onu_id        Int?
+  pon_index     Int?
+  alarm_type    String   // LOS, DYING_GASP, etc.
+  severity      String   // CRITICAL, MAJOR, MINOR
+  description   String?
+  occurred_at   DateTime
+  cleared       Boolean  @default(false)
+  cleared_at    DateTime?
+  created_at    DateTime @default(now())
+
+  @@map("vsol_alerts")
+}
+
+model VsolEventLog {
+  id          String   @id @default(uuid())
+  olt_id      String
+  event_type  String   // ONU_ONLINE, ONU_OFFLINE, ALARM, CONFIG_CHANGE
+  description String?
+  onu_id      Int?
+  pon_index   Int?
+  raw         String?
+  occurred_at DateTime
+  created_at  DateTime @default(now())
+
+  @@map("vsol_event_logs")
+}
+
+model VsolConfigBackup {
+  id          String   @id @default(uuid())
+  olt_id      String
+  config_text String
+  label       String?
+  created_at  DateTime @default(now())
+
+  @@map("vsol_config_backups")
+}

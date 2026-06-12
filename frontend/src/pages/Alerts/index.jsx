@@ -35,14 +35,23 @@ function fmt(iso) {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function Alerts() {
+  const qc = useQueryClient();
   const [search, setSearch]     = useState('');
   const [severity, setSeverity] = useState('');
   const [olt, setOlt]           = useState('');
-  const [tab, setTab]           = useState('active'); // active | acknowledged | resolved
+  const [tab, setTab]           = useState('active');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastRefresh, setLastRefresh] = useState(new Date());
-  const [alerts, setAlerts]     = useState([]);
   const intervalRef = useRef(null);
+
+  const { data: apiData, refetch } = useQuery({
+    queryKey: ['alerts', lastRefresh],
+    queryFn: () => alertAPI.list({}).then(r => {
+      const d = r.data?.data ?? r.data;
+      return Array.isArray(d) ? d : (d?.alerts ?? d?.results ?? []);
+    }),
+  });
+  const alerts = apiData || [];
 
   useEffect(() => {
     if (autoRefresh) {
@@ -53,12 +62,11 @@ export default function Alerts() {
     return () => clearInterval(intervalRef.current);
   }, [autoRefresh]);
 
-  const handleAcknowledge = (id) => {
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, acknowledged: true } : a));
-  };
-  const handleResolve = (id) => {
-    setAlerts(prev => prev.map(a => a.id === id ? { ...a, resolved: true, resolved_at: new Date().toISOString() } : a));
-  };
+  const ackMut = useMutation({ mutationFn: (id) => alertAPI.acknowledge(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }), onError: () => {} });
+  const resMut = useMutation({ mutationFn: (id) => alertAPI.resolve(id), onSuccess: () => qc.invalidateQueries({ queryKey: ['alerts'] }), onError: () => {} });
+
+  const handleAcknowledge = (id) => ackMut.mutate(id);
+  const handleResolve = (id) => resMut.mutate(id);
 
   // Stats
   const active       = alerts.filter(a => !a.resolved).length;

@@ -8,7 +8,21 @@ import { oltAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 const PON_TYPES = ['GPON', 'EPON', 'GPON+EPON'];
-const MANUFACTURERS = ['Huawei', 'VSOL', 'ZTE', 'KingType', 'Fiberhome', 'Nokia'];
+const BRAND_CONFIG = {
+  Huawei: {
+    models: ['MA5800-X15', 'MA5800-X17', 'MA5800-X7', 'MA5800-X2', 'MA5800-GP08', 'MA5800-GP16', 'MA5680T', 'MA5683T'],
+    swVersions: ['R008', 'R009', 'R010', 'R011', 'R012', 'R013', 'R014', 'R015', 'R016', 'R017', 'R018', 'R019', 'R020', 'R021'],
+  },
+  VSOL: {
+    models: ['V2801', 'V1600G1', 'V2802', 'V2804'],
+    swVersions: ['V1.0', 'V2.0', 'V3.0'],
+  },
+  KingType: {
+    models: ['C300', 'C200', 'C100'],
+    swVersions: ['V1.0', 'V2.0', 'V3.0'],
+  },
+};
+const MANUFACTURERS = Object.keys(BRAND_CONFIG).concat(['ZTE', 'Fiberhome', 'Nokia']);
 
 function Row({ label, children }) {
   return (
@@ -38,16 +52,29 @@ export default function OLTConfig() {
       telnet_user: olt.telnet_user || '', telnet_pass: olt.telnet_pass || '',
       snmp_read: olt.snmp_read || '', snmp_write: olt.snmp_write || '', udp_port: olt.udp_port ?? 161,
       iptv_enabled: !!olt.iptv_enabled, brand: olt.brand || 'Huawei',
+      model: olt.model || olt.hw_version || '',
       hw_version: olt.hw_version || olt.model || '', sw_version: olt.sw_version || '',
       pon_type: olt.pon_type || 'GPON', latitude: olt.latitude ?? '', longitude: olt.longitude ?? '',
     });
   }, [olt]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleBrandChange = (brand) => {
+    const cfg = BRAND_CONFIG[brand];
+    setForm(f => ({
+      ...f,
+      brand,
+      model: cfg ? cfg.models[0] : '',
+      hw_version: cfg ? cfg.models[0] : '',
+      sw_version: cfg ? cfg.swVersions[0] : '',
+    }));
+  };
+  const handleHwChange = (v) => setForm(f => ({ ...f, hw_version: v, model: v }));
 
   const saveMut = useMutation({
     mutationFn: () => oltAPI.update(id, {
       ...form,
+      model: form.model || form.hw_version,
       tcp_port: Number(form.tcp_port) || null, udp_port: Number(form.udp_port) || null,
       latitude: form.latitude === '' ? null : Number(form.latitude),
       longitude: form.longitude === '' ? null : Number(form.longitude),
@@ -98,14 +125,28 @@ export default function OLTConfig() {
             </label>
           </Row>
           <Row label="OS manufacturer">
-            <select className="select-base" style={{ maxWidth: 220 }} value={form.brand} onChange={e => set('brand', e.target.value)}>
+            <select className="select-base" style={{ maxWidth: 220 }} value={form.brand} onChange={e => handleBrandChange(e.target.value)}>
               {MANUFACTURERS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </Row>
-          <Row label="OLT hardware version"><input {...inp} value={form.hw_version} onChange={e => set('hw_version', e.target.value)} /></Row>
+          <Row label="OLT hardware version">
+            {BRAND_CONFIG[form.brand] ? (
+              <select className="select-base" style={{ maxWidth: 220 }} value={form.hw_version} onChange={e => handleHwChange(e.target.value)}>
+                {BRAND_CONFIG[form.brand].models.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            ) : (
+              <input {...inp} value={form.hw_version} onChange={e => handleHwChange(e.target.value)} />
+            )}
+          </Row>
           <Row label="OLT software version">
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <input {...inp} style={{ ...inp.style, maxWidth: 200 }} value={form.sw_version} onChange={e => set('sw_version', e.target.value)} />
+              {BRAND_CONFIG[form.brand] ? (
+                <select className="select-base" style={{ maxWidth: 220 }} value={form.sw_version} onChange={e => set('sw_version', e.target.value)}>
+                  {BRAND_CONFIG[form.brand].swVersions.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <input {...inp} style={{ ...inp.style, maxWidth: 200 }} value={form.sw_version} onChange={e => set('sw_version', e.target.value)} />
+              )}
               <span style={{ fontSize: 11, color: 'var(--green)' }}>(Detected)</span>
             </span>
           </Row>

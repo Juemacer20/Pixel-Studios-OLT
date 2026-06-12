@@ -90,7 +90,7 @@ export default function Events() {
       {/* Header */}
       <div className="page-header">
         <div>
-          <h1 className="page-title">Tasks</h1>
+          <h1 className="page-title">            Events</h1>
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
             Última actualización: {lastRefresh.toLocaleTimeString('es-AR')}
           </span>

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { oltAPI } from '../../services/api';
@@ -15,7 +15,22 @@ import toast from 'react-hot-toast';
 /* ─── Mock data (fallback when API unavailable) ─────────────────────────── */
 
 
-const BRANDS = ['Huawei', 'KingType', 'VSOL', 'ZTE', 'Nokia'];
+const BRAND_CONFIG = {
+  Huawei: {
+    models: ['MA5800-X15', 'MA5800-X17', 'MA5800-X7', 'MA5800-X2', 'MA5800-GP08', 'MA5800-GP16', 'MA5680T', 'MA5683T'],
+    swVersions: ['R008', 'R009', 'R010', 'R011', 'R012', 'R013', 'R014', 'R015', 'R016', 'R017', 'R018', 'R019', 'R020', 'R021'],
+  },
+  VSOL: {
+    models: ['V2801', 'V1600G1', 'V2802', 'V2804'],
+    swVersions: ['V1.0', 'V2.0', 'V3.0'],
+  },
+  KingType: {
+    models: ['C300', 'C200', 'C100'],
+    swVersions: ['V1.0', 'V2.0', 'V3.0'],
+  },
+};
+
+const BRANDS = Object.keys(BRAND_CONFIG).concat(['ZTE', 'Nokia']);
 
 /* ─── Sub-components ─────────────────────────────────────────────────────── */
 
@@ -53,6 +68,16 @@ function CpuBar({ value }) {
   );
 }
 
+function getInitialModel(brand) {
+  const cfg = BRAND_CONFIG[brand];
+  return cfg ? cfg.models[0] : '';
+}
+
+function getInitialSW(brand) {
+  const cfg = BRAND_CONFIG[brand];
+  return cfg ? cfg.swVersions[0] : '';
+}
+
 function OLTModal({ olt, onClose, onSave }) {
   const [form, setForm] = useState({
     name: olt?.name || '',
@@ -60,23 +85,43 @@ function OLTModal({ olt, onClose, onSave }) {
     port: olt?.port || 161,
     community: olt?.community || 'public',
     brand: olt?.brand || 'Huawei',
-    model: olt?.model || '',
+    model: olt?.model || getInitialModel(olt?.brand || 'Huawei'),
+    hw_version: olt?.hw_version || olt?.model || getInitialModel(olt?.brand || 'Huawei'),
+    sw_version: olt?.sw_version || getInitialSW(olt?.brand || 'Huawei'),
     location: olt?.location || '',
   });
   const [saving, setSaving] = useState(false);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
+  const handleBrandChange = (brand) => {
+    const cfg = BRAND_CONFIG[brand];
+    setForm(f => ({
+      ...f,
+      brand,
+      model: cfg ? cfg.models[0] : '',
+      hw_version: cfg ? cfg.models[0] : '',
+      sw_version: cfg ? cfg.swVersions[0] : '',
+    }));
+  };
+
+  const handleModelChange = (model) => {
+    setForm(f => ({ ...f, model, hw_version: model }));
+  };
+
   const handleSave = async () => {
     if (!form.name.trim() || !form.ip.trim()) return;
     setSaving(true);
     try {
-      await onSave(form);
+      await onSave({ ...form, model: form.model || form.hw_version || 'Generic' });
       onClose();
     } finally {
       setSaving(false);
     }
   };
+
+  const cfg = BRAND_CONFIG[form.brand];
+  const hasConfig = !!cfg;
 
   return (
     <>
@@ -86,7 +131,7 @@ function OLTModal({ olt, onClose, onSave }) {
           position: 'fixed', top: '50%', left: '50%',
           transform: 'translate(-50%, -50%)',
           background: 'var(--card-bg)', border: '1px solid var(--border-light)',
-          borderRadius: 8, width: 460, zIndex: 300, padding: 24,
+          borderRadius: 8, width: 500, zIndex: 300, padding: 24,
           animation: 'fade-in 0.15s ease',
         }}
       >
@@ -105,7 +150,7 @@ function OLTModal({ olt, onClose, onSave }) {
             <input className="input-base" value={form.name} onChange={e => set('name', e.target.value)} placeholder="OLT-NORTE" />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>IP *</label>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>OLT IP / FQDN *</label>
             <input className="input-base" value={form.ip} onChange={e => set('ip', e.target.value)} placeholder="192.168.1.10" />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -120,19 +165,37 @@ function OLTModal({ olt, onClose, onSave }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Brand</label>
-              <select className="select-base" style={{ width: '100%' }} value={form.brand} onChange={e => set('brand', e.target.value)}>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Manufacturer</label>
+              <select className="select-base" style={{ width: '100%' }} value={form.brand} onChange={e => handleBrandChange(e.target.value)}>
                 {BRANDS.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Model</label>
-              <input className="input-base" value={form.model} onChange={e => set('model', e.target.value)} placeholder="MA5800-X7" />
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Hardware version</label>
+              {hasConfig ? (
+                <select className="select-base" style={{ width: '100%' }} value={form.hw_version} onChange={e => handleModelChange(e.target.value)}>
+                  {cfg.models.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              ) : (
+                <input className="input-base" value={form.hw_version} onChange={e => { set('hw_version', e.target.value); set('model', e.target.value); }} placeholder="MA5800-X7" />
+              )}
             </div>
           </div>
-          <div>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Location</label>
-            <input className="input-base" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Main Data Center" />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Software version</label>
+              {hasConfig ? (
+                <select className="select-base" style={{ width: '100%' }} value={form.sw_version} onChange={e => set('sw_version', e.target.value)}>
+                  {cfg.swVersions.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <input className="input-base" value={form.sw_version} onChange={e => set('sw_version', e.target.value)} placeholder="R018" />
+              )}
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Location</label>
+              <input className="input-base" value={form.location} onChange={e => set('location', e.target.value)} placeholder="Main Data Center" />
+            </div>
           </div>
         </div>
 
@@ -227,11 +290,6 @@ export default function OLTs() {
   const olts = data || [];
 
   /* ── Mutations ── */
-  const createMut = useMutation({
-    mutationFn: (form) => oltAPI.create(form).catch(() => ({ data: { ...form, id: Date.now(), status: 'offline', ont_count: 0, cpu_usage: 0, uptime: '0d 0h', pon_ports: 0 } })),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['olts'] }),
-  });
-
   const updateMut = useMutation({
     mutationFn: ({ id, form }) => oltAPI.update(id, form).catch(() => ({ data: { id, ...form } })),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['olts'] }),
@@ -251,11 +309,8 @@ export default function OLTs() {
 
   /* ── Handlers ── */
   const handleSave = async (form) => {
-    if (modalOlt && modalOlt.id) {
-      await updateMut.mutateAsync({ id: modalOlt.id, form });
-    } else {
-      await createMut.mutateAsync(form);
-    }
+    if (!modalOlt?.id) return;
+    await updateMut.mutateAsync({ id: modalOlt.id, form });
   };
 
   const handleDelete = (olt) => {
@@ -328,7 +383,7 @@ export default function OLTs() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* ── Toolbar (estilo SmartOLT) ── */}
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <button className="btn btn-primary" onClick={() => setModalOlt(false)}>
+        <button className="btn btn-primary" onClick={() => navigate('/olts/new')}>
           <IconPlus size={14} /> Add OLT
         </button>
         <button className="btn btn-success" onClick={exportOlts}>
@@ -350,7 +405,7 @@ export default function OLTs() {
           <div className="card empty-state">
             <IconServer size={32} style={{ margin: '0 auto 12px', color: 'var(--text-muted)' }} />
             <p>No OLTs registered</p>
-            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => setModalOlt(false)}>
+            <button className="btn btn-primary" style={{ marginTop: 12 }} onClick={() => navigate('/olts/new')}>
               <IconPlus size={13} /> Add first OLT
             </button>
           </div>

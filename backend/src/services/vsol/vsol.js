@@ -1,83 +1,52 @@
-const net = require('net');
 const logger = require('../../middleware/logger');
+const TelnetSession = require('./telnetSession');
+const {
+  parseOnuList, parseOnuState, parseOptical, parseStats,
+  parseEthPorts, parseDistance, parseProfile
+} = require('./parser');
+const { parseRunningConfig } = require('./configParser');
 
 class VSOL {
   constructor(olt) {
     this.olt = olt;
-    this.socket = null;
-    this.connected = false;
-    this._buffer = '';
-    this._waiters = [];
+    this.telnet = null;
   }
 
   async connect() {
-    // For polling (getSystemInfo/getCPUUsage/getTemperature) SNMP is used — no connection needed.
-    // Telnet connect is only attempted when sendCommand is called explicitly (e.g. terminal).
     return this;
   }
 
-  async _telnetConnect() {
-    if (this.connected) return;
-    const creds = this._getCredentials();
-    await new Promise((resolve, reject) => {
-      const socket = new net.Socket();
-      this.socket = socket;
-      const globalTimeout = setTimeout(() => { socket.destroy(); reject(new Error('Telnet connect timeout')); }, 20000);
-
-      socket.connect(23, this.olt.ip);
-      socket.on('data', (data) => {
-        this._buffer += data.toString().replace(/\xff[\xfb-\xfe]./gs, '').replace(/\xff\xf./gs, '');
-        this._dispatch();
-      });
-      socket.on('error', (err) => { clearTimeout(globalTimeout); reject(err); });
-      socket.on('close', () => { this.connected = false; });
-
-      this._waitFor(/[Uu]ser[Nn]ame:|[Ll]ogin:/i, 12000)
-        .then(() => { socket.write((creds.username || 'admin') + '\r\n'); return this._waitFor(/[Pp]assword:/i, 8000); })
-        .then(() => { socket.write((creds.password || 'admin') + '\r\n'); return this._waitFor(/[>#$]\s*$/m, 10000); })
-        .then(() => { clearTimeout(globalTimeout); this.connected = true; resolve(); })
-        .catch((err) => { clearTimeout(globalTimeout); socket.destroy(); reject(new Error(`VSOL auth failed: ${err.message}`)); });
-    });
+  _getTelnet() {
+    if (!this.telnet) {
+      this.telnet = new TelnetSession();
+    }
+    return this.telnet;
   }
 
   disconnect() {
-    if (this.socket) {
-      try { this.socket.destroy(); } catch (e) {}
-      this.socket = null;
+    if (this.telnet) {
+      try { this.telnet.disconnect(); } catch {}
+      this.telnet = null;
     }
-    this.connected = false;
   }
 
-  async sendCommand(cmd, timeout = 8000) {
-    await this._telnetConnect();
-    this._buffer = '';
-    this.socket.write(cmd + '\r\n');
-    return this._waitFor(/[>#$]\s*$/m, timeout).catch(() => this._buffer);
+  _getCredentials() {
+    if (this.olt.credentials_encrypted) {
+      try { return require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted) || {}; } catch (e) { return {}; }
+    }
+    return { username: 'admin', password: 'solomaz2' };
   }
 
-  _waitFor(pattern, timeout) {
-    return new Promise((resolve, reject) => {
-      if (pattern.test(this._buffer)) { const r = this._buffer; this._buffer = ''; return resolve(r); }
-      const t = setTimeout(() => {
-        this._waiters = this._waiters.filter(w => w.id !== id);
-        reject(new Error(`Telnet timeout waiting for ${pattern}`));
-      }, timeout);
-      const id = Symbol();
-      this._waiters.push({
-        id,
-        check: () => pattern.test(this._buffer),
-        resolve: () => { clearTimeout(t); const r = this._buffer; this._buffer = ''; resolve(r); },
-        reject: () => { clearTimeout(t); reject(new Error(`Telnet closed`)); },
-      });
-    });
+  /* ─── low-level command ──────────────────────────────────────────────────── */
+  async sendCommand(cmd, timeout = 12000) {
+    const tn = this._getTelnet();
+    await tn.connect(this.olt);
+    await tn.enable(this.olt);
+    return tn.run(cmd, timeout);
   }
 
-  _dispatch() {
-    this._waiters = this._waiters.filter(w => { if (w.check()) { w.resolve(); return false; } return true; });
-  }
-
+  /* ─── SNMP system info ───────────────────────────────────────────────────── */
   async getSystemInfo() {
-    // Use SNMP sysUpTime — no credentials needed
     try {
       const snmp = require('net-snmp');
       const session = snmp.createSession(this.olt.ip, this.olt.community || 'public', { timeout: 5000, retries: 1 });
@@ -85,42 +54,33 @@ class VSOL {
         session.get(['1.3.6.1.2.1.1.3.0'], (err, vbs) => {
           session.close();
           if (err || !vbs[0] || snmp.isVarbindError(vbs[0])) return rej(err || new Error('no uptime'));
-          res(Math.floor(vbs[0].value / 100)); // centiseconds → seconds
+          res(Math.floor(vbs[0].value / 100));
         });
       });
       return { description: `VSOL ${this.olt.model}`, uptime, name: this.olt.name };
     } catch (e) {
-      throw e; // let poll job mark OFFLINE
+      throw e;
     }
   }
 
+  /* ─── SNMP ONT discovery ─────────────────────────────────────────────────── */
   async listONTs(ponPort = null) {
-    // VSOL V1600G serial numbers are not exposed via SNMP standard MIBs.
-    // We discover ONTs via ifDescr (GPON0/X:Y) + ifOperStatus + MAC from vendor MIB.
     try {
       const snmp = require('net-snmp');
       const session = snmp.createSession(this.olt.ip, this.olt.community || 'public', { timeout: 10000 });
-
-      const toVal = (v) => {
-        if (Buffer.isBuffer(v)) return v;
-        if (typeof v === 'object' && v !== null) return v.toString();
-        return v;
-      };
+      const toVal = (v) => Buffer.isBuffer(v) ? v.toString() : (typeof v === 'object' ? v.toString() : v);
       const walkOid = (oid) => new Promise((res, rej) => {
         const rows = {};
         session.subtree(oid, 20, (varbinds) => {
           varbinds.forEach(v => { rows[v.oid] = toVal(v.value); });
         }, (err) => { if (err) rej(err); else res(rows); });
       });
-
       const [descs, stats, macs] = await Promise.all([
-        walkOid('1.3.6.1.2.1.2.2.1.2'),    // ifDescr
-        walkOid('1.3.6.1.2.1.2.2.1.8'),    // ifOperStatus
-        walkOid('1.3.6.1.4.1.37950.1.1.5.10.3.2.1.3'), // VSOL ONU MAC table
+        walkOid('1.3.6.1.2.1.2.2.1.2'),
+        walkOid('1.3.6.1.2.1.2.2.1.8'),
+        walkOid('1.3.6.1.4.1.37950.1.1.5.10.3.2.1.3'),
       ]);
       session.close();
-
-      // Build MAC lookup: onuId (1-based) → MAC string
       const macByOnuId = {};
       Object.entries(macs).forEach(([oid, val]) => {
         const idx = oid.split('.').pop();
@@ -128,40 +88,25 @@ class VSOL {
           macByOnuId[idx] = Array.from(val).map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(':');
         }
       });
-
       const onts = [];
       Object.entries(descs).forEach(([oid, name]) => {
         const nameStr = Buffer.isBuffer(name) ? name.toString() : String(name);
         const m = nameStr.match(/^GPON(\d+)\/(\d+):(\d+)$/);
         if (!m) return;
-
         const [, , port, onuId] = m;
         const ifIdx = oid.split('.').pop();
         const statusOid = `1.3.6.1.2.1.2.2.1.8.${ifIdx}`;
         const statusVal = stats[statusOid];
         const up = statusVal === 1 || statusVal === '1';
-
         const portFilter = ponPort != null ? parseInt(port) === parseInt(ponPort) : true;
         if (!portFilter) return;
-
-        // Try ifIdx first (correct for multi-port), then onuId as fallback
         const mac = macByOnuId[ifIdx] || macByOnuId[onuId] || null;
-        const serial = mac
-          ? `VSOL${mac.replace(/:/g, '')}`
-          : `VSOL-${this.olt.ip.replace(/\./g, '')}-P${port}-${onuId}`;
-
+        const serial = mac ? `VSOL${mac.replace(/:/g, '')}` : `VSOL-${this.olt.ip.replace(/\./g, '')}-P${port}-${onuId}`;
         onts.push({
-          serial_number: serial,
-          mac,
-          pon_port: parseInt(port),
-          onu_id: parseInt(onuId),
-          interface: nameStr,
-          status: up ? 'ONLINE' : 'OFFLINE',
-          rx_power: null,
-          tx_power: null,
+          serial_number: serial, mac, pon_port: parseInt(port), onu_id: parseInt(onuId),
+          interface: nameStr, status: up ? 'ONLINE' : 'OFFLINE', rx_power: null, tx_power: null,
         });
       });
-
       return onts;
     } catch (e) {
       logger.error(`VSOL listONTs SNMP: ${e.message}`);
@@ -169,48 +114,207 @@ class VSOL {
     }
   }
 
-  async getONTSignal(ontId) {
+  /* ─── Telnet ONU operations (from PON interface) ──────────────────────────── */
+
+  async _enterPonInterface(ponIndex) {
+    const tn = this._getTelnet();
+    await tn.connect(this.olt);
+    await tn.enable(this.olt);
+    await tn.run('configure terminal');
+    await tn.run(`interface gpon 0/${ponIndex}`);
+  }
+
+  /* ─── ONU list via Telnet (usando PON interface) ──────────────────────────── */
+  async listOnusTelnet(ponIndex = 1) {
     try {
-      const output = await this.sendCommand(`show gpon onu detail-info ${ontId}`);
-      const rx = output.match(/Rx\s*power.*?:([-\d.]+)/i);
-      const tx = output.match(/Tx\s*power.*?:([-\d.]+)/i);
-      return { rx_power: rx ? parseFloat(rx[1]) : null, tx_power: tx ? parseFloat(tx[1]) : null };
+      const tn = this._getTelnet();
+      await tn.connect(this.olt);
+      await tn.enable(this.olt);
+      await tn.run('configure terminal');
+      await tn.run(`interface gpon 0/${ponIndex}`);
+      const output = await tn.run('show onu info');
+      const onus = parseOnuList(output);
+
+      // También obtener estados
+      const stateOutput = await tn.run('show onu state');
+      const states = parseOnuState(stateOutput);
+      const stateMap = {};
+      for (const s of states) stateMap[s.onuId] = s;
+
+      return onus.map(o => ({
+        ...o,
+        adminState: stateMap[o.onuId]?.adminState || 'unknown',
+        omccState: stateMap[o.onuId]?.omccState || 'unknown',
+        phaseState: stateMap[o.onuId]?.phaseState || 'unknown',
+        configState: stateMap[o.onuId]?.configState || 'unknown',
+      }));
     } catch (e) {
-      return { rx_power: null, tx_power: null };
-    }
+      logger.error(`VSOL listOnusTelnet PON${ponIndex}: ${e.message}`);
+      return [];
+    } finally { this.disconnect(); }
   }
 
-  async getONTStatus(ontId) {
-    const signal = await this.getONTSignal(ontId);
-    return { ontId, ...signal, online: signal.rx_power !== null };
-  }
-
-  async rebootONT(ontId) {
+  async getOnuOptical(ponIndex, onuId) {
     try {
-      const output = await this.sendCommand(`onu reset ${ontId}`);
-      return { success: true, output };
-    } catch (e) {
-      return { success: false, error: e.message };
-    }
-  }
-
-  // ── Acciones de estado de ONU (VSOL CLI). Firma (serial, body, location) como
-  //    espera ontService.executeOntAction. sendCommand maneja la conexión Telnet.
-  async _vsolCmd(cmd) {
-    try { const output = await this.sendCommand(cmd); return { success: !/error|invalid|fail/i.test(output), output }; }
-    catch (e) { return { success: false, error: e.message }; }
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`show onu ${onuId} optical`);
+      return parseOptical(output);
+    } catch (e) { return {}; }
     finally { this.disconnect(); }
   }
-  enableONT(serial)        { return this._vsolCmd(`onu activate ${serial}`); }
-  disableONT(serial)       { return this._vsolCmd(`onu deactivate ${serial}`); }
-  startONT(serial)         { return this._vsolCmd(`onu activate ${serial}`); }
-  stopONT(serial)          { return this._vsolCmd(`onu deactivate ${serial}`); }
-  resyncONT(serial)        { return this._vsolCmd(`onu reset ${serial}`); }
-  restoreDefaults(serial)  { return this._vsolCmd(`onu factory-reset ${serial}`); }
-  deleteONTFromOLT(serial) { return this._vsolCmd(`no onu ${serial}`); }
-  async getRunningConfig(serial) { try { return { success: true, outputs: [{ out: await this.sendCommand(`show gpon onu detail-info ${serial}`) }] }; } finally { this.disconnect(); } }
-  async getSwInfo(serial)        { try { return { success: true, outputs: [{ out: await this.sendCommand(`show gpon onu version ${serial}`) }] }; } finally { this.disconnect(); } }
 
+  async getOnuStats(ponIndex, onuId) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`show onu ${onuId} statistics`);
+      return parseStats(output);
+    } catch (e) { return {}; }
+    finally { this.disconnect(); }
+  }
+
+  async getOnuEth(ponIndex, onuId) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`show onu ${onuId} eth`);
+      return parseEthPorts(output);
+    } catch (e) { return []; }
+    finally { this.disconnect(); }
+  }
+
+  async getOnuDistance(ponIndex, onuId) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`show onu ${onuId} distance`);
+      return parseDistance(output);
+    } catch (e) { return null; }
+    finally { this.disconnect(); }
+  }
+
+  async getOnuProfile(ponIndex, onuId) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`show onu ${onuId} profile`);
+      return parseProfile(output);
+    } catch (e) { return {}; }
+    finally { this.disconnect(); }
+  }
+
+  /* ─── ONU actions (desde PON interface) ────────────────────────────────────── */
+  async _onuAction(ponIndex, onuId, action) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      const output = await this.telnet.run(`onu ${onuId} ${action}`);
+      return { success: !/error|invalid|fail|Unknown/i.test(output), output };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async rebootONT(ontId) { return this._onuAction(1, ontId, 'reboot'); }
+  async activateOnu(ponIndex, onuId) { return this._onuAction(ponIndex, onuId, 'activate'); }
+  async deactivateOnu(ponIndex, onuId) { return this._onuAction(ponIndex, onuId, 'deactivate'); }
+  async rebootOnu(ponIndex, onuId) { return this._onuAction(ponIndex, onuId, 'reboot'); }
+
+  async addOnu(ponIndex, { onuId, profile, serial }) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      await this.telnet.run(`onu add ${onuId} profile ${profile} sn ${serial}`);
+      // Asignar perfiles por defecto
+      await this.telnet.run(`onu ${onuId} profile line name ${profile}`);
+      await this.telnet.run(`onu ${onuId} profile srv name ${profile}`);
+      await this.telnet.run(`onu ${onuId} profile alarm name Alarm`);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async deleteOnu(ponIndex, onuId) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      await this.telnet.run('configure terminal');
+      await this.telnet.run(`no onu ${onuId}`);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async setOnuDescription(ponIndex, onuId, description) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      await this.telnet.run(`onu ${onuId} desc ${description}`);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async setOnuProfile(ponIndex, onuId, type, profileName) {
+    try {
+      await this._enterPonInterface(ponIndex);
+      await this.telnet.run(`onu ${onuId} profile ${type} name ${profileName}`);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  /* ─── ONU actions (compatibilidad con ontService) ──────────────────────────── */
+  enableONT(serial)        { return this._callWrapper(`onu activate ${serial}`); }
+  disableONT(serial)       { return this._callWrapper(`onu deactivate ${serial}`); }
+  startONT(serial)         { return this._callWrapper(`onu activate ${serial}`); }
+  stopONT(serial)          { return this._callWrapper(`onu deactivate ${serial}`); }
+  resyncONT(serial)        { return this._callWrapper(`onu reboot ${serial}`); }
+  restoreDefaults(serial)  { return this._callWrapper(`onu factory-reset ${serial}`); }
+  deleteONTFromOLT(serial) { return this._callWrapper(`no onu ${serial}`); }
+
+  async _callWrapper(cmd) {
+    try {
+      const output = await this.sendCommand(cmd);
+      return { success: !/error|invalid|fail/i.test(output), output };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async getRunningConfig(serial) {
+    try { return { success: true, outputs: [{ out: await this.sendCommand('show running-config') }] }; }
+    finally { this.disconnect(); }
+  }
+  async getSwInfo(serial) {
+    try { return { success: true, outputs: [{ out: await this.sendCommand('show version') }] }; }
+    finally { this.disconnect(); }
+  }
+
+  /* ─── Profile management ──────────────────────────────────────────────────── */
+  async getProfiles(type) {
+    try {
+      const config = await this.sendCommand('show running-config');
+      const parsed = parseRunningConfig(config);
+      return parsed.profiles[type] || [];
+    } catch (e) { return []; }
+    finally { this.disconnect(); }
+  }
+
+  async getRunningConfigText() {
+    try { return await this.sendCommand('show running-config'); }
+    finally { this.disconnect(); }
+  }
+
+  async getParsedConfig() {
+    try {
+      const config = await this.sendCommand('show running-config');
+      return parseRunningConfig(config);
+    } catch (e) { return null; }
+    finally { this.disconnect(); }
+  }
+
+  async saveConfig() {
+    try {
+      await this._getTelnet().connect(this.olt);
+      await this._getTelnet().enable(this.olt);
+      await this._getTelnet().run('write');
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  /* ─── Alarms ──────────────────────────────────────────────────────────────── */
   async getActiveAlerts() {
     try {
       const output = await this.sendCommand('show alarm active');
@@ -221,13 +325,17 @@ class VSOL {
         }
       }
       return alarms;
-    } catch (e) {
-      return [];
-    }
+    } catch (e) { return []; }
   }
 
+  /* ─── Diagnostics ─────────────────────────────────────────────────────────── */
+  async ping(host) {
+    try { return await this.sendCommand(`ping ${host}`); }
+    finally { this.disconnect(); }
+  }
+
+  /* ─── System info via Telnet ──────────────────────────────────────────────── */
   async getCPUUsage() {
-    // Requires Telnet credentials — returns null until configured
     if (!this._getCredentials().password) return null;
     try {
       const output = await this.sendCommand('show cpu');
@@ -258,28 +366,88 @@ class VSOL {
     return { portId, type: 'GPON' };
   }
 
-  _parseONTs(output) {
-    const onts = [];
-    for (const block of output.split(/---+/)) {
-      const sn = block.match(/SN\s*:\s*([A-Z0-9]+)/i);
-      const status = block.match(/Status\s*:\s*(\S+)/i);
-      const rx = block.match(/Rx\s*:\s*([-\d.]+)/i);
-      if (sn) {
-        onts.push({
-          serial_number: sn[1],
-          status: status && status[1].toLowerCase() === 'up' ? 'ONLINE' : 'OFFLINE',
-          rx_power: rx ? parseFloat(rx[1]) : null,
-        });
+  /* ─── authorizeONT (compatibilidad con ontService) ────────────────────────── */
+  async authorizeONT(data) {
+    const { board, port, serial, onuId, lineProfileId, srvProfileId, name, svlanId, userVlan, gemport, tagTransform, upstreamKbps, downstreamKbps } = data;
+    const ponIndex = port || 1;
+    const onu_id = onuId || 1;
+    const profile = lineProfileId || srvProfileId || 'default';
+
+    try {
+      const tn = this._getTelnet();
+      await tn.connect(this.olt);
+      await tn.enable(this.olt);
+      await tn.run('configure terminal');
+      await tn.run(`interface gpon 0/${ponIndex}`);
+
+      // ONU add with serial, profile, and description
+      await tn.run(`onu add ${onu_id} profile ${profile} sn ${serial}`);
+      if (name) await tn.run(`onu ${onu_id} desc ${name}`);
+
+      // Set profiles
+      if (lineProfileId) await tn.run(`onu ${onu_id} profile line name ${lineProfileId}`);
+      if (srvProfileId) await tn.run(`onu ${onu_id} profile srv name ${srvProfileId}`);
+      await tn.run(`onu ${onu_id} profile alarm name Alarm`);
+
+      // Apply VLAN config if provided
+      if (svlanId || userVlan) {
+        const svlan = svlanId || userVlan;
+        await tn.run(`onu ${onu_id} svlan ${svlan}`);
       }
+
+      // Apply speed limits if provided
+      if (downstreamKbps || upstreamKbps) {
+        if (downstreamKbps) await tn.run(`onu ${onu_id} speed downstream ${downstreamKbps}`);
+        if (upstreamKbps) await tn.run(`onu ${onu_id} speed upstream ${upstreamKbps}`);
+      }
+
+      // Activate
+      await tn.run(`onu ${onu_id} activate`);
+
+      this.disconnect();
+      return {
+        success: true,
+        location: { board: 0, port: ponIndex, onu_id },
+      };
+    } catch (e) {
+      this.disconnect();
+      return { success: false, error: e.message, location: {} };
     }
-    return onts;
   }
 
-  _getCredentials() {
-    if (this.olt.credentials_encrypted) {
-      try { return require('../../utils/encryption').decryptCredentials(this.olt.credentials_encrypted) || {}; } catch (e) { return {}; }
+  /* ─── getOpticalInfo (batch enrichment para scanOLTOnts) ──────────────────── */
+  async getOpticalInfo(slotPorts) {
+    const rows = [];
+    for (const sp of slotPorts) {
+      // VSOL no tiene slot, usa port como PON index y onu_id de cada ONU
+      const ponIndex = sp.port || sp.slot || 1;
+      try {
+        await this._enterPonInterface(ponIndex);
+        const listOut = await this.telnet.run('show onu info');
+        const onus = parseOnuList(listOut);
+        for (const onu of onus) {
+          try {
+            const optOut = await this.telnet.run(`show onu ${onu.onuId} optical`);
+            const opt = parseOptical(optOut);
+            rows.push({
+              slot: 0,
+              port: ponIndex,
+              ont_id: onu.onuId,
+              rx_power: opt.rxPower ?? null,
+              tx_power: opt.txPower ?? null,
+              olt_rx_power: opt.oltRxPower ?? null,
+              temperature: opt.temperature ?? null,
+              voltage: opt.voltage ?? null,
+              bias_current: opt.biasCurrent ?? null,
+              distance: null,
+            });
+          } catch {}
+        }
+      } catch (e) {
+        logger.warn(`getOpticalInfo PON${ponIndex}: ${e.message}`);
+      } finally { this.disconnect(); }
     }
-    return {};
+    return rows;
   }
 }
 

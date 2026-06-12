@@ -151,7 +151,7 @@ export default function Login() {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '11px', color: 'var(--text-muted)' }}>
-          Pixel Studios &copy; 2025 · OLT Manager v2
+          Pixel Studios &copy; 2025 · Pixel Studios OLT v3.3
         </div>
       </div>
     </div>
