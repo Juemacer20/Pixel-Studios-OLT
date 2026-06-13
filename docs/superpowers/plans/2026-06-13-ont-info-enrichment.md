@@ -26,12 +26,14 @@
 
 ---
 
-## Task 1: Capturar salida real de una ONT (calibración, read-only)
+## Task 1: Capturar salida real de una ONT (calibración, read-only) — ✅ HECHA
 
-> Prerrequisito de los parsers. Se ejecuta contra una OLT Huawei real (solo lectura, seguro
-> en producción). Si no tenés acceso a la red de OLTs desde tu PC, corré esto en el server
-> de producción `10.200.1.75` o pedíselo a Juan. **No** sigas a la Task 5/6 sin estas capturas:
-> el formato Huawei varía por firmware y el parser se calibra contra esto.
+> **YA EJECUTADA.** Las OLTs son alcanzables directo por telnet desde la PC de dev, así que la
+> captura se hizo localmente (read-only, idéntica a hacerla en el server). Fixtures sanitizados
+> (PII de cliente redactada) commiteados en `backend/src/services/huawei/__fixtures__/`:
+> `ont-info-8_50.txt`, `ont-version-8_50.txt`, `ont-info-43_25.txt`, `ont-version-43_25.txt`.
+> **Hallazgo de calibración:** el comando de detalle es `display ont info <port> <id>` (no
+> `display ont detail-info`, inexistente en V3R017). Pasos originales abajo (referencia):
 
 **Files:**
 - Create: `backend/src/services/huawei/__fixtures__/ont-detail-info.txt`
@@ -204,11 +206,15 @@ git commit -m "feat(scan): persistir ubicación física board/port/onu_id de cad
 
 ## Task 5: Parser `_parseOntDetailInfo` (TDD)
 
-> Ajustá los valores esperados del test a lo que viste en el fixture real de la Task 1.
-> El código de abajo asume el formato Huawei `display ont detail-info` (clave : valor por línea).
+> **CALIBRADO contra fixtures reales (Task 1 ya ejecutada).** El comando de detalle por ONT en
+> el firmware de estas OLTs (V3R017C10S125) es **`display ont info <port> <id>`** — NO existe
+> `display ont detail-info`. El bloque viene "Clave : valor" por línea (multipágina). VLAN y
+> Description NO se parsean acá: VLAN no aparece como número simple (vive en service-port) y
+> Description ya la trae el scan por SNMP (y viene multilínea). Fixtures: `ont-info-8_50.txt`
+> (modelo IC485WRF) y `ont-info-43_25.txt` (modelo HG8546M, `Last down cause: -`).
 
 **Files:**
-- Modify: `backend/src/services/huawei/ma5800.js` (nuevo método estático/instancia `_parseOntDetailInfo`)
+- Modify: `backend/src/services/huawei/ma5800.js` (nuevo método de instancia `_parseOntDetailInfo`)
 - Create/Modify: `backend/src/services/huawei/__tests__/parsers.test.js`
 
 - [ ] **Step 1: Escribir el test que falla**
@@ -225,14 +231,22 @@ const fixture = (f) => fs.readFileSync(path.join(__dirname, '../__fixtures__', f
 describe('_parseOntDetailInfo', () => {
   const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
 
-  test('extrae distancia, perfiles, VLAN, última caída y estados', () => {
-    const r = adapter._parseOntDetailInfo(fixture('ont-detail-info.txt'));
-    expect(r.distance).toBe(1234);
-    expect(r.line_profile).toBe('LINE-1G');
-    expect(r.srv_profile).toBe('SRV-1G');
-    expect(r.last_down_cause).toBe('dying-gasp');
+  test('extrae distancia, perfiles, última caída, mgmt y estados (fixture 8_50)', () => {
+    const r = adapter._parseOntDetailInfo(fixture('ont-info-8_50.txt'));
+    expect(r.distance).toBe(3611);
+    expect(r.line_profile).toBe('SMARTOLT_FLEXIBLE_GPON');
+    expect(r.srv_profile).toBe('IC485WRF');
+    expect(r.last_down_cause).toBe('LOSi/LOBi');
     expect(r.configuration_method).toBe('OMCI');
-    expect(r.description).toBe('Juan Perez');
+    expect(r.config_state).toBe('normal');
+    expect(r.match_state).toBe('match');
+  });
+
+  test('"Last down cause: -" se normaliza a undefined (fixture 43_25)', () => {
+    const r = adapter._parseOntDetailInfo(fixture('ont-info-43_25.txt'));
+    expect(r.distance).toBe(1185);
+    expect(r.srv_profile).toBe('HG8546M');
+    expect(r.last_down_cause).toBeUndefined();
   });
 });
 ```
@@ -248,8 +262,9 @@ En `backend/src/services/huawei/ma5800.js`, agregar dentro de la clase `MA5800`:
 
 ```js
   /**
-   * Parsea `display ont detail-info <port> <id>` (formato Huawei: "Clave : valor" por línea).
-   * Tolera variantes de firmware: cada campo es best-effort, devuelve undefined si no aparece.
+   * Parsea la salida de `display ont info <port> <id>` (bloque detallado, "Clave : valor"
+   * por línea, multipágina). Cada campo es best-effort: devuelve undefined si no aparece.
+   * VLAN/Description no se extraen acá (ver nota del plan, Task 5).
    */
   _parseOntDetailInfo(raw) {
     const grab = (label) => {
@@ -259,35 +274,30 @@ En `backend/src/services/huawei/ma5800.js`, agregar dentro de la clase `MA5800`:
       return m ? m[1].trim() : undefined;
     };
     const num = (v) => (v != null && /-?\d+/.test(v) ? parseInt(v.match(/-?\d+/)[0], 10) : undefined);
+    const clean = (v) => (v && !/^(-|none|na)$/i.test(v) ? v : undefined);
 
-    const distance = num(grab('ONT distance'));
-    const line_profile = grab('Line profile name');
-    const srv_profile = grab('Service profile name');
-    let last_down_cause = grab('Last down cause');
-    if (last_down_cause && /^(-|none|na)$/i.test(last_down_cause)) last_down_cause = undefined;
-    const configuration_method = grab('Management mode'); // OMCI / TR069
-    let description = grab('Description');
-    if (description && /^(-|none)$/i.test(description)) description = undefined;
-    const vlan = num(grab('Native VLAN')) ?? num(grab('VLAN'));
-    const config_state = grab('Config state');
-    const match_state = grab('Match state');
-
-    return { distance, line_profile, srv_profile, last_down_cause,
-             configuration_method, description, vlan, config_state, match_state };
+    return {
+      distance: num(grab('ONT distance')),
+      line_profile: clean(grab('Line profile name')),
+      srv_profile: clean(grab('Service profile name')),
+      last_down_cause: clean(grab('Last down cause')),
+      configuration_method: clean(grab('Management mode')), // OMCI / TR069
+      config_state: clean(grab('Config state')),
+      match_state: clean(grab('Match state')),
+    };
   }
 ```
 
 - [ ] **Step 4: Correr y verificar PASS**
 
 Run: `cd backend && npx jest parsers -v`
-Expected: PASS. (Si falla, ajustá los labels del parser o los valores esperados del test
-para que coincidan EXACTAMENTE con el fixture real.)
+Expected: PASS (ambos tests).
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add backend/src/services/huawei/ma5800.js backend/src/services/huawei/__tests__/parsers.test.js
-git commit -m "feat(huawei): parser de display ont detail-info"
+git commit -m "feat(huawei): parser de display ont info (detalle por ONT)"
 ```
 
 ---
@@ -300,6 +310,9 @@ git commit -m "feat(huawei): parser de display ont detail-info"
 
 - [ ] **Step 1: Escribir el test que falla**
 
+> Valores reales del fixture `ont-version-8_50.txt`: Equipment-ID=`IC485WRF`,
+> Main Software Version=`V3R017C10S125`, ONT Version=`4B4.A`.
+
 Agregar a `parsers.test.js`:
 
 ```js
@@ -307,10 +320,10 @@ describe('_parseOntVersion', () => {
   const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
 
   test('extrae modelo (Equipment-ID), firmware y sw_version', () => {
-    const r = adapter._parseOntVersion(fixture('ont-version.txt'));
-    expect(r.model).toBe('EG8145V5');
-    expect(r.firmware).toBe('V5R020C00S280');
-    expect(r.sw_version).toBe('121A');
+    const r = adapter._parseOntVersion(fixture('ont-version-8_50.txt'));
+    expect(r.model).toBe('IC485WRF');
+    expect(r.firmware).toBe('V3R017C10S125');
+    expect(r.sw_version).toBe('4B4.A');
   });
 });
 ```
@@ -388,7 +401,7 @@ En `ma5800.js`, dentro de la clase (después de `getOntDetailInfo`/parsers):
           await collect(`interface gpon 0/${loc.board}`);
           currentBoard = loc.board;
         }
-        const detailRaw = await collect(`display ont detail-info ${loc.port} ${loc.onu_id}`);
+        const detailRaw = await collect(`display ont info ${loc.port} ${loc.onu_id}`);
         const versionRaw = await collect(`display ont version ${loc.port} ${loc.onu_id}`);
         results.push({
           ...loc,
@@ -516,12 +529,9 @@ async function enrichBatch(batch) {
       const data = { enriched_at: new Date() };
       if (d) {
         for (const k of ['model', 'firmware', 'sw_version', 'distance', 'line_profile',
-                         'srv_profile', 'last_down_cause', 'configuration_method', 'vlan']) {
+                         'srv_profile', 'last_down_cause', 'configuration_method']) {
           if (d[k] != null) data[k] = d[k];
         }
-        // description: solo si la ONT no tiene una real (no auto-generada)
-        const isAutoGen = ont.description && /^(gpon-onu_|0\/|GPON)/i.test(ont.description);
-        if (d.description && (!ont.description || isAutoGen)) data.description = d.description;
       }
       await prisma.oNT.update({ where: { id: ont.id }, data });
       updated++;
