@@ -299,6 +299,15 @@ export default function ONUView() {
             </a>
           </dd>
 
+          <dt>Firmware</dt>
+          <dd><span className="text-muted">{v(o.firmware || o.sw_version)}</span></dd>
+
+          <dt>Line profile</dt>
+          <dd><span className="text-muted">{v(o.line_profile)}</span></dd>
+
+          <dt>Service profile</dt>
+          <dd><span className="text-muted">{v(o.srv_profile)}</span></dd>
+
         </dl>
       </div>
 
@@ -320,6 +329,9 @@ export default function ONUView() {
             </span>
             {o.uptime ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>({o.uptime})</span> : null}
           </dd>
+
+          <dt>Last down cause</dt>
+          <dd><span className="text-muted">{v(o.last_down_cause)}</span></dd>
 
           <dt>ONU/OLT Rx signal</dt>
           <dd id="signal_wrapper">
