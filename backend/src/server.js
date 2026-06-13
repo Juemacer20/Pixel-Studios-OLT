@@ -64,11 +64,13 @@ async function startJobs() {
     const { startAlertEngine } = require('./jobs/alertEngine');
     const { startAutoAuthorize } = require('./jobs/autoAuthorize');
     const { startTrafficPoll } = require('./jobs/trafficPoll');
+    const { startEnrichOnts } = require('./jobs/enrichOnts');
     startPollOLTs(io);
     startSignalHistory(io);
     startAlertEngine(io);
     startAutoAuthorize(io);
     startTrafficPoll();
+    startEnrichOnts();
     require('./jobs/batchOperation'); // registra el processor de la cola batch
 
     // Snapshot del estado de red (online/offline) cada 5 min para el gráfico Network status
