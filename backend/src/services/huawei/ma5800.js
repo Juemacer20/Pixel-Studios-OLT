@@ -283,6 +283,41 @@ class MA5800 {
   }
 
   /**
+   * Trae el detalle de varias ONTs en UNA sesión telnet. `locations` es
+   * [{ board, port, onu_id, serial_number }]. Devuelve la misma lista con los
+   * campos parseados mergeados: { ...location, model, firmware, sw_version,
+   * distance, line_profile, srv_profile, last_down_cause, configuration_method,
+   * config_state, match_state }. Read-only (solo comandos `display`).
+   */
+  async getOntDetailInfoBatch(locations) {
+    if (!Array.isArray(locations) || !locations.length) return [];
+    return this._session(async (collect) => {
+      const results = [];
+      let currentBoard = null;
+      // Ordenar por board para minimizar cambios de contexto interface
+      const sorted = [...locations].sort((a, b) => (a.board - b.board) || (a.port - b.port));
+      for (const loc of sorted) {
+        if (loc.board == null || loc.port == null || loc.onu_id == null) continue;
+        if (loc.board !== currentBoard) {
+          if (currentBoard !== null) await collect('quit');
+          await collect(`interface gpon 0/${loc.board}`);
+          currentBoard = loc.board;
+        }
+        const detailRaw = await collect(`display ont info ${loc.port} ${loc.onu_id}`);
+        const versionRaw = await collect(`display ont version ${loc.port} ${loc.onu_id}`);
+        results.push({
+          ...loc,
+          ...this._parseOntDetailInfo(detailRaw),
+          ...this._parseOntVersion(versionRaw),
+        });
+      }
+      if (currentBoard !== null) await collect('quit');
+      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs`);
+      return results;
+    });
+  }
+
+  /**
    * Fetch optical info for ONTs. Requires the `interface gpon 0/<slot>` context;
    * the command is `display ont optical-info <port> all` (port goes in the command,
    * not in each row). Receives the list of {slot, port} pairs that actually have ONTs
