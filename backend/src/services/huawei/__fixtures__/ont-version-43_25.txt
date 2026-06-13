@@ -1,0 +1,22 @@
+display ont version 0 0 
+{ <cr>||<K> }: 
+
+  Command:
+          display ont version 0 0
+  -------------------------------------------------------------------------- 
+  F/S/P                    : 0/1/0 
+  ONT-ID                   : 0 
+  Vendor-ID                : HWTC 
+  ONT Version              : 10C7.A 
+  Product-ID               : 10c 
+  Equipment-ID             : HG8546M 
+  Main Software Version    : V3R017C10S125 
+  Standby Software Version : V3R017C10S125 
+  OntProductDescription    : EchoLife HG8546M GPON Terminal (CLASS B+/PRODUC 
+                             T ID:2150083615EGJ5414638/CHIP:00050020171125) 
+  Support XML Version      : 1.3.0.0 
+  Ont MAC                  : - 
+  Ont Equipment SN         : - 
+  -------------------------------------------------------------------------- 
+
+MA5800-X15(config-if-gpon-0/1)#
