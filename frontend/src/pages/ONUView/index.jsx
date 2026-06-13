@@ -4,6 +4,26 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { IconReload, IconTrash, IconExternalLink } from '@tabler/icons-react';
 import { ontAPI } from '../../services/api';
 import toast from 'react-hot-toast';
+import {
+  ExtIdModal,
+  SpeedProfileModal,
+  EthernetPortModal,
+  WifiPortModal,
+  WebUserPassModal,
+  ReplaceBySNModal,
+  UpdateModeModal,
+  VLANModal,
+  UpdateLocationModal,
+  MgmtIPModal,
+  ReallocateIdModal,
+  GPONChannelModal,
+  VoIPModal,
+  IPTVModal,
+  TR069ProfileModal,
+  FirmwareUpgradeModal,
+  MoveOnuModal,
+  fetchTR069Stat,
+} from './OnuModals';
 
 function rxColor(rx) {
   if (rx == null) return 'inherit';
@@ -115,10 +135,12 @@ export default function ONUView() {
       'Resync config': { confirm: true, msg: 'Recreate (resync) the OLT config for this ONU?', run: () => ontAPI.resync(id) },
       'Restore defaults': { confirm: true, danger: true, msg: 'Restore to factory defaults?', run: () => ontAPI.restoreDefaults(id) },
       'Delete': { confirm: true, danger: true, msg: 'Delete this ONU? Cannot be undone.', run: () => ontAPI.delete(id).then(() => { qc.invalidateQueries({ queryKey: ['onts'] }); navigate('/onts'); }) },
+      'Firmware Upgrade - Reset to defaults': 'firmwareUpgrade',
     };
     const a = actions[name];
-    if (!a) { toast(`${name} — próximamente`, { icon: '⚙️' }); return; }
+    if (!a) { setModal({ type: name }); return; }
     if (a.confirm) setModal({ type: 'confirm', name, ...a });
+    else if (typeof a === 'string') setModal({ type: a, name });
   };
 
   const execConfirm = async (cfg) => {
@@ -136,6 +158,8 @@ export default function ONUView() {
   const name = o.client?.name || o.name || `ONU ${id}`;
   const isOnline = o.status === 'online';
 
+  const m = (type) => modal?.type === type;
+
   return (
     <div className="container-fluid onu-wrapper">
       <h2>View ONU</h2>
@@ -150,7 +174,7 @@ export default function ONUView() {
             </Link>
           </dt>
           <dd>
-            <a href="#moveOnu" className="move-onu">
+            <a href="#moveOnu" className="move-onu" onClick={() => runAction('Move ONU')}>
               {o.olt?.name || o.olt_name || `OLT #${o.olt_id}`}
             </a>
           </dd>
@@ -162,7 +186,7 @@ export default function ONUView() {
             </Link>
           </dt>
           <dd>
-            <a href="#moveOnu" className="move-onu">
+            <a href="#moveOnu" className="move-onu" onClick={() => runAction('Move ONU')}>
               {v(o.board)}
             </a>
           </dd>
@@ -174,7 +198,7 @@ export default function ONUView() {
             </Link>
           </dt>
           <dd>
-            <a href="#moveOnu" className="move-onu">
+            <a href="#moveOnu" className="move-onu" onClick={() => runAction('Move ONU')}>
               {v(o.port)}
             </a>
           </dd>
@@ -182,7 +206,7 @@ export default function ONUView() {
           <dt>ONU</dt>
           <dd>
             <a href="#changeAllocatedOnu" className="change-allocated-onu"
-              onClick={() => toast('Change allocated ONU ID — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'reallocateId' })}>
               {o.channel || 'gpon'}-onu_{o.board || '?'}/{o.port || '?'}:{o.onu_id || '?'}
             </a>
           </dd>
@@ -190,7 +214,7 @@ export default function ONUView() {
           <dt>GPON channel</dt>
           <dd>
             <a href="#updateGponType" className="update-gpon-type"
-              onClick={() => toast('Update GPON channel — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'gponChannel' })}>
               GPON
             </a>
           </dd>
@@ -198,7 +222,7 @@ export default function ONUView() {
           <dt>SN</dt>
           <dd>
             <a href="#updateSN" className="update-sn"
-              onClick={() => toast('Replace ONU by SN — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'replaceBySN' })}>
               {v(o.serial_number || o.sn || o.mac)}
             </a>
           </dd>
@@ -224,7 +248,7 @@ export default function ONUView() {
           </dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateLocation' })}>
               {v(o.zone?.name || o.zone)}
             </a>
           </dd>
@@ -232,7 +256,7 @@ export default function ONUView() {
           <dt>ODB (Splitter)</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateLocation' })}>
               {v(o.odb?.name || o.odb)}
             </a>
           </dd>
@@ -240,7 +264,7 @@ export default function ONUView() {
           <dt>Name</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateLocation' })}>
               {name}
             </a>
           </dd>
@@ -248,7 +272,7 @@ export default function ONUView() {
           <dt>Address or comment</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateLocation' })}>
               {v(o.client?.address || o.address)}
             </a>
           </dd>
@@ -256,7 +280,7 @@ export default function ONUView() {
           <dt>Contact</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateLocation' })}>
               {v(o.client?.phone || o.contact)}
             </a>
           </dd>
@@ -270,7 +294,7 @@ export default function ONUView() {
           <dt>ONU external ID</dt>
           <dd>
             <a href="#updateClientExternalId" className="update-client-external-id"
-              onClick={() => toast('Update external ID — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'extId' })}>
               {v(o.external_id)}
             </a>
           </dd>
@@ -307,7 +331,7 @@ export default function ONUView() {
           <dt>Attached VLANs</dt>
           <dd>
             <a href="#updateVlans" className="update-vlans"
-              onClick={() => toast('Update VLANs — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'vlan' })}>
               {v(o.vlan_id || o.vlan)}
             </a>
           </dd>
@@ -315,7 +339,7 @@ export default function ONUView() {
           <dt>ONU mode</dt>
           <dd>
             <a href="#updateMode" className="update-mode"
-              onClick={() => toast('Update ONU mode — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateMode' })}>
               {v(o.mode || 'Routing')} - WAN vlan: {v(o.vlan_id || o.vlan)}
             </a>
           </dd>
@@ -323,7 +347,7 @@ export default function ONUView() {
           <dt className="mgmtIPModeItem">TR069</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
-              onClick={() => toast('Update TR069 — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'tr069Profile' })}>
               {o.tr069_enabled ? 'SmartOLT' : 'Disabled'}
             </a>
           </dd>
@@ -331,7 +355,7 @@ export default function ONUView() {
           <dt className="mgmtIPModeItem">Mgmt IP</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
-              onClick={() => toast('Update Mgmt IP — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'mgmtIP' })}>
               {o.mgmt_ip_mode || 'Static'} - vlan: {o.mgmt_ip_vlan_id || '—'}
             </a>
             {o.mgmt_ip ? <span className="text-muted"> — {o.mgmt_ip}</span> : null}
@@ -340,7 +364,7 @@ export default function ONUView() {
           <dt className="routerModeItem">WAN setup mode</dt>
           <dd className="routerModeItem">
             <a href="#updateMode" className="update-mode onuRouterMode"
-              onClick={() => toast('Update ONU mode — próximamente', { icon: '⚙️' })}>
+              onClick={() => setModal({ type: 'updateMode' })}>
               {o.wan_mode || 'PPPoE'} ({o.config_method || 'TR069'})
             </a>
           </dd>
@@ -376,7 +400,7 @@ export default function ONUView() {
           }}>SW info</button>
 
           <button className="btn btn-success margin-bottom status_buttons"
-            onClick={() => toast('TR069 Stat — próximamente', { icon: '⚙️' })}>
+            onClick={() => fetchTR069Stat(id, setReadResult)}>
             TR069 Stat
           </button>
 
@@ -440,7 +464,7 @@ export default function ONUView() {
                   <td>{sp.upload || sp.upload_speed}</td>
                   <td>
                     <a href="#updateSpeedProfiles" className="btn btn-link update-speed-profiles"
-                      onClick={() => toast('Configure speed profiles — próximamente', { icon: '⚙️' })}>
+                      onClick={() => setModal({ type: 'speedProfile' })}>
                       <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
@@ -471,7 +495,7 @@ export default function ONUView() {
                   <td>{ep.dhcp || 'No control'}</td>
                   <td>
                     <a href="#configureNetworkPort" className="btn btn-link configure-vlan"
-                      onClick={() => toast('Configure ethernet port — próximamente', { icon: '⚙️' })}>
+                      onClick={() => setModal({ type: 'ethPort' })}>
                       <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
@@ -506,7 +530,7 @@ export default function ONUView() {
                   <td>{wp.dhcp || 'No control'}</td>
                   <td>
                     <a href="#configureWifiPort" className="btn btn-link configure-wifi"
-                      onClick={() => toast('Configure WiFi port — próximamente', { icon: '⚙️' })}>
+                      onClick={() => setModal({ type: 'wifiPort' })}>
                       <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
@@ -546,8 +570,116 @@ export default function ONUView() {
         </dd>
       </dl>
 
+      {/* ── Modals ── */}
       <ChangeOnuTypeModal
-        open={modal?.type === 'changeOnuType'}
+        open={m('changeOnuType')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <ExtIdModal
+        open={m('extId')}
+        ontId={id}
+        current={o.external_id}
+        onClose={() => setModal(null)}
+      />
+
+      <SpeedProfileModal
+        open={m('speedProfile')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <EthernetPortModal
+        open={m('ethPort')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <WifiPortModal
+        open={m('wifiPort')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <WebUserPassModal
+        open={m('webPass')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <ReplaceBySNModal
+        open={m('replaceBySN')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <UpdateModeModal
+        open={m('updateMode')}
+        ontId={id}
+        current={o}
+        onClose={() => setModal(null)}
+      />
+
+      <VLANModal
+        open={m('vlan')}
+        ontId={id}
+        current={o}
+        onClose={() => setModal(null)}
+      />
+
+      <UpdateLocationModal
+        open={m('updateLocation')}
+        ontId={id}
+        current={o}
+        onClose={() => setModal(null)}
+      />
+
+      <MgmtIPModal
+        open={m('mgmtIP')}
+        ontId={id}
+        current={o}
+        onClose={() => setModal(null)}
+      />
+
+      <ReallocateIdModal
+        open={m('reallocateId')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <GPONChannelModal
+        open={m('gponChannel')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <VoIPModal
+        open={m('VoIP service')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <IPTVModal
+        open={m('Update IPTV')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <TR069ProfileModal
+        open={m('TR069 Profile')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <FirmwareUpgradeModal
+        open={m('firmwareUpgrade')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <MoveOnuModal
+        open={m('Move ONU')}
         ontId={id}
         onClose={() => setModal(null)}
       />
