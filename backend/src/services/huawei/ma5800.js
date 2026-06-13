@@ -243,6 +243,46 @@ class MA5800 {
   }
 
   /**
+   * Parsea la salida de `display ont info <port> <id>` (bloque detallado, "Clave : valor"
+   * por línea, multipágina). Cada campo es best-effort: devuelve undefined si no aparece.
+   * VLAN/Description no se extraen acá: VLAN no aparece como número simple (vive en
+   * service-port) y Description ya la trae el scan por SNMP (y viene multilínea).
+   */
+  _parseOntDetailInfo(raw) {
+    const grab = (label) => {
+      const re = new RegExp(`^\\s*${label}[^:\\n]*:\\s*(.+?)\\s*$`, 'im');
+      const m = raw.match(re);
+      return m ? m[1].trim() : undefined;
+    };
+    const num = (v) => (v != null && /-?\d+/.test(v) ? parseInt(v.match(/-?\d+/)[0], 10) : undefined);
+    const clean = (v) => (v && !/^(-|none|na)$/i.test(v) ? v : undefined);
+
+    return {
+      distance: num(grab('ONT distance')),
+      line_profile: clean(grab('Line profile name')),
+      srv_profile: clean(grab('Service profile name')),
+      last_down_cause: clean(grab('Last down cause')),
+      configuration_method: clean(grab('Management mode')), // OMCI / TR069
+      config_state: clean(grab('Config state')),
+      match_state: clean(grab('Match state')),
+    };
+  }
+
+  /** Parsea `display ont version <port> <id>`: Equipment-ID, Main Software Version, ONT Version. */
+  _parseOntVersion(raw) {
+    const grab = (label) => {
+      const re = new RegExp(`^\\s*${label}[^:\\n]*:\\s*(.+?)\\s*$`, 'im');
+      const m = raw.match(re);
+      return m ? m[1].trim() : undefined;
+    };
+    return {
+      model: grab('Equipment-ID'),
+      firmware: grab('Main Software Version'),
+      sw_version: grab('ONT Version'),
+    };
+  }
+
+  /**
    * Fetch optical info for ONTs. Requires the `interface gpon 0/<slot>` context;
    * the command is `display ont optical-info <port> all` (port goes in the command,
    * not in each row). Receives the list of {slot, port} pairs that actually have ONTs
