@@ -1,5 +1,6 @@
 # Pixel Studios OLT
 
+> 🤝 **OBLIGATORIO:** trabajan 2 IAs en paralelo (Claude Code + OpenCode). Leé y respetá **`COLLAB.md`** antes de tocar el repo (git, propiedad de archivos, entorno/PM2/OLT). No es opcional.
 > **Skills y subagentes globales:** `C:\Users\Santi\.claude\skills\` — ver `~/.claude/CLAUDE.md`
 > **Skill activa en este proyecto:** `ui-ux-pro-max` (React 18 + Tailwind — NO activar para backend Node.js)
 
