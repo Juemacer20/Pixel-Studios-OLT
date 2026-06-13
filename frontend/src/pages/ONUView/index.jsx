@@ -1,58 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  IconArrowLeft, IconReload, IconRefresh, IconRotate, IconTrash, IconRouter,
-  IconActivity, IconSettings, IconBolt, IconNetwork, IconDeviceLandlinePhone,
-  IconAdjustments, IconExternalLink, IconInfoCircle, IconLoader2, IconArrowBackUp,
-  IconDots, IconPlus, IconEye, IconWrench, IconPower, IconSignal5g,
-  IconX, IconPencil, IconGripVertical, IconChevronDown, IconChevronRight,
-} from '@tabler/icons-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { IconReload, IconTrash, IconExternalLink } from '@tabler/icons-react';
 import { ontAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-/* ─── Helpers ──────────────────────────────────────────────────────────────── */
 function rxColor(rx) {
   if (rx == null) return 'inherit';
   return rx >= -20 ? '#5cb85c' : rx >= -24 ? '#5bc0de' : rx >= -27 ? '#e08a16' : '#d9534f';
 }
 
-function rxQuality(rx) {
-  if (rx == null) return '—';
-  if (rx >= -20) return 'Óptima';
-  if (rx >= -24) return 'Normal';
-  if (rx >= -27) return 'Débil';
-  return 'Crítica';
-}
-
-function fmt(s) { return s ?? '<i>None</i>'; }
 function v(s) { return s ?? '—'; }
-
-/* ─── Props ─────────────────────────────────────────────────────────────────── */
-const ACTION_GROUPS = [
-  { title: 'Configuration', Icon: IconSettings, color: '#337ab7', actions: [
-    'Change ONU type', 'Update ONU external ID', 'Configure speed profiles',
-    'Configure ethernet port', 'Configure WiFi port', 'Change web user pass',
-    'Update ONU mode', 'Update attached VLANs', 'Update location details',
-  ]},
-  { title: 'Power & State', Icon: IconBolt, color: '#e08a16', actions: [
-    'Reboot', 'Enable ONU', 'Disable ONU', 'Start ONU', 'Stop ONU',
-    'Restore to factory defaults', 'Firmware Upgrade - Reset to defaults',
-  ]},
-  { title: 'Network', Icon: IconNetwork, color: '#5bc0de', actions: [
-    'Update Management and VoIP IP', 'TR069 Profile', 'Mgmt IP',
-    'Update GPON channel', 'Update EPON channel', 'Change allocated ONU ID',
-    'Move ONU', 'Replace ONU by SN',
-  ]},
-  { title: 'Services', Icon: IconDeviceLandlinePhone, color: '#5cb85c', actions: [
-    'VoIP service', 'Enable VoIP', 'Disable VoIP', 'Update IPTV',
-  ]},
-  { title: 'Maintenance', Icon: IconAdjustments, color: '#a98cff', actions: [
-    'Recreate OLT config for this ONU', 'Delete', 'History',
-  ]},
-];
-
-/* ─── Modals ────────────────────────────────────────────────────────────────── */
 
 function ChangeOnuTypeModal({ open, ontId, onClose }) {
   const [typeId, setTypeId] = useState('');
@@ -94,7 +52,7 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
   );
 }
 
-function GenericModal({ open, title, children, onClose, onSave, saveLabel = 'Save', busy, danger }) {
+function GenericModal({ open, title, children, onClose, onSave, saveLabel, busy, danger }) {
   if (!open) return null;
   return (
     <>
@@ -106,16 +64,16 @@ function GenericModal({ open, title, children, onClose, onSave, saveLabel = 'Sav
               <button className="close" onClick={onClose}>&times;</button>
               <h3>{title}</h3>
             </div>
-            <div className="modal-body">
-              {children}
-            </div>
+            <div className="modal-body">{children}</div>
             <div className="modal-footer">
               <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
-              <a href="#"
-                 className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
-                 onClick={busy ? undefined : onSave}>
-                {busy ? 'Working…' : saveLabel}
-              </a>
+              {onSave && (
+                <a href="#"
+                  className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+                  onClick={busy ? undefined : onSave}>
+                  {busy ? 'Working…' : (saveLabel || 'Save')}
+                </a>
+              )}
             </div>
           </div>
         </div>
@@ -132,7 +90,6 @@ function ConfirmModal({ open, title, message, onClose, onConfirm, busy, danger }
   );
 }
 
-/* ─── Main Page ─────────────────────────────────────────────────────────────── */
 export default function ONUView() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -144,12 +101,10 @@ export default function ONUView() {
     retry: 1,
   });
 
-  /* ── Modal state ── */
-  const [modal, setModal] = useState(null); // { name, extra? }
+  const [modal, setModal] = useState(null);
   const [busy, setBusy] = useState(false);
   const [readResult, setReadResult] = useState(null);
 
-  /* ── Action catalog ── */
   const runAction = (name) => {
     const actions = {
       'Reboot': { confirm: true, msg: 'Reboot this ONU?', run: () => ontAPI.reboot(id) },
@@ -157,21 +112,13 @@ export default function ONUView() {
       'Disable ONU': { confirm: true, danger: true, msg: 'Disable this ONU? It will lose service.', run: () => ontAPI.disable(id) },
       'Start ONU': { confirm: true, msg: 'Start (activate) this ONU?', run: () => ontAPI.start(id) },
       'Stop ONU': { confirm: true, danger: true, msg: 'Stop (deactivate) this ONU?', run: () => ontAPI.stop(id) },
-      'Recreate OLT config for this ONU': { confirm: true, msg: 'Recreate (resync) the OLT config for this ONU?', run: () => ontAPI.resync(id) },
-      'Restore to factory defaults': { confirm: true, danger: true, msg: 'Restore to factory defaults?', run: () => ontAPI.restoreDefaults(id) },
+      'Resync config': { confirm: true, msg: 'Recreate (resync) the OLT config for this ONU?', run: () => ontAPI.resync(id) },
+      'Restore defaults': { confirm: true, danger: true, msg: 'Restore to factory defaults?', run: () => ontAPI.restoreDefaults(id) },
       'Delete': { confirm: true, danger: true, msg: 'Delete this ONU? Cannot be undone.', run: () => ontAPI.delete(id).then(() => { qc.invalidateQueries({ queryKey: ['onts'] }); navigate('/onts'); }) },
-      'Disable VoIP': { confirm: true, danger: true, msg: 'Disable VoIP?', run: () => ontAPI.disableVoip(id) },
-      'Change ONU type': 'changeOnuType',
-      'Update ONU external ID': 'extId',
-      'Configure speed profiles': 'speedProfiles',
-      'Configure ethernet port': 'ethPort',
-      'Configure WiFi port': 'wifiPort',
-      'Change web user pass': 'webPass',
     };
     const a = actions[name];
     if (!a) { toast(`${name} — próximamente`, { icon: '⚙️' }); return; }
     if (a.confirm) setModal({ type: 'confirm', name, ...a });
-    else if (typeof a === 'string') setModal({ type: a, name });
   };
 
   const execConfirm = async (cfg) => {
@@ -187,16 +134,12 @@ export default function ONUView() {
 
   const o = ont || {};
   const name = o.client?.name || o.name || `ONU ${id}`;
-  const labels = { board: o.board, port: o.port, onuId: o.onu_id };
   const isOnline = o.status === 'online';
 
   return (
     <div className="container-fluid onu-wrapper">
-
       <h2>View ONU</h2>
 
-      {/* ── Left panel ── */}
-      <div className="row">
       <div className="col-xs-12 col-sm-6">
         <dl className="dl-horizontal">
 
@@ -239,7 +182,7 @@ export default function ONUView() {
           <dt>ONU</dt>
           <dd>
             <a href="#changeAllocatedOnu" className="change-allocated-onu"
-              onClick={() => setModal({ type: 'confirm', name: 'Change allocated ONU ID', confirm: true, msg: 'Change allocated ONU ID?', run: () => ontAPI.reallocateId(id, { newOnuId: 1 }) })}>
+              onClick={() => toast('Change allocated ONU ID — próximamente', { icon: '⚙️' })}>
               {o.channel || 'gpon'}-onu_{o.board || '?'}/{o.port || '?'}:{o.onu_id || '?'}
             </a>
           </dd>
@@ -247,7 +190,7 @@ export default function ONUView() {
           <dt>GPON channel</dt>
           <dd>
             <a href="#updateGponType" className="update-gpon-type"
-              onClick={() => setModal({ type: 'confirm', name: 'Update GPON channel', confirm: true, msg: 'Update GPON channel?', run: () => ontAPI.gponChannel(id, { lineProfileId: 1 }) })}>
+              onClick={() => toast('Update GPON channel — próximamente', { icon: '⚙️' })}>
               GPON
             </a>
           </dd>
@@ -255,7 +198,7 @@ export default function ONUView() {
           <dt>SN</dt>
           <dd>
             <a href="#updateSN" className="update-sn"
-              onClick={() => setModal({ type: 'confirm', name: 'Replace ONU by SN', confirm: true, msg: 'Replace ONU by SN?', run: () => ontAPI.replaceBySN(id, { newSn: '' }) })}>
+              onClick={() => toast('Replace ONU by SN — próximamente', { icon: '⚙️' })}>
               {v(o.serial_number || o.sn || o.mac)}
             </a>
           </dd>
@@ -281,7 +224,7 @@ export default function ONUView() {
           </dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => setModal({ type: 'confirm', name: 'Update location details', confirm: true, msg: 'Update location?', run: () => ontAPI.updateLocationDetails(id, {}) })}>
+              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
               {v(o.zone?.name || o.zone)}
             </a>
           </dd>
@@ -289,7 +232,7 @@ export default function ONUView() {
           <dt>ODB (Splitter)</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => setModal({ type: 'confirm', name: 'Update location details', confirm: true, msg: 'Update location?', run: () => ontAPI.updateLocationDetails(id, {}) })}>
+              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
               {v(o.odb?.name || o.odb)}
             </a>
           </dd>
@@ -297,7 +240,7 @@ export default function ONUView() {
           <dt>Name</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => setModal({ type: 'confirm', name: 'Update location details', confirm: true, msg: 'Update location?', run: () => ontAPI.updateLocationDetails(id, {}) })}>
+              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
               {name}
             </a>
           </dd>
@@ -305,7 +248,7 @@ export default function ONUView() {
           <dt>Address or comment</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => setModal({ type: 'confirm', name: 'Update location details', confirm: true, msg: 'Update location?', run: () => ontAPI.updateLocationDetails(id, {}) })}>
+              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
               {v(o.client?.address || o.address)}
             </a>
           </dd>
@@ -313,7 +256,7 @@ export default function ONUView() {
           <dt>Contact</dt>
           <dd>
             <a href="#updateLocationDetails" className="update-location-details"
-              onClick={() => setModal({ type: 'confirm', name: 'Update location details', confirm: true, msg: 'Update location?', run: () => ontAPI.updateLocationDetails(id, {}) })}>
+              onClick={() => toast('Update location — próximamente', { icon: '⚙️' })}>
               {v(o.client?.phone || o.contact)}
             </a>
           </dd>
@@ -327,24 +270,14 @@ export default function ONUView() {
           <dt>ONU external ID</dt>
           <dd>
             <a href="#updateClientExternalId" className="update-client-external-id"
-              onClick={() => setModal({ type: 'extId' })}>
+              onClick={() => toast('Update external ID — próximamente', { icon: '⚙️' })}>
               {v(o.external_id)}
             </a>
           </dd>
 
-          <dt>Firmware</dt>
-          <dd><span className="text-muted">{v(o.firmware || o.sw_version)}</span></dd>
-
-          <dt>Line profile</dt>
-          <dd><span className="text-muted">{v(o.line_profile)}</span></dd>
-
-          <dt>Service profile</dt>
-          <dd><span className="text-muted">{v(o.srv_profile)}</span></dd>
-
         </dl>
       </div>
 
-      {/* ── Right panel ── */}
       <div className="col-xs-12 col-sm-6">
         <div className="equipment">
           <img className="img-responsive img-rounded"
@@ -364,9 +297,6 @@ export default function ONUView() {
             {o.uptime ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>({o.uptime})</span> : null}
           </dd>
 
-          <dt>Last down cause</dt>
-          <dd><span className="text-muted">{v(o.last_down_cause)}</span></dd>
-
           <dt>ONU/OLT Rx signal</dt>
           <dd id="signal_wrapper">
             <span style={{ color: rxColor(o.rx_power) }}>{o.rx_power != null ? `${o.rx_power} dBm` : '—'}</span>
@@ -377,7 +307,7 @@ export default function ONUView() {
           <dt>Attached VLANs</dt>
           <dd>
             <a href="#updateVlans" className="update-vlans"
-              onClick={() => setModal({ type: 'confirm', name: 'Update attached VLANs', confirm: true, msg: 'Update attached VLANs?', run: () => ontAPI.updateVLANs(id, { vlanId: 10, ethPort: 1 }) })}>
+              onClick={() => toast('Update VLANs — próximamente', { icon: '⚙️' })}>
               {v(o.vlan_id || o.vlan)}
             </a>
           </dd>
@@ -385,7 +315,7 @@ export default function ONUView() {
           <dt>ONU mode</dt>
           <dd>
             <a href="#updateMode" className="update-mode"
-              onClick={() => setModal({ type: 'confirm', name: 'Update ONU mode', confirm: true, msg: 'Update ONU mode?', run: () => ontAPI.updateMode(id, { ethPort: 1 }) })}>
+              onClick={() => toast('Update ONU mode — próximamente', { icon: '⚙️' })}>
               {v(o.mode || 'Routing')} - WAN vlan: {v(o.vlan_id || o.vlan)}
             </a>
           </dd>
@@ -393,7 +323,7 @@ export default function ONUView() {
           <dt className="mgmtIPModeItem">TR069</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
-              onClick={() => setModal({ type: 'confirm', name: 'Update Management and VoIP IP', confirm: true, msg: 'Update management IP?', run: () => ontAPI.updateMgmtIP(id, {}) })}>
+              onClick={() => toast('Update TR069 — próximamente', { icon: '⚙️' })}>
               {o.tr069_enabled ? 'SmartOLT' : 'Disabled'}
             </a>
           </dd>
@@ -401,7 +331,7 @@ export default function ONUView() {
           <dt className="mgmtIPModeItem">Mgmt IP</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
-              onClick={() => setModal({ type: 'confirm', name: 'Mgmt IP', confirm: true, msg: 'Update Mgmt IP?', run: () => ontAPI.updateMgmtIP(id, {}) })}>
+              onClick={() => toast('Update Mgmt IP — próximamente', { icon: '⚙️' })}>
               {o.mgmt_ip_mode || 'Static'} - vlan: {o.mgmt_ip_vlan_id || '—'}
             </a>
             {o.mgmt_ip ? <span className="text-muted"> — {o.mgmt_ip}</span> : null}
@@ -410,7 +340,7 @@ export default function ONUView() {
           <dt className="routerModeItem">WAN setup mode</dt>
           <dd className="routerModeItem">
             <a href="#updateMode" className="update-mode onuRouterMode"
-              onClick={() => setModal({ type: 'confirm', name: 'Update ONU mode', confirm: true, msg: 'Update ONU mode?', run: () => ontAPI.updateMode(id, {}) })}>
+              onClick={() => toast('Update ONU mode — próximamente', { icon: '⚙️' })}>
               {o.wan_mode || 'PPPoE'} ({o.config_method || 'TR069'})
             </a>
           </dd>
@@ -427,9 +357,7 @@ export default function ONUView() {
         </dl>
       </div>
 
-      {/* ── Status buttons & graphs ── */}
       <dl className="dl-horizontal col-xs-12 col-sm-12">
-
         <dt>Status</dt>
         <dd>
           <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
@@ -458,13 +386,9 @@ export default function ONUView() {
             LIVE!
           </button>
 
-          <div id="smartolt_live_graph" className="hidden" />
           <pre id="status" className="hidden status_container text-wrap" />
           <div id="status_tr69" className="status_container hidden" />
         </dd>
-
-        <dt style={{ marginBottom: 5 }} />
-        <dd />
 
         <dt style={{ marginBottom: 5 }} />
         <dd />
@@ -491,10 +415,6 @@ export default function ONUView() {
           </div>
         </dd>
 
-        <dt style={{ marginBottom: 5 }} />
-        <dd />
-
-        {/* ── Speed profiles ── */}
         <dt>Speed profiles</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
@@ -519,8 +439,9 @@ export default function ONUView() {
                   <td>{sp.download || sp.download_speed}</td>
                   <td>{sp.upload || sp.upload_speed}</td>
                   <td>
-                    <a href="#updateSpeedProfiles" className="btn btn-link update-speed-profiles" onClick={() => toast('Configure speed profiles — próximamente', { icon: '⚙️' })}>
-                      <IconPlus size={12} /> Configure
+                    <a href="#updateSpeedProfiles" className="btn btn-link update-speed-profiles"
+                      onClick={() => toast('Configure speed profiles — próximamente', { icon: '⚙️' })}>
+                      <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
                 </tr>
@@ -529,7 +450,6 @@ export default function ONUView() {
           </table>
         </dd>
 
-        {/* ── Ethernet ports ── */}
         <dt>Ethernet ports</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
@@ -550,8 +470,9 @@ export default function ONUView() {
                   <td>{ep.mode || 'LAN'}</td>
                   <td>{ep.dhcp || 'No control'}</td>
                   <td>
-                    <a href="#configureNetworkPort" className="btn btn-link configure-vlan" onClick={() => toast('Configure ethernet port — próximamente', { icon: '⚙️' })}>
-                      <IconPlus size={12} /> Configure
+                    <a href="#configureNetworkPort" className="btn btn-link configure-vlan"
+                      onClick={() => toast('Configure ethernet port — próximamente', { icon: '⚙️' })}>
+                      <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
                 </tr>
@@ -560,7 +481,6 @@ export default function ONUView() {
           </table>
         </dd>
 
-        {/* ── WiFi ports ── */}
         <dt>WiFi ports</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
@@ -575,7 +495,9 @@ export default function ONUView() {
               </tr>
             </thead>
             <tbody>
-              {(o.wifi_ports || [{ port: 'wifi_0/1' }, { port: 'wifi_0/5' }]).map(wp => (
+              {(o.wifi_ports || []).length === 0 ? (
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No WiFi ports configured</td></tr>
+              ) : (o.wifi_ports || []).map(wp => (
                 <tr className="valign-center" key={wp.port}>
                   <td>{wp.port}</td>
                   <td>{wp.admin_state || 'Enabled'}</td>
@@ -583,8 +505,9 @@ export default function ONUView() {
                   <td>{wp.ssid || '—'}</td>
                   <td>{wp.dhcp || 'No control'}</td>
                   <td>
-                    <a href="#configureWifiPort" className="btn btn-link configure-wifi" onClick={() => toast('Configure WiFi port — próximamente', { icon: '⚙️' })}>
-                      <IconPlus size={12} /> Configure
+                    <a href="#configureWifiPort" className="btn btn-link configure-wifi"
+                      onClick={() => toast('Configure WiFi port — próximamente', { icon: '⚙️' })}>
+                      <i className="glyphicon glyphicon-plus-sign" /> Configure
                     </a>
                   </td>
                 </tr>
@@ -593,67 +516,36 @@ export default function ONUView() {
           </table>
         </dd>
 
-      </dl>
-      </div>
-
-      {/* ── Quick actions footer ── */}
-      <div style={{ marginTop: 20, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-        <div className="row">
-          <div className="col-xs-12">
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 20 }}>
-              <button className="btn btn-success" onClick={() => runAction('Get status')}>Get status</button>
-              <button className="btn btn-success" onClick={() => runAction('Show running config')}>Show running-config</button>
-              <button className="btn btn-success" onClick={() => runAction('SW info')}>SW info</button>
-              <button className="btn btn-success" onClick={() => toast('TR069 Stat — próximamente', { icon: '⚙️' })}>TR069 Stat</button>
-              <button className="btn btn-warning" onClick={() => runAction('Reboot')}>Reboot</button>
-              <button className="btn btn-warning" onClick={() => runAction('Recreate OLT config for this ONU')}
-                style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}>Resync config</button>
-              <button className="btn btn-warning" onClick={() => runAction('Restore to factory defaults')}
-                style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}>Restore defaults</button>
-              <button className="btn btn-danger" onClick={() => runAction('Disable ONU')}>Disable ONU</button>
-              <button className="btn btn-danger" onClick={() => runAction('Delete')}>Delete</button>
-              <button className="btn btn-success" style={{ backgroundColor: '#1fb325', borderColor: '#1fb325' }}
-                onClick={() => toast('LIVE! — próximamente', { icon: '⚙️' })}>LIVE!</button>
-            </div>
-
-            {/* ── 33 Actions grouped ── */}
-            <div className="panel panel-default">
-              <div className="panel-heading">
-                <strong>ONU actions</strong>
-                <a href="#saveConfigModal" className="pull-right" style={{ fontSize: 12, cursor: 'pointer' }}
-                  onClick={() => toast('Save configuration — próximamente', { icon: '⚙️' })}>
-                  Save configuration
-                </a>
-              </div>
-              <div className="panel-body">
-                {ACTION_GROUPS.map(g => (
-                  <div key={g.title} style={{ marginBottom: 16 }}>
-                    <div style={{
-                      display: 'flex', alignItems: 'center', gap: 6,
-                      borderBottom: '1px solid var(--border)', paddingBottom: 6, marginBottom: 8,
-                    }}>
-                      <g.Icon size={16} style={{ color: g.color }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>{g.title}</span>
-                    </div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {g.actions.map(a => (
-                        <button key={a}
-                          className={a === 'Delete' ? 'btn btn-danger' : 'btn btn-default'}
-                          style={{ fontSize: 12 }}
-                          onClick={() => runAction(a)}>
-                          {a}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <br />
+        <dt />
+        <dd>
+          <div className="form-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <a href="#rebootModal" className="btn btn-warning margin-bottom"
+              onClick={() => runAction('Reboot')}>
+              <IconReload size={14} style={{ marginRight: 4 }} /> Reboot
+            </a>
+            <a href="#rebuildModal" className="btn btn-warning margin-bottom"
+              style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
+              onClick={() => runAction('Resync config')}>
+              <IconReload size={14} style={{ marginRight: 4 }} /> Resync config
+            </a>
+            <a href="#restoreFDModal" className="btn btn-warning margin-bottom"
+              style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
+              onClick={() => runAction('Restore defaults')}>
+              <IconReload size={14} style={{ marginRight: 4 }} /> Restore defaults
+            </a>
+            <a href="#disableModal" className="btn btn-warning margin-bottom"
+              onClick={() => runAction('Disable ONU')}>
+              Disable ONU
+            </a>
+            <a href="#deleteModal" className="btn btn-danger margin-bottom"
+              onClick={() => runAction('Delete')}>
+              <IconTrash size={14} style={{ marginRight: 4 }} /> Delete
+            </a>
           </div>
-        </div>
-      </div>
+        </dd>
+      </dl>
 
-      {/* ── Modals ── */}
       <ChangeOnuTypeModal
         open={modal?.type === 'changeOnuType'}
         ontId={id}
@@ -672,7 +564,6 @@ export default function ONUView() {
         />
       )}
 
-      {/* Read result modal */}
       {readResult && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 500, display: 'flex', alignItems: 'center',
