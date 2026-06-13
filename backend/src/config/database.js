@@ -5,11 +5,15 @@ const prisma = new PrismaClient({
   errorFormat: 'pretty',
 });
 
-prisma.$connect()
-  .then(() => console.log('PostgreSQL connected via Prisma'))
-  .catch((err) => {
-    console.error('Prisma connection error:', err);
-    process.exit(1);
-  });
+// En tests no conectamos eager (Prisma conecta lazy en la 1ª query); evita
+// handles abiertos y "log after tests done" en jest.
+if (process.env.NODE_ENV !== 'test') {
+  prisma.$connect()
+    .then(() => console.log('PostgreSQL connected via Prisma'))
+    .catch((err) => {
+      console.error('Prisma connection error:', err);
+      process.exit(1);
+    });
+}
 
 module.exports = prisma;
