@@ -158,6 +158,9 @@ async function scanOLTOnts(id) {
           zone: ont.zone ?? undefined,
           odb: ont.odb ?? undefined,
           last_seen: new Date(),
+          board: ont.slot ?? undefined,
+          port: ont.pon_port ?? undefined,
+          onu_id: ont.onu_id ?? undefined,
         },
       });
       saved.push(updated);
@@ -179,6 +182,9 @@ async function scanOLTOnts(id) {
             odb: ont.odb ?? null,
             last_seen: new Date(),
             protocol: 'GPON',
+            board: ont.slot ?? null,
+            port: ont.pon_port ?? null,
+            onu_id: ont.onu_id ?? null,
           },
         });
         saved.push(created);

@@ -39,6 +39,15 @@ router.get('/:id/ports', ctrl.getPorts);
 router.get('/:id/ports/:port/onts', ctrl.getPortONTs);
 router.post('/:id/scan', checkRole('noc'), ctrl.scanONTs);
 
+// Fuerza el enriquecimiento (detalle por ONT: modelo/firmware/perfil/...) de una OLT.
+router.post('/:id/enrich', checkRole('noc'), async (req, res, next) => {
+  try {
+    const { enqueueOlt } = require('../jobs/enrichOnts');
+    await enqueueOlt(req.params.id);
+    res.json({ data: { queued: true, oltId: req.params.id } });
+  } catch (e) { next(e); }
+});
+
 // Save configuration (global). Las acciones ya hacen `save` por-OLT; este endpoint
 // registra el evento y queda como gancho para un guardado masivo futuro.
 router.post('/save-config', checkRole('noc'), async (req, res, next) => {

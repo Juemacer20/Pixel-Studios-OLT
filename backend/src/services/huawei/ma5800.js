@@ -243,6 +243,81 @@ class MA5800 {
   }
 
   /**
+   * Parsea la salida de `display ont info <port> <id>` (bloque detallado, "Clave : valor"
+   * por línea, multipágina). Cada campo es best-effort: devuelve undefined si no aparece.
+   * VLAN/Description no se extraen acá: VLAN no aparece como número simple (vive en
+   * service-port) y Description ya la trae el scan por SNMP (y viene multilínea).
+   */
+  _parseOntDetailInfo(raw) {
+    const grab = (label) => {
+      const re = new RegExp(`^\\s*${label}[^:\\n]*:\\s*(.+?)\\s*$`, 'im');
+      const m = raw.match(re);
+      return m ? m[1].trim() : undefined;
+    };
+    const num = (v) => (v != null && /-?\d+/.test(v) ? parseInt(v.match(/-?\d+/)[0], 10) : undefined);
+    const clean = (v) => (v && !/^(-|none|na)$/i.test(v) ? v : undefined);
+
+    return {
+      distance: num(grab('ONT distance')),
+      line_profile: clean(grab('Line profile name')),
+      srv_profile: clean(grab('Service profile name')),
+      last_down_cause: clean(grab('Last down cause')),
+      configuration_method: clean(grab('Management mode')), // OMCI / TR069
+      config_state: clean(grab('Config state')),
+      match_state: clean(grab('Match state')),
+    };
+  }
+
+  /** Parsea `display ont version <port> <id>`: Equipment-ID, Main Software Version, ONT Version. */
+  _parseOntVersion(raw) {
+    const grab = (label) => {
+      const re = new RegExp(`^\\s*${label}[^:\\n]*:\\s*(.+?)\\s*$`, 'im');
+      const m = raw.match(re);
+      return m ? m[1].trim() : undefined;
+    };
+    return {
+      model: grab('Equipment-ID'),
+      firmware: grab('Main Software Version'),
+      sw_version: grab('ONT Version'),
+    };
+  }
+
+  /**
+   * Trae el detalle de varias ONTs en UNA sesión telnet. `locations` es
+   * [{ board, port, onu_id, serial_number }]. Devuelve la misma lista con los
+   * campos parseados mergeados: { ...location, model, firmware, sw_version,
+   * distance, line_profile, srv_profile, last_down_cause, configuration_method,
+   * config_state, match_state }. Read-only (solo comandos `display`).
+   */
+  async getOntDetailInfoBatch(locations) {
+    if (!Array.isArray(locations) || !locations.length) return [];
+    return this._session(async (collect) => {
+      const results = [];
+      let currentBoard = null;
+      // Ordenar por board para minimizar cambios de contexto interface
+      const sorted = [...locations].sort((a, b) => (a.board - b.board) || (a.port - b.port));
+      for (const loc of sorted) {
+        if (loc.board == null || loc.port == null || loc.onu_id == null) continue;
+        if (loc.board !== currentBoard) {
+          if (currentBoard !== null) await collect('quit');
+          await collect(`interface gpon 0/${loc.board}`);
+          currentBoard = loc.board;
+        }
+        const detailRaw = await collect(`display ont info ${loc.port} ${loc.onu_id}`);
+        const versionRaw = await collect(`display ont version ${loc.port} ${loc.onu_id}`);
+        results.push({
+          ...loc,
+          ...this._parseOntDetailInfo(detailRaw),
+          ...this._parseOntVersion(versionRaw),
+        });
+      }
+      if (currentBoard !== null) await collect('quit');
+      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs`);
+      return results;
+    });
+  }
+
+  /**
    * Fetch optical info for ONTs. Requires the `interface gpon 0/<slot>` context;
    * the command is `display ont optical-info <port> all` (port goes in the command,
    * not in each row). Receives the list of {slot, port} pairs that actually have ONTs
