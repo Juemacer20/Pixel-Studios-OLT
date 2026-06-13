@@ -31,9 +31,12 @@ async function selectBatch(batchSize, oltId = null) {
     where: {
       olt_id: { in: oltIds },
       board: { not: null }, // necesitamos ubicación física (la deja el scan)
+      // Selección por enriched_at, NO por model: una ONT offline no devuelve model y
+      // quedaría re-seleccionada en bucle si filtráramos por `model: null`. Con
+      // enriched_at alcanza: ya intentada → se reintenta recién al volverse "stale".
       ...(oltId
         ? {}
-        : { OR: [{ model: null }, { enriched_at: null }, { enriched_at: { lt: staleBefore } }] }),
+        : { OR: [{ enriched_at: null }, { enriched_at: { lt: staleBefore } }] }),
     },
     select: {
       id: true, olt_id: true, serial_number: true,
