@@ -777,6 +777,22 @@ export default function ONUView() {
           <button className="btn btn-primary btn-sm" onClick={() => runAction('Save Config')}>
             Save Config
           </button>
+          <button className="btn btn-info btn-sm" onClick={async () => {
+            setRefreshing(true);
+            try { const r = await ontAPI.runningConfig(id); setReadResult({ title: 'Running config', data: r.data?.data || r.data }); }
+            catch { setReadResult({ title: 'Running config', data: { error: 'Failed to fetch running config' } }); }
+            setRefreshing(false);
+          }} disabled={refreshing}>
+            Running config
+          </button>
+          <button className="btn btn-info btn-sm" onClick={async () => {
+            setRefreshing(true);
+            try { const r = await ontAPI.swInfo(id); setReadResult({ title: 'SW Info', data: r.data?.data || r.data }); }
+            catch { setReadResult({ title: 'SW Info', data: { error: 'Failed to fetch SW info' } }); }
+            setRefreshing(false);
+          }} disabled={refreshing}>
+            SW info
+          </button>
           <button className="btn btn-success btn-sm" onClick={() => runAction('Enable ONU')}>
             Enable
           </button>
