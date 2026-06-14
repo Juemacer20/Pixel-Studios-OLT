@@ -83,9 +83,9 @@ async function enrichBatch(batch) {
                          // FASE 2 — GRUPO 🔴 WAN (solo si ENRICH_WAN=true, vía display ont wan-info):
                          'ip_address', 'mac', 'wan_mode', 'pppoe_user', 'wan_ip_source',
                          'wan_encap', 'wan_mask', 'wan_gateway', 'wan_vlan', 'wan_info',
-                         // FASE 2 — GRUPO 🔴 service-port (solo si ENRICH_SP=true): VLAN + velocidades:
+                         // FASE 2 — GRUPO 🔴 service-port + eth-port (solo si ENRICH_SP=true):
                          'vlan', 'gem', 'service_port_id', 'download_profile', 'upload_profile',
-                         'download_mbps', 'upload_mbps', 'service_ports']) {
+                         'download_mbps', 'upload_mbps', 'service_ports', 'eth_ports']) {
           if (d[k] != null) data[k] = d[k];
         }
       }

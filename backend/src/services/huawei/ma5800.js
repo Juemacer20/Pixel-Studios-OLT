@@ -462,6 +462,32 @@ class MA5800 {
   }
 
   /**
+   * Parsea `display ont port state <port> <id> eth-port all` (FASE 2 🔴). Cada fila:
+   * ONT-ID, port-ID, Port-type (GE/FE), Speed(Mbps o '-'), Duplex (full/half/'-'),
+   * LinkState (up/down), RingStatus. Devuelve `eth_ports` array. Requiere contexto
+   * `interface gpon`. Read-only.
+   */
+  _parseEthPortState(raw) {
+    // Fila: "   1         3         GE 100           full     up         noloop"
+    const rowRe = /^\s*\d+\s+(\d+)\s+(GE|FE)\s+(\S+)\s+(\S+)\s+(up|down)\s+(\S+)\s*$/gim;
+    const dash = (v) => (v && v !== '-' ? v : null);
+    const ports = [];
+    let m;
+    while ((m = rowRe.exec(raw)) !== null) {
+      const speed = dash(m[3]);
+      ports.push({
+        port: parseInt(m[1], 10),
+        type: m[2],
+        speed: speed != null ? parseInt(speed, 10) : null,
+        duplex: dash(m[4]),
+        link: m[5],
+        ring: dash(m[6]),
+      });
+    }
+    return ports.length ? { eth_ports: ports } : {};
+  }
+
+  /**
    * Trae el detalle de varias ONTs en UNA sesión telnet. `locations` es
    * [{ board, port, onu_id, serial_number }]. Devuelve la misma lista con los
    * campos parseados mergeados: { ...location, model, firmware, sw_version,
@@ -502,11 +528,16 @@ class MA5800 {
         const wan = opts.wan
           ? this._parseWanInfo(await collect(`display ont wan-info ${loc.port} ${loc.onu_id}`))
           : {};
+        // eth-port state también requiere el contexto interface gpon → va en PASO 1.
+        const eth = opts.serviceport
+          ? this._parseEthPortState(await collect(`display ont port state ${loc.port} ${loc.onu_id} eth-port all`))
+          : {};
         merged.set(key(loc), {
           ...loc,
           ...this._parseOntDetailInfo(detailRaw),
           ...this._parseOntVersion(versionRaw),
           ...wan,
+          ...eth,
         });
       }
       if (currentBoard !== null) await collect('quit'); // volver a la vista config

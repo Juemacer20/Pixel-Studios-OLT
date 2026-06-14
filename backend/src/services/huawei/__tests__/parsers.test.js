@@ -112,6 +112,22 @@ describe('_parseTrafficTable', () => {
   });
 });
 
+// FASE 2 — GRUPO 🔴: estado de puertos ethernet de la ONU.
+describe('_parseEthPortState', () => {
+  const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
+
+  test('extrae 4 puertos eth; el 3 up GE/100/full, resto down (fixture 15_1)', () => {
+    const r = adapter._parseEthPortState(fixture('eth-port-15_1.txt'));
+    expect(r.eth_ports).toHaveLength(4);
+    expect(r.eth_ports[2]).toEqual({ port: 3, type: 'GE', speed: 100, duplex: 'full', link: 'up', ring: 'noloop' });
+    expect(r.eth_ports[0]).toEqual({ port: 1, type: 'GE', speed: null, duplex: null, link: 'down', ring: 'noloop' });
+  });
+
+  test('sin filas → objeto vacío', () => {
+    expect(adapter._parseEthPortState('  no ports here\n')).toEqual({});
+  });
+});
+
 describe('_parseOntVersion', () => {
   const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
 

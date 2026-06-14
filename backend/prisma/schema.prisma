@@ -184,6 +184,7 @@ model ONT {
   download_mbps        Int?
   upload_mbps          Int?
   service_ports        Json?
+  eth_ports            Json?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 

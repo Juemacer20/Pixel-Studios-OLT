@@ -57,7 +57,7 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2: GRUPO GRATIS (temp/CPU/mem/TR069/puertos) + 🔴 WAN (`display ont wan-info`, ENRICH_WAN) + 🔴 service-port (`display service-port`+`traffic table`: VLAN+velocidades subida/bajada, ENRICH_SP) | ✅ backend hecho y validado e2e en dev (falta: eth-port state, VoIP/CATV, y UI ONUView que tiene OpenCode) | 2026-06-14 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 enriquecimiento ONU BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port (VLAN+velocidades) + 🔴 eth-port. VoIP/CATV descartados (POTS en LocalBlock / sin CATV provisionada). Flags ENRICH_WAN, ENRICH_SP | ✅ backend hecho, validado e2e y desplegado a dev. **PENDIENTE → OpenCode: UI en ONUView (ver docs/UI_ONUVIEW_FASE2.md)** | 2026-06-14 |
 | OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
 
 ## 6. Regla de oro
