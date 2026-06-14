@@ -117,6 +117,8 @@ const ACTION_TO_ADAPTER = {
   replaceBySN: 'replaceBySN',
   move: 'moveONT',
   updateVLANs: 'updateVLANs',
+  updateSvlan: 'updateVLANs',
+  updateAttachedVlans: 'updateVLANs',
   updateMode: 'updateMode',
   updateMgmtIP: 'updateMgmtIP',
   ethernetPort: 'configureEthernetPort',
@@ -131,6 +133,11 @@ const ACTION_TO_ADAPTER = {
   firmwareUpgrade: 'firmwareUpgrade',
   runningConfig: 'getRunningConfig',
   swInfo: 'getSwInfo',
+  wanSetup: 'wanSetup',
+  ipv6: 'ipv6',
+  dnsServers: 'dnsServers',
+  dhcpOption82: 'dhcpOption82',
+  pppoePlus: 'pppoePlus',
 };
 
 async function executeOntAction(id, action, body, userId) {

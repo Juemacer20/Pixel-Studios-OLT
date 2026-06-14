@@ -57,6 +57,7 @@ app.use('/api/v1/auto-action-presets', require('./routes/autoActions'));
 app.use('/api/v1/settings', require('./routes/settings'));
 app.use('/api/v1/api-keys', require('./routes/apiKeys'));
 app.use('/api/v1/vsol', require('./routes/vsol.routes'));
+app.use('/api/v1/kingtype', require('./routes/kingtype.routes'));
 
 app.use(notFound);
 app.use(errorHandler);

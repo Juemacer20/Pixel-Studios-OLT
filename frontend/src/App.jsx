@@ -34,12 +34,17 @@ const Unconfigured     = React.lazy(() => import('./pages/Unconfigured'));
 const Diagnostics      = React.lazy(() => import('./pages/Diagnostics'));
 const AuthorizeONU     = React.lazy(() => import('./pages/AuthorizeONU'));
 const ConfigComparison = React.lazy(() => import('./pages/ConfigComparison'));
-const VSOLDashboard   = React.lazy(() => import('./pages/VSOL'));
-const VSOLOnuList     = React.lazy(() => import('./pages/VSOL/OnuList'));
-const VSOLOnuView     = React.lazy(() => import('./pages/VSOL/OnuView'));
-const VSOLProfiles    = React.lazy(() => import('./pages/VSOL/Profiles'));
-const VSOLAutofind    = React.lazy(() => import('./pages/VSOL/Autofind'));
-const VSOLBatch       = React.lazy(() => import('./pages/VSOL/Batch'));
+const VSOLDashboard     = React.lazy(() => import('./pages/VSOL'));
+const VSOLOnuList       = React.lazy(() => import('./pages/VSOL/OnuList'));
+const VSOLOnuView       = React.lazy(() => import('./pages/VSOL/OnuView'));
+const VSOLProfiles      = React.lazy(() => import('./pages/VSOL/Profiles'));
+const VSOLAutofind      = React.lazy(() => import('./pages/VSOL/Autofind'));
+const VSOLBatch         = React.lazy(() => import('./pages/VSOL/Batch'));
+const KingTypeDashboard = React.lazy(() => import('./pages/KingType'));
+const KingTypeAutofind  = React.lazy(() => import('./pages/KingType/Autofind'));
+const KingTypeProfiles  = React.lazy(() => import('./pages/KingType/Profiles'));
+const KingTypeOnuList   = React.lazy(() => import('./pages/KingType/OnuList'));
+const KingTypeBatch     = React.lazy(() => import('./pages/KingType/Batch'));
 
 const Fallback = () => (
   <div className="flex items-center justify-center h-full" style={{ color: 'var(--text-muted)' }}>
@@ -95,6 +100,11 @@ function AppLayout() {
               <Route path="/olts/:id/vsol/profiles"     element={<VSOLProfiles />} />
               <Route path="/olts/:id/vsol/autofind"     element={<VSOLAutofind />} />
               <Route path="/olts/:id/vsol/batch"        element={<VSOLBatch />} />
+              <Route path="/olts/:id/kingtype"           element={<KingTypeDashboard />} />
+              <Route path="/olts/:id/kingtype/pon/:ponIndex" element={<KingTypeOnuList />} />
+              <Route path="/olts/:id/kingtype/profiles" element={<KingTypeProfiles />} />
+              <Route path="/olts/:id/kingtype/autofind" element={<KingTypeAutofind />} />
+              <Route path="/olts/:id/kingtype/batch"    element={<KingTypeBatch />} />
             </Routes>
           </React.Suspense>
           </div>

@@ -116,8 +116,26 @@ router.post('/:id/tr069-profile',    checkRole('noc'), ctrl.ontAction('tr069Prof
 router.post('/:id/firmware-upgrade', checkRole('noc'), ctrl.ontAction('firmwareUpgrade'));
 router.get('/:id/running-config',    ctrl.ontAction('runningConfig'));
 router.get('/:id/sw-info',           ctrl.ontAction('swInfo'));
+router.post('/:id/wan-setup',        checkRole('noc'), ctrl.ontAction('wanSetup'));
+router.post('/:id/ipv6',             checkRole('noc'), ctrl.ontAction('ipv6'));
+router.post('/:id/dns-servers',      checkRole('noc'), ctrl.ontAction('dnsServers'));
+router.post('/:id/dhcp-option82',    checkRole('noc'), ctrl.ontAction('dhcpOption82'));
+router.post('/:id/pppoe-plus',       checkRole('noc'), ctrl.ontAction('pppoePlus'));
 // DB-only actions
 router.patch('/:id/external-id',     checkRole('noc'), ctrl.updateExternalId);
 router.post('/:id/update-location',  checkRole('noc'), ctrl.updateLocationDetails);
+
+// Audit log por ONT
+router.get('/:id/audit-log', async (req, res, next) => {
+  try {
+    const prisma = require('../config/database');
+    const items = await prisma.auditLog.findMany({
+      where: { target: req.params.id },
+      orderBy: { created_at: 'desc' },
+      take: parseInt(req.query.limit) || 50,
+    });
+    res.json({ data: items });
+  } catch (err) { next(err); }
+});
 
 module.exports = router;

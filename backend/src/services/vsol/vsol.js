@@ -256,18 +256,240 @@ class VSOL {
   }
 
   /* ─── ONU actions (compatibilidad con ontService) ──────────────────────────── */
-  enableONT(serial)        { return this._callWrapper(`onu activate ${serial}`); }
-  disableONT(serial)       { return this._callWrapper(`onu deactivate ${serial}`); }
-  startONT(serial)         { return this._callWrapper(`onu activate ${serial}`); }
-  stopONT(serial)          { return this._callWrapper(`onu deactivate ${serial}`); }
-  resyncONT(serial)        { return this._callWrapper(`onu reboot ${serial}`); }
-  restoreDefaults(serial)  { return this._callWrapper(`onu factory-reset ${serial}`); }
-  deleteONTFromOLT(serial) { return this._callWrapper(`no onu ${serial}`); }
+  // VSOL usa (serial, body, location) igual que Huawei.
+  // location = { board, port: ponIndex, onu_id }.
 
-  async _callWrapper(cmd) {
+  async _onuCmd(location, cmd) {
+    const ponIndex = location?.port || 1;
+    const onuId = location?.onu_id;
+    if (onuId == null) throw Object.assign(new Error('onu_id required in location'), { status: 400 });
+    try {
+      const tn = this._getTelnet();
+      await tn.connect(this.olt);
+      await tn.enable(this.olt);
+      await tn.run('configure terminal');
+      await tn.run(`interface gpon 0/${ponIndex}`);
+      const output = await tn.run(`onu ${onuId} ${cmd}`);
+      return { success: !/error|invalid|fail|Unknown/i.test(output), output };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  enableONT(serial, body, location)        { return this._onuCmd(location, 'activate'); }
+  disableONT(serial, body, location)       { return this._onuCmd(location, 'deactivate'); }
+  startONT(serial, body, location)         { return this._onuCmd(location, 'activate'); }
+  stopONT(serial, body, location)          { return this._onuCmd(location, 'deactivate'); }
+  resyncONT(serial, body, location)        { return this._onuCmd(location, 'reboot'); }
+  restoreDefaults(serial, body, location)  { return this._onuCmd(location, 'factory-reset'); }
+  async deleteONTFromOLT(serial, body, location) {
+    const ponIndex = location?.port || 1;
+    const onuId = location?.onu_id;
+    if (onuId == null) throw Object.assign(new Error('onu_id required in location'), { status: 400 });
+    try {
+      const tn = this._getTelnet();
+      await tn.connect(this.olt);
+      await tn.enable(this.olt);
+      await tn.run('configure terminal');
+      await tn.run(`interface gpon 0/${ponIndex}`);
+      await tn.run(`no onu ${onuId}`);
+      return { success: true };
+    } catch (e) { return { success: false, error: e.message }; }
+    finally { this.disconnect(); }
+  }
+
+  async changeOntType(serial, body, location) {
+    const cmds = [];
+    if (body.lineProfileId) cmds.push(`onu ${location.onu_id} profile line name ${body.lineProfileId}`);
+    if (body.srvProfileId) cmds.push(`onu ${location.onu_id} profile srv name ${body.srvProfileId}`);
+    if (!cmds.length) cmds.push(`onu ${location.onu_id} desc ${body.onuTypeId || ''}`);
+    return this._runCmds(location, cmds);
+  }
+
+  async configureSpeedProfile(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.svlanId) cmds.push(`onu ${onuId} svlan ${body.svlanId}`);
+    if (body.upstreamKbps) cmds.push(`onu ${onuId} speed upstream ${body.upstreamKbps}`);
+    if (body.downstreamKbps) cmds.push(`onu ${onuId} speed downstream ${body.downstreamKbps}`);
+    return this._runCmds(location, cmds);
+  }
+
+  updateVLANs(serial, body, location) {
+    const vlan = body.vlanId || body.svlanId || body.userVlan;
+    if (!vlan) return this._onuCmd(location, '');
+    return this._runCmds(location, [`onu ${location.onu_id} svlan ${vlan}`]);
+  }
+
+  updateMode(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    const mode = body.mode || body.linkType || 'Routing';
+    if (mode.toLowerCase() === 'bridging') cmds.push(`onu ${onuId} bridge`);
+    if (body.vlanId) cmds.push(`onu ${onuId} svlan ${body.vlanId}`);
+    return this._runCmds(location, cmds);
+  }
+
+  async updateMgmtIP(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.ip) {
+      cmds.push(`onu ${onuId} ipconfig static ip ${body.ip} mask ${body.mask || '255.255.255.0'}${body.gateway ? ` gateway ${body.gateway}` : ''}`);
+    } else {
+      cmds.push(`onu ${onuId} ipconfig dhcp`);
+    }
+    return this._runCmds(location, cmds);
+  }
+
+  configureEthernetPort(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    const ethPort = body.ethPort || 1;
+    if (body.vlanId) cmds.push(`onu ${onuId} svlan ${body.vlanId}`);
+    if (body.enabled != null) cmds.push(`onu ${onuId} eth ${ethPort} ${body.enabled ? 'enable' : 'disable'}`);
+    return this._runCmds(location, cmds);
+  }
+
+  configureWiFiPort(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.ssid) cmds.push(`onu ${onuId} wifi ssid ${body.ssid}${body.password ? ` password ${body.password}` : ''}`);
+    if (body.enabled != null) cmds.push(`onu ${onuId} wifi ${body.enabled ? 'enable' : 'disable'}`);
+    return this._runCmds(location, cmds);
+  }
+
+  configureVoIP(serial, body, location) {
+    const onuId = location.onu_id;
+    if (body.enable === false) return this._runCmds(location, [`onu ${onuId} voip disable`]);
+    return this._runCmds(location, [`onu ${onuId} voip enable${body.sipUser ? ` user ${body.sipUser}` : ''}${body.sipPassword ? ` password ${body.sipPassword}` : ''}`]);
+  }
+
+  disableVoIP(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} voip disable`]);
+  }
+
+  updateIPTV(serial, body, location) {
+    const onuId = location.onu_id;
+    if (body.enable === false) return this._runCmds(location, [`onu ${onuId} iptv disable`]);
+    return this._runCmds(location, [`onu ${onuId} iptv enable vlan ${body.vlanId || body.svlanId || 100}`]);
+  }
+
+  updateGponChannel(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} profile line name ${body.lineProfileId || 'default'}`]);
+  }
+
+  updateEponChannel(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} profile line name ${body.lineProfileId || 'default'}`]);
+  }
+
+  reallocateId(serial, body, location) {
+    return this._runCmds(location, [
+      `no onu ${location.onu_id}`,
+      `onu add ${body.newOnuId || 1} profile default sn ${serial}`,
+    ]);
+  }
+
+  setTr069Profile(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} tr069 profile ${body.profileId || 'default'}`]);
+  }
+
+  firmwareUpgrade(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} firmware-upgrade ${body.targetFile || ''}`]);
+  }
+
+  changeWebUserPass(serial, body, location) {
+    return this._runCmds(location, [`onu ${location.onu_id} web-user ${body.webUser || 'admin'} password ${body.webPassword || 'admin'}`]);
+  }
+
+  replaceBySN(serial, body, location) {
+    return this._runCmds(location, [
+      `no onu ${location.onu_id}`,
+      `onu add ${location.onu_id} profile default sn ${body.newSn || serial}`,
+    ]);
+  }
+
+  moveONT(serial, body, location) {
+    const cmds = [];
+    cmds.push(`no onu ${location.onu_id}`);
+    return this._runCmds(location, cmds);
+  }
+
+  /* ─── Additional ONU actions (compatibilidad con ontService ACTION_TO_ADAPTER) ─── */
+  wanSetup(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.wanMode) cmds.push(`onu ${onuId} wan-mode ${body.wanMode}`);
+    if (body.vlanId) cmds.push(`onu ${onuId} svlan ${body.vlanId}`);
+    if (body.pppoeUser) cmds.push(`onu ${onuId} pppoe user ${body.pppoeUser}${body.pppoePass ? ` password ${body.pppoePass}` : ''}`);
+    if (body.configMethod === 'DHCP') cmds.push(`onu ${onuId} ipconfig dhcp`);
+    if (body.configMethod === 'Static' && body.ip) cmds.push(`onu ${onuId} ipconfig static ip ${body.ip} mask ${body.mask || '255.255.255.0'}${body.gateway ? ` gateway ${body.gateway}` : ''}`);
+    return this._runCmds(location, cmds);
+  }
+
+  ipv6(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.enable === false) cmds.push(`onu ${onuId} ipv6 disable`);
+    else if (body.enable || body.ipv6Prefix) cmds.push(`onu ${onuId} ipv6 enable prefix ${body.ipv6Prefix || 'auto'}`);
+    else cmds.push(`onu ${onuId} ipv6 enable`);
+    return this._runCmds(location, cmds);
+  }
+
+  dnsServers(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.dns1) cmds.push(`onu ${onuId} dns primary ${body.dns1}`);
+    if (body.dns2) cmds.push(`onu ${onuId} dns secondary ${body.dns2}`);
+    return this._runCmds(location, cmds);
+  }
+
+  dhcpOption82(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.enable === false) cmds.push(`onu ${onuId} dhcp-option82 disable`);
+    else if (body.circuitId || body.remoteId) {
+      let cmd = `onu ${onuId} dhcp-option82 enable`;
+      if (body.circuitId) cmd += ` circuit-id ${body.circuitId}`;
+      if (body.remoteId) cmd += ` remote-id ${body.remoteId}`;
+      cmds.push(cmd);
+    } else {
+      cmds.push(`onu ${onuId} dhcp-option82 enable`);
+    }
+    return this._runCmds(location, cmds);
+  }
+
+  pppoePlus(serial, body, location) {
+    const cmds = [];
+    const onuId = location.onu_id;
+    if (body.enable === false) cmds.push(`onu ${onuId} pppoe-plus disable`);
+    else cmds.push(`onu ${onuId} pppoe-plus enable${body.acName ? ` ac ${body.acName}` : ''}${body.serviceName ? ` service ${body.serviceName}` : ''}`);
+    return this._runCmds(location, cmds);
+  }
+
+  async _runCmds(location, cmds) {
+    if (!cmds.length) return { success: true };
+    const ponIndex = location?.port || 1;
+    try {
+      const tn = this._getTelnet();
+      await tn.connect(this.olt);
+      await tn.enable(this.olt);
+      await tn.run('configure terminal');
+      await tn.run(`interface gpon 0/${ponIndex}`);
+      const outputs = [];
+      let failed = false;
+      for (const cmd of cmds) {
+        const out = await tn.run(cmd);
+        outputs.push({ cmd, out: out?.trim()?.slice(-300) });
+        if (/error|invalid|fail|Unknown/i.test(out)) failed = true;
+      }
+      return { success: !failed, outputs, location };
+    } catch (e) { return { success: false, error: e.message, location }; }
+    finally { this.disconnect(); }
+  }
+
+  async _callGlobal(cmd) {
     try {
       const output = await this.sendCommand(cmd);
-      return { success: !/error|invalid|fail/i.test(output), output };
+      return { success: true, outputs: [{ out: output }] };
     } catch (e) { return { success: false, error: e.message }; }
     finally { this.disconnect(); }
   }

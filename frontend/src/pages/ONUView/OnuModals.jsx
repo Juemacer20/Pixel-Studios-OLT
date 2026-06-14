@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { ontAPI } from '../../services/api';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function ModalBackdrop({ onClose }) {
   return <div className="modal-backdrop" onClick={onClose} />;
@@ -69,14 +70,24 @@ export function SpeedProfileModal({ open, ontId, current, onClose }) {
   const [download, setDownload] = useState('');
   const [upload, setUpload] = useState('');
   const [vlan, setVlan] = useState('');
+  const [svlan, setSvlan] = useState('');
+  const [cvlan, setCvlan] = useState('');
+  const [tagTransform, setTagTransform] = useState('N/A');
   const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState(false);
   if (!open) return null;
   const save = async () => {
     if (!download || !upload) { toast.error('Select download and upload speeds'); return; }
     setBusy(true);
-    try { await ontAPI.speedProfile(ontId, { downloadSpeed: download, uploadSpeed: upload, vlanId: vlan }); toast.success('Speed profile updated'); onClose(); }
+    try { await ontAPI.speedProfile(ontId, { downloadSpeed: download, uploadSpeed: upload, vlanId: vlan, svlan, cvlan, tagTransform }); toast.success('Speed profile updated'); onClose(); }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
+  };
+  const handleRemove = async () => {
+    setRemoving(true);
+    try { await ontAPI.removeSpeedProfile(ontId); toast.success('Service port removed'); onClose(); }
+    catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
+    finally { setRemoving(false); }
   };
   return (
     <ModalFrame title="Configure speed profiles" onClose={onClose}
@@ -125,6 +136,35 @@ export function SpeedProfileModal({ open, ontId, current, onClose }) {
         <label className="control-label col-sm-4">VLAN-ID</label>
         <div className="col-sm-6">
           <input className="form-control" value={vlan} onChange={e => setVlan(e.target.value)} placeholder="VLAN ID" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={svlan} onChange={e => setSvlan(e.target.value)} placeholder="SVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">CVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={cvlan} onChange={e => setCvlan(e.target.value)} placeholder="CVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Tag transform</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={tagTransform} onChange={e => setTagTransform(e.target.value)}>
+            <option value="N/A">N/A</option>
+            <option value="Translation">Translation</option>
+            <option value="Transparent">Transparent</option>
+            <option value="Tag">Tag</option>
+            <option value="Untag">Untag</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <div className="col-sm-offset-4 col-sm-6">
+          <a href="#" className="btn btn-danger btn-sm" onClick={handleRemove}>{removing ? 'Removing…' : 'Remove service port'}</a>
         </div>
       </div>
     </ModalFrame>
@@ -306,11 +346,15 @@ export function UpdateModeModal({ open, ontId, current, onClose }) {
   const [pppoeUser, setPppoeUser] = useState(current?.pppoe_user || '');
   const [pppoePass, setPppoePass] = useState(current?.pppoe_pass || '');
   const [vlan, setVlan] = useState(current?.vlan_id || '');
+  const [configMethod, setConfigMethod] = useState(current?.config_method || 'PPPoE');
+  const [ipProtocol, setIpProtocol] = useState(current?.ip_protocol || 'IPv4');
+  const [ipv6Prefix, setIpv6Prefix] = useState(current?.ipv6_prefix || '');
+  const [remoteAccess, setRemoteAccess] = useState(current?.remote_access || false);
   const [busy, setBusy] = useState(false);
   if (!open) return null;
   const save = async () => {
     setBusy(true);
-    try { await ontAPI.updateMode(ontId, { mode, wanMode, pppoeUser, pppoePass, vlanId: vlan }); toast.success('ONU mode updated'); onClose(); }
+    try { await ontAPI.updateMode(ontId, { mode, wanMode, pppoeUser, pppoePass, vlanId: vlan, configMethod, ipProtocol, ipv6Prefix, remoteAccess }); toast.success('ONU mode updated'); onClose(); }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
@@ -323,6 +367,26 @@ export function UpdateModeModal({ open, ontId, current, onClose }) {
           <select className="form-control" value={mode} onChange={e => setMode(e.target.value)}>
             <option value="Routing">Routing</option>
             <option value="Bridging">Bridging</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Config method</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={configMethod} onChange={e => setConfigMethod(e.target.value)}>
+            <option value="PPPoE">PPPoE</option>
+            <option value="DHCP">DHCP</option>
+            <option value="Static">Static IP</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">IP protocol</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={ipProtocol} onChange={e => setIpProtocol(e.target.value)}>
+            <option value="IPv4">IPv4</option>
+            <option value="IPv6">IPv6</option>
+            <option value="IPv4v6">IPv4v6</option>
           </select>
         </div>
       </div>
@@ -352,6 +416,19 @@ export function UpdateModeModal({ open, ontId, current, onClose }) {
         <label className="control-label col-sm-4">VLAN-ID</label>
         <div className="col-sm-6">
           <input className="form-control" value={vlan} onChange={e => setVlan(e.target.value)} placeholder="VLAN ID" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">IPv6 prefix</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={ipv6Prefix} onChange={e => setIpv6Prefix(e.target.value)} placeholder="2001:db8::/48" />
+        </div>
+      </div>
+      <div className="form-group">
+        <div className="col-sm-offset-4 col-sm-6">
+          <label className="checkbox-inline">
+            <input type="checkbox" checked={remoteAccess} onChange={e => setRemoteAccess(e.target.checked)} /> WAN remote access
+          </label>
         </div>
       </div>
     </ModalFrame>
@@ -401,11 +478,20 @@ export function UpdateLocationModal({ open, ontId, current, onClose }) {
   const [odb, setOdb] = useState(current?.odb || '');
   const [address, setAddress] = useState(current?.address || '');
   const [contact, setContact] = useState(current?.contact || '');
+  const [lat, setLat] = useState(current?.latitude || '');
+  const [lng, setLng] = useState(current?.longitude || '');
   const [busy, setBusy] = useState(false);
   if (!open) return null;
+  const handleGeo = () => {
+    if (!navigator.geolocation) { toast.error('Geolocation not supported'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => { setLat(pos.coords.latitude.toFixed(6)); setLng(pos.coords.longitude.toFixed(6)); },
+      () => toast.error('Geolocation failed'),
+    );
+  };
   const save = async () => {
     setBusy(true);
-    try { await ontAPI.updateLocationDetails(ontId, { zone, odb, address, contact }); toast.success('Location updated'); onClose(); }
+    try { await ontAPI.updateLocationDetails(ontId, { zone, odb, address, contact, latitude: lat, longitude: lng }); toast.success('Location updated'); onClose(); }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
@@ -436,6 +522,33 @@ export function UpdateLocationModal({ open, ontId, current, onClose }) {
           <input className="form-control" value={contact} onChange={e => setContact(e.target.value)} />
         </div>
       </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Latitude</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={lat} onChange={e => setLat(e.target.value)} placeholder="-34.603722" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Longitude</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={lng} onChange={e => setLng(e.target.value)} placeholder="-58.381592" />
+        </div>
+      </div>
+      <div className="form-group">
+        <div className="col-sm-offset-4 col-sm-6">
+          <a href="#" className="btn btn-default btn-sm" onClick={handleGeo}>Use current location</a>
+        </div>
+      </div>
+      {lat && lng && (
+        <div className="form-group">
+          <div className="col-sm-offset-4 col-sm-6">
+            <a href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}&zoom=15`}
+              target="_blank" rel="noopener noreferrer" className="btn btn-link btn-sm">
+              Open in OpenStreetMap
+            </a>
+          </div>
+        </div>
+      )}
     </ModalFrame>
   );
 }
@@ -448,11 +561,26 @@ export function MgmtIPModal({ open, ontId, current, onClose }) {
   const [dns1, setDns1] = useState(current?.mgmt_ip_dns1 || '');
   const [dns2, setDns2] = useState(current?.mgmt_ip_dns2 || '');
   const [vlan, setVlan] = useState(current?.mgmt_ip_vlan_id || '');
+  const [svlan, setSvlan] = useState(current?.mgmt_ip_svlan || '');
+  const [cvlan, setCvlan] = useState(current?.mgmt_ip_cvlan || '');
+  const [tagTransform, setTagTransform] = useState(current?.mgmt_ip_tag_transform || 'N/A');
+  const [tr069Profile, setTr069Profile] = useState(current?.tr069_profile || '');
+  const [sipServer, setSipServer] = useState(current?.sip_server || '');
+  const [sipPort, setSipPort] = useState(current?.sip_port || '5060');
+  const [sipUser, setSipUser] = useState(current?.sip_user || '');
+  const [sipPass, setSipPass] = useState(current?.sip_pass || '');
   const [busy, setBusy] = useState(false);
   if (!open) return null;
   const save = async () => {
     setBusy(true);
-    try { await ontAPI.updateMgmtIP(ontId, { ipAddress: ip, subnetMask: mask, defaultGateway: gateway, dns1, dns2, vlanId: vlan }); toast.success('Mgmt IP updated'); onClose(); }
+    try {
+      await ontAPI.updateMgmtIP(ontId, {
+        ipAddress: ip, subnetMask: mask, defaultGateway: gateway, dns1, dns2, vlanId: vlan,
+        svlan, cvlan, tagTransform, tr069Profile,
+        sipServer, sipPort, sipUser, sipPassword: sipPass,
+      });
+      toast.success('Mgmt IP updated'); onClose();
+    }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
@@ -493,6 +621,60 @@ export function MgmtIPModal({ open, ontId, current, onClose }) {
         <label className="control-label col-sm-4">VLAN-ID</label>
         <div className="col-sm-6">
           <input className="form-control" value={vlan} onChange={e => setVlan(e.target.value)} placeholder="VLAN ID" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={svlan} onChange={e => setSvlan(e.target.value)} placeholder="SVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">CVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={cvlan} onChange={e => setCvlan(e.target.value)} placeholder="CVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Tag transform</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={tagTransform} onChange={e => setTagTransform(e.target.value)}>
+            <option value="N/A">N/A</option>
+            <option value="Translation">Translation</option>
+            <option value="Transparent">Transparent</option>
+            <option value="Tag">Tag</option>
+            <option value="Untag">Untag</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">TR069 profile</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={tr069Profile} onChange={e => setTr069Profile(e.target.value)} placeholder="Profile ID" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SIP server</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={sipServer} onChange={e => setSipServer(e.target.value)} placeholder="sip.example.com" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SIP port</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={sipPort} onChange={e => setSipPort(e.target.value)} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SIP user</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={sipUser} onChange={e => setSipUser(e.target.value)} />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SIP password</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={sipPass} onChange={e => setSipPass(e.target.value)} type="password" />
         </div>
       </div>
     </ModalFrame>
@@ -616,12 +798,27 @@ export function VoIPModal({ open, ontId, onClose }) {
 /* ─── IPTV ──────────────────────────────────────── */
 export function IPTVModal({ open, ontId, onClose }) {
   const [vlan, setVlan] = useState('');
+  const [svlan, setSvlan] = useState('');
+  const [cvlan, setCvlan] = useState('');
+  const [tagTransform, setTagTransform] = useState('N/A');
+  const [download, setDownload] = useState('');
+  const [upload, setUpload] = useState('');
+  const [radioVlan, setRadioVlan] = useState('');
+  const [radioSvlan, setRadioSvlan] = useState('');
+  const [radioEnabled, setRadioEnabled] = useState(false);
   const [busy, setBusy] = useState(false);
   if (!open) return null;
   const save = async () => {
     if (!vlan) { toast.error('Enter VLAN ID'); return; }
     setBusy(true);
-    try { await ontAPI.updateIPTV(ontId, { vlanId: vlan }); toast.success('IPTV updated'); onClose(); }
+    try {
+      await ontAPI.updateIPTV(ontId, {
+        vlanId: vlan, svlan, cvlan, tagTransform,
+        downloadSpeed: download, uploadSpeed: upload,
+        radioVlan, radioSvlan, radioEnabled,
+      });
+      toast.success('IPTV updated'); onClose();
+    }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
@@ -634,6 +831,94 @@ export function IPTVModal({ open, ontId, onClose }) {
           <input className="form-control" value={vlan} onChange={e => setVlan(e.target.value)} placeholder="VLAN ID" />
         </div>
       </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">SVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={svlan} onChange={e => setSvlan(e.target.value)} placeholder="SVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">CVLAN</label>
+        <div className="col-sm-6">
+          <input className="form-control" value={cvlan} onChange={e => setCvlan(e.target.value)} placeholder="CVLAN" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Tag transform</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={tagTransform} onChange={e => setTagTransform(e.target.value)}>
+            <option value="N/A">N/A</option>
+            <option value="Translation">Translation</option>
+            <option value="Transparent">Transparent</option>
+            <option value="Tag">Tag</option>
+            <option value="Untag">Untag</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Download speed</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={download} onChange={e => setDownload(e.target.value)}>
+            <option value="">— Select —</option>
+            <option value="10">10M</option>
+            <option value="20">20M</option>
+            <option value="30">30M</option>
+            <option value="40">40M</option>
+            <option value="50">50M</option>
+            <option value="60">60M</option>
+            <option value="80">80M</option>
+            <option value="100">100M</option>
+            <option value="200">200M</option>
+            <option value="300">300M</option>
+            <option value="500">500M</option>
+            <option value="1000">1G</option>
+          </select>
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">Upload speed</label>
+        <div className="col-sm-6">
+          <select className="form-control" value={upload} onChange={e => setUpload(e.target.value)}>
+            <option value="">— Select —</option>
+            <option value="10">10M</option>
+            <option value="20">20M</option>
+            <option value="30">30M</option>
+            <option value="40">40M</option>
+            <option value="50">50M</option>
+            <option value="60">60M</option>
+            <option value="80">80M</option>
+            <option value="100">100M</option>
+            <option value="200">200M</option>
+            <option value="300">300M</option>
+            <option value="500">500M</option>
+            <option value="1000">1G</option>
+          </select>
+        </div>
+      </div>
+      <h4>Radio (satellite)</h4>
+      <div className="form-group">
+        <div className="col-sm-offset-4 col-sm-6">
+          <label className="checkbox-inline">
+            <input type="checkbox" checked={radioEnabled} onChange={e => setRadioEnabled(e.target.checked)} /> Enable radio
+          </label>
+        </div>
+      </div>
+      {radioEnabled && (
+        <>
+          <div className="form-group">
+            <label className="control-label col-sm-4">Radio VLAN-ID</label>
+            <div className="col-sm-6">
+              <input className="form-control" value={radioVlan} onChange={e => setRadioVlan(e.target.value)} placeholder="VLAN ID" />
+            </div>
+          </div>
+          <div className="form-group">
+            <label className="control-label col-sm-4">Radio SVLAN</label>
+            <div className="col-sm-6">
+              <input className="form-control" value={radioSvlan} onChange={e => setRadioSvlan(e.target.value)} placeholder="SVLAN" />
+            </div>
+          </div>
+        </>
+      )}
     </ModalFrame>
   );
 }
@@ -726,6 +1011,160 @@ export function MoveOnuModal({ open, ontId, onClose }) {
         <label className="control-label col-sm-4">New ONU ID</label>
         <div className="col-sm-6">
           <input className="form-control" type="number" min={1} value={onuId} onChange={e => setOnuId(e.target.value)} placeholder="Optional" />
+        </div>
+      </div>
+    </ModalFrame>
+  );
+}
+
+/* ─── History Modal ──────────────────────────────── */
+export function HistoryModal({ open, ontId, ontName, onClose }) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(false);
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    ontAPI.auditLog(ontId).then(r => setLogs(r.data?.data || r.data || [])).catch(() => {}).finally(() => setLoading(false));
+  }, [open, ontId]);
+  if (!open) return null;
+  return (
+    <ModalFrame title={`History — ${ontName}`} onClose={onClose}
+      footer={<SaveFooter onClose={onClose} onSave={null} />}>
+      {loading ? <p style={{ fontSize: 13 }}>Loading...</p> : logs.length === 0 ? (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No history entries found</p>
+      ) : (
+        <table className="table table-bordered table-condensed" style={{ fontSize: 12 }}>
+          <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th></tr></thead>
+          <tbody>
+            {logs.map(log => (
+              <tr key={log.id}>
+                <td>{log.created_at ? new Date(log.created_at).toLocaleString() : '—'}</td>
+                <td>{log.action}</td>
+                <td>{log.user_id || '—'}</td>
+                <td>{log.details ? JSON.stringify(log.details).slice(0, 60) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </ModalFrame>
+  );
+}
+
+/* ─── Live Signal Modal ──────────────────────────── */
+export function LiveSignalModal({ open, ontId, onClose }) {
+  const [live, setLive] = useState({ rx: '—', tx: '—', oltRx: '—', dist: '—', updated: null });
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const histFetched = useRef(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    histFetched.current = false;
+
+    ontAPI.signalHistory(ontId, '1h').then(r => {
+      const h = (r.data?.data?.history || r.data?.history || []);
+      setHistory(h.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })));
+      setLoading(false);
+      histFetched.current = true;
+    }).catch(() => setLoading(false));
+
+    const fetchLive = () => ontAPI.signal(ontId).then(r => {
+      const d = r.data?.data || r.data;
+      setLive({ rx: d.rx_power, tx: d.tx_power, oltRx: d.olt_rx_power, dist: d.distance, updated: Date.now() });
+      if (histFetched.current) {
+        setHistory(prev => {
+          if (!d.rx_power && !d.tx_power) return prev;
+          const last = prev.length ? prev[prev.length - 1] : null;
+          if (last && Date.now() - last.t < 1500) return prev;
+          return [...prev.slice(-300), { t: Date.now(), rx: d.rx_power, tx: d.tx_power }];
+        });
+      }
+    }).catch(() => {});
+
+    fetchLive();
+    const iv = setInterval(fetchLive, 2000);
+    return () => clearInterval(iv);
+  }, [open, ontId]);
+
+  const formatTime = (ts) => {
+    const d = new Date(ts);
+    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+  };
+
+  if (!open) return null;
+
+  return (
+    <ModalFrame title={<span><span style={{ color: '#1fb325', animation: 'pulse-green 1.5s infinite' }}>●</span> LIVE! — Signal monitoring</span>}
+      onClose={onClose}
+      footer={<SaveFooter onClose={onClose} onSave={null} saveLabel="Close" />}>
+      <div style={{ fontSize: 13, lineHeight: 1.8, marginBottom: 12, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+        <span><strong>RX:</strong> {live.rx != null ? `${live.rx} dBm` : '—'}</span>
+        <span><strong>TX:</strong> {live.tx != null ? `${live.tx} dBm` : '—'}</span>
+        <span><strong>OLT Rx:</strong> {live.oltRx != null ? `${live.oltRx} dBm` : '—'}</span>
+        <span><strong>Distance:</strong> {live.dist != null ? `${live.dist} m` : '—'}</span>
+        {live.updated && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Updated {formatTime(live.updated)}</span>}
+      </div>
+      {loading ? (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading signal history...</p>
+      ) : history.length > 1 ? (
+        <div style={{ width: '100%', height: 220 }}>
+          <ResponsiveContainer>
+            <LineChart data={history} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
+              <XAxis dataKey="t" tickFormatter={formatTime} stroke="var(--text-muted)" fontSize={10} />
+              <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
+              <Tooltip
+                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
+                labelFormatter={formatTime}
+              />
+              <Line type="monotone" dataKey="rx" stroke="#5cb85c" name="RX" dot={false} strokeWidth={1.5} />
+              <Line type="monotone" dataKey="tx" stroke="#f0ad4e" name="TX" dot={false} strokeWidth={1.5} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      ) : (
+        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Collecting signal data…</p>
+      )}
+      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Auto-refreshes every 2s</p>
+    </ModalFrame>
+  );
+}
+
+/* ─── More Graphs Modal ──────────────────────────── */
+export function MoreGraphsModal({ open, ontId, onClose }) {
+  const [range, setRange] = useState('24h');
+  if (!open) return null;
+
+  const rangeParams = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 };
+
+  return (
+    <ModalFrame title="Signal & Traffic graphs" onClose={onClose}
+      footer={<SaveFooter onClose={onClose} onSave={null} saveLabel="Close" />}>
+      <div style={{ marginBottom: 12, display: 'flex', gap: 6, alignItems: 'center' }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Range:</span>
+        {['1h', '24h', '7d', '30d'].map(r => (
+          <button key={r}
+            className={`btn btn-sm ${range === r ? 'btn-primary' : 'btn-default'}`}
+            style={{ fontSize: 11, padding: '3px 10px' }}
+            onClick={() => setRange(r)}>{r}</button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+            <span style={{ color: '#5cb85c' }}>●</span> RX signal <span style={{ color: '#f0ad4e' }}>●</span> TX signal
+          </div>
+          <iframe src={`/onts/${ontId}/signal?range=${range}`}
+            style={{ width: '100%', height: 220, border: 'none' }} title="Signal graph" />
+        </div>
+        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+            <span style={{ color: '#5bc0de' }}>●</span> Traffic Up <span style={{ color: '#e08a16' }}>●</span> Traffic Down
+          </div>
+          <iframe src={`/onts/${ontId}/traffic?range=${range}`}
+            style={{ width: '100%', height: 220, border: 'none' }} title="Traffic graph" />
         </div>
       </div>
     </ModalFrame>

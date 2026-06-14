@@ -124,7 +124,7 @@ function parseStats(output) {
     inputRatePps: /Input rate\(pps\):\s*([\d.]+)/,
     outputRateBps: /Output rate\(Bps\):\s*([\d.]+)/,
     outputRatePps: /Output rate\(pps\):\s*([\d.]+)/,
-    inputBandwidth: /Input bandwidth thoughput:\s*([\d.]+%)/,
+    inputBandwidth: /Input bandwidth thoughput:\s*(\S+)/,
     outputBandwidth: /Output bandwidth thoughput:\s*(\S+)/,
     inputBytes: /Input bytes:\s*(\d+)/,
     inputPackets: /Input packets:\s*(\d+)/,

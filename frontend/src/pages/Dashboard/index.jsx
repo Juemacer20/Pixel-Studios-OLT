@@ -130,9 +130,9 @@ export default function Dashboard() {
       <div className="sol-stats">
         <StatBox to="/onu/unconfigured" cls="sol-s-blue" Icon={IconWand} num={fmt(waiting)} label="Waiting authorization"
           foot={[`D: ${fmt(wb.d)}`, `Resync: ${fmt(wb.resync)}`, `New: ${fmt(wb.new)}`]} />
-        <StatBox to="/onts" cls="sol-s-green" Icon={IconCircleCheck} num={fmt(online)} label="Online"
+        <StatBox to="/onts?status=online" cls="sol-s-green" Icon={IconCircleCheck} num={fmt(online)} label="Online"
           foot={[`Total authorized: ${fmt(total)}`]} />
-        <StatBox to="/onts" cls="sol-s-slate" Icon={IconX} num={fmt(offline)} label="Total offline"
+        <StatBox to="/onts?status=offline" cls="sol-s-slate" Icon={IconX} num={fmt(offline)} label="Total offline"
           foot={[`PwrFail: ${fmt(ob.pwrfail)}`, `LoS: ${fmt(ob.los)}`, `N/A: ${fmt(ob.na)}`]} />
         <StatBox to="/diagnostics" cls="sol-s-orange" Icon={IconAlertTriangle} num={fmt(low)} label="Low signals"
           foot={[`Warning: ${fmt(lb.warning)}`, `Critical: ${fmt(lb.critical)}`]} />

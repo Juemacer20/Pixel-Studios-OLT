@@ -44,7 +44,7 @@ function parseRunningConfig(config) {
     }
 
     // VLAN
-    if (line.startsWith('vlan ') && !line.startsWith('vlan ')) {
+    if (line.startsWith('vlan ')) {
       const m = line.match(/^vlan (\d+)$/);
       if (m) {
         result.vlans.push({ id: parseInt(m[1]), description: '' });
@@ -74,6 +74,10 @@ function parseRunningConfig(config) {
         lines: [],
         config: {},
       };
+      if (currentInterface.type === 'gpon' && currentInterface.slot) {
+        const ponM = currentInterface.slot.match(/\/(\d+)/);
+        if (ponM) currentPonIndex = parseInt(ponM[1]);
+      }
       currentSection = 'interface';
       inOnuSection = false;
       continue;

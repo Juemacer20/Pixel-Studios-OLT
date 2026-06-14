@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  IconSearch, IconTrash, IconPower, IconGauge,
+  IconSearch, IconGauge,
   IconChevronDown, IconChevronRight,
   IconWifi, IconDownload, IconUpload, IconEye, IconInfoCircle,
   IconWorld, IconPlug, IconLinkOff, IconBan, IconBroadcast,
@@ -10,11 +10,12 @@ import {
   IconArrowsExchange, IconSettings, IconKey, IconMapPin, IconLock,
   IconServer, IconCopy, IconGitFork, IconTags, IconVectorTriangle,
   IconFileCode, IconIdBadge, IconCircleCheck, IconAlertTriangle,
+  IconX, IconReload, IconPower,
 } from '@tabler/icons-react';
-import { ontAPI, oltAPI } from '../../services/api';
+import { ontAPI, oltAPI, reportsAPI } from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
 import StatusBadge from '../../components/shared/StatusBadge';
 import SignalValue from '../../components/shared/SignalValue';
-import BrandTag from '../../components/shared/BrandTag';
 import toast from 'react-hot-toast';
 
 
@@ -57,7 +58,7 @@ function formatDist(m) {
   return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m} m`;
 }
 
-const PAGE_SIZE = 25;
+
 
 /* ─── Chart tooltip ──────────────────────────────────────────────────────── */
 function ChartTooltip({ active, payload, label }) {
@@ -78,6 +79,82 @@ function ChartTooltip({ active, payload, label }) {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ─── Permission Required Modal ──────────────────────────────────────────── */
+function PermissionRequiredModal({ open, onClose }) {
+  if (!open) return null;
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button className="close" onClick={onClose}>&times;</button>
+              <h4><IconLock size={16} className="text-warning" style={{ marginRight: 6 }} /> Permission Required</h4>
+            </div>
+            <div className="modal-body">
+              <p>You do not have permission to perform batch actions on ONUs.</p>
+              <p>Please contact your administrator to request access to this feature.</p>
+            </div>
+            <div className="modal-footer">
+              <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── Import ONUs Location Details Modal ──────────────────────────────────── */
+function ImportLocationModal({ open, onClose, onImport }) {
+  const fileRef = React.useRef(null);
+  if (!open) return null;
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button className="close" onClick={onClose}>&times;</button>
+              <h3>Import ONUs location details</h3>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="control-label" htmlFor="onusCsvFile">ONUs details file</label>
+                <input type="file" ref={fileRef} id="onusCsvFile" className="form-control" accept=".csv" />
+                <div className="margin-top">
+                  <span className="help-block">
+                    Download file template from here:{' '}
+                    <a href="/_documents/Onus_location_details_template.csv" target="_blank" rel="noopener">Onus_location_details_template.csv</a>
+                  </span>
+                </div>
+                <div className="margin-top">
+                  <span className="help-block">
+                    The file should include the following header columns:{' '}
+                    <strong>ONU external ID, Name, Zone, Address, Latitude, Longitude, ODB (Splitter), ODB Port</strong>
+                  </span>
+                </div>
+                <div className="margin-top">
+                  <span className="help-block">Only these fields will be updated in database</span>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-link" onClick={onClose}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                const file = fileRef.current?.files?.[0];
+                if (file) { onImport(file); onClose(); }
+              }}>Import ONUs location details</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -614,23 +691,32 @@ function SortTh({ children, sortKey, sortState, onSort, style }) {
 export default function ONTs() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [search,       setSearch]       = useState('');
+  const [search,       setSearch]       = useState(searchParams.get('search') || '');
   const [filterOLT,    setFilterOLT]    = useState('');
   const [filterPort,   setFilterPort]   = useState('');
+  const [filterBoard,  setFilterBoard]  = useState('');
   const [filterSignal, setFilterSignal] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
+  const [filterStatus, setFilterStatus] = useState(searchParams.get('status') || '');
   const [filterZone,   setFilterZone]   = useState('');
   const [filterVlan,   setFilterVlan]   = useState('');
   const [filterMode,   setFilterMode]   = useState('');
   const [showMore,     setShowMore]     = useState(false);
+  const [showImportExport, setShowImportExport] = useState(false);
   const [sortState,    setSortState]    = useState(['id', 'desc']);
   const [page,         setPage]         = useState(1);
+  const [pageSize,     setPageSize]     = useState(25);
   const [selected,     setSelected]     = useState(new Set());
   const [drawerONT,    setDrawerONT]    = useState(null);
   const [batchPanel,   setBatchPanel]   = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const user = useAuthStore(s => s.user);
   const [filterOnuType, setFilterOnuType] = useState('');
   const [filterOdb,    setFilterOdb]    = useState('');
+  const [filterProfile, setFilterProfile] = useState('');
+  const [filterPonType, setFilterPonType] = useState('');
   const [filterWanMode, setFilterWanMode] = useState('');
   const [filterMgmtIpMode, setFilterMgmtIpMode] = useState('');
   const [filterTr069, setFilterTr069] = useState('');
@@ -638,11 +724,20 @@ export default function ONTs() {
   const [filterCatv, setFilterCatv] = useState('');
   const [filterConfigMethod, setFilterConfigMethod] = useState('');
   const [filterIpProtocol, setFilterIpProtocol] = useState('');
+  const [filterSvlan, setFilterSvlan] = useState('');
+  const [filterCvlan, setFilterCvlan] = useState('');
+  const [filterTagTransform, setFilterTagTransform] = useState('');
   const [filterDownloadSpeed, setFilterDownloadSpeed] = useState('');
   const [filterUploadSpeed, setFilterUploadSpeed] = useState('');
   const [filterLastStatusChange, setFilterLastStatusChange] = useState('');
   const [filterShouldRebuild, setFilterShouldRebuild] = useState('');
+  const [filterResyncFailed, setFilterResyncFailed] = useState('');
   const [batchForm, setBatchForm] = useState({});
+
+  useEffect(() => {
+    const statusParam = searchParams.get('status');
+    if (statusParam) setFilterStatus(statusParam);
+  }, [searchParams]);
   const updBatch = (k, v) => setBatchForm(p => ({...p, [k]: v}));
 
   /* ── Queries ── */
@@ -734,6 +829,7 @@ export default function ONTs() {
       );
     }
     if (filterOLT)    list = list.filter(o => String(o.olt?.id) === filterOLT);
+    if (filterBoard)  list = list.filter(o => String(o.board) === filterBoard);
     if (filterPort)   list = list.filter(o => o.description === filterPort);
     if (filterSignal) {
       const signalKeyMap = { 'good': 'optimal', 'warning': 'warn', 'critical': 'critical' };
@@ -747,6 +843,8 @@ export default function ONTs() {
     if (filterVlan) list = list.filter(o => String(o.vlan ?? '') === filterVlan);
     if (filterMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterMode.toLowerCase()));
     if (filterOnuType) list = list.filter(o => (o.model || '').toLowerCase().includes(filterOnuType.toLowerCase()));
+    if (filterProfile) list = list.filter(o => (o.custom_template || '').toLowerCase().includes(filterProfile.toLowerCase()));
+    if (filterPonType) list = list.filter(o => (o.pon_type || '').toLowerCase() === filterPonType.toLowerCase());
     if (filterOdb) list = list.filter(o => (o.odb || '') === filterOdb);
     if (filterWanMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterWanMode.toLowerCase()));
     if (filterMgmtIpMode) list = list.filter(o => (o.mgmt_ip_mode || '').toLowerCase() === filterMgmtIpMode.toLowerCase());
@@ -754,10 +852,15 @@ export default function ONTs() {
     if (filterVoip) list = list.filter(o => (o.voip_mode || '').toLowerCase() === filterVoip.toLowerCase());
     if (filterCatv) list = list.filter(o => String(o.catv_enabled ?? '') === filterCatv);
     if (filterConfigMethod) list = list.filter(o => (o.config_method || '').toLowerCase() === filterConfigMethod.toLowerCase());
+    if (filterIpProtocol) list = list.filter(o => (o.ip_protocol || '').toLowerCase() === filterIpProtocol.toLowerCase());
+    if (filterSvlan) list = list.filter(o => String(o.svlan ?? '') === filterSvlan);
+    if (filterCvlan) list = list.filter(o => String(o.cvlan ?? '') === filterCvlan);
+    if (filterTagTransform) list = list.filter(o => (o.tag_transform || '').toLowerCase() === filterTagTransform.toLowerCase());
     if (filterDownloadSpeed) list = list.filter(o => (o.download_speed || '').toLowerCase().includes(filterDownloadSpeed.toLowerCase()));
     if (filterUploadSpeed) list = list.filter(o => (o.upload_speed || '').toLowerCase().includes(filterUploadSpeed.toLowerCase()));
     if (filterLastStatusChange) list = list.filter(o => o.last_status_change?.includes(filterLastStatusChange));
     if (filterShouldRebuild) list = list.filter(o => (o.should_rebuild || '').toLowerCase() === filterShouldRebuild.toLowerCase());
+    if (filterResyncFailed === 'failed') list = list.filter(o => o.last_down_cause != null && o.last_down_cause !== '');
 
     const [key, dir] = sortState;
     const GET = {
@@ -787,16 +890,24 @@ export default function ONTs() {
       });
     }
     return list;
-  }, [rawONTs, search, filterOLT, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, filterOnuType, filterOdb, filterWanMode, filterMgmtIpMode, filterTr069, filterVoip, filterCatv, filterConfigMethod, filterDownloadSpeed, filterUploadSpeed, filterLastStatusChange, filterShouldRebuild, sortState]);
+  }, [rawONTs, search, filterOLT, filterBoard, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, filterOnuType, filterProfile, filterPonType, filterOdb, filterWanMode, filterMgmtIpMode, filterTr069, filterVoip, filterCatv, filterConfigMethod, filterIpProtocol, filterSvlan, filterCvlan, filterTagTransform, filterDownloadSpeed, filterUploadSpeed, filterLastStatusChange, filterShouldRebuild, filterResyncFailed, sortState]);
 
   const zoneOpts = useMemo(() => [...new Set(rawONTs.map(o => o.zone).filter(Boolean))].sort(), [rawONTs]);
   const vlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.vlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
   const onuTypeOpts = useMemo(() => [...new Set(rawONTs.map(o => o.model).filter(Boolean))].sort(), [rawONTs]);
   const odbOpts = useMemo(() => [...new Set(rawONTs.map(o => o.odb).filter(Boolean))].sort(), [rawONTs]);
+  const boardOpts = useMemo(() => [...new Set(rawONTs.map(o => o.board).filter(b => b != null))].sort((a, b) => a - b), [rawONTs]);
+  const profileOpts = useMemo(() => [...new Set(rawONTs.map(o => o.custom_template).filter(Boolean))].sort(), [rawONTs]);
+  const ponTypeOpts = useMemo(() => [...new Set(rawONTs.map(o => o.pon_type).filter(Boolean))].sort(), [rawONTs]);
+  const svlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.svlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
+  const cvlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.cvlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
+  const tagTransformOpts = useMemo(() => [...new Set(rawONTs.map(o => o.tag_transform).filter(Boolean))].sort(), [rawONTs]);
+  const tr069Opts = useMemo(() => [...new Set(rawONTs.map(o => o.tr069_profile_id).filter(Boolean))].sort(), [rawONTs]);
+  const SPEED_OPTS = ['10M', '20M', '30M', '50M', '100M', '200M', '300M', '500M', '1G'];
 
   /* ── Pagination ── */
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const pageData   = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const pageData   = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   /* ── Selection ── */
   const allVisible = pageData.length > 0 && pageData.every(o => selected.has(o.id));
@@ -833,12 +944,53 @@ export default function ONTs() {
     }
   };
 
+  // Map frontend action names → backend action names + collect params.
+  const ACTION_MAP = {
+    changeVlan:          { action: 'updateVLANs',        getParams: (f) => ({ svlan: f.vlan }) },
+    changeSvlan:         { action: 'updateSvlan',        getParams: (f) => ({ svlan_action: f.svlanAction, cvlan_action: f.cvlanAction, tag_transform: f.tagTransformMode }) },
+    update_attached_vlans: { action: 'updateAttachedVlans', getParams: (f) => ({ operation: f.attachedOp }) },
+    update_speed_profiles: { action: 'speedProfile',     getParams: (f) => ({ download_speed: f.downloadSpeed, upload_speed: f.uploadSpeed }) },
+    changeOnuType:       { action: 'changeType',         getParams: (f) => ({ onu_type: f.onuType }) },
+    change_custom_profile: { action: 'customProfile',    getParams: (f) => ({ profile: f.customProfile }) },
+    setMgmtIp:           { action: 'updateMgmtIP',       getParams: (f) => ({ mode: f.mgmtIpMode }) },
+    setTr069:            { action: 'tr069Profile',       getParams: (f) => ({ tr069_mode: f.tr069Mode }) },
+    changeWanMode:       { action: 'updateMode',         getParams: (f) => ({ config_method: f.wanConfigMethod }) },
+    change_wan_setup:    { action: 'wanSetup',           getParams: (f) => ({ wan_mode: f.wanSetupMode }) },
+    changeIpv6:          { action: 'ipv6',               getParams: (f) => ({ ipv6_mode: f.ipv6Mode }) },
+    setWebUserPass:      { action: 'webUserPass',        getParams: (f) => ({ web_user: f.webUser, web_password: f.webPass }) },
+    moveZone:            { action: 'move',               getParams: (f) => ({ zone: f.zone, odb: f.odb }) },
+    change_dns_servers:  { action: 'dnsServers',         getParams: (f) => ({ primary_dns: f.dns1, secondary_dns: f.dns2, apply_mgmt_ip: f.applyDnsMgmt, apply_wan_ip: f.applyDnsWan }) },
+    dhcpOption82:        { action: 'dhcpOption82',       getParams: (f) => ({ dhcp82_mode: f.dhcp82Mode }) },
+    pppoePlus:           { action: 'pppoePlus',          getParams: (f) => ({ pppoe_plus_mode: f.pppoePlusMode }) },
+    set_external_id_to_sn: { action: 'externalId',       getParams: (f) => ({ externalId: '' /* resolved per-ONT in submitBatch */ }) },
+  };
+
+  const canBatch = user?.role === 'admin' || user?.role === 'noc';
+
+  const handleImportFile = async (file) => {
+    const fd = new FormData(); fd.append('file', file);
+    try {
+      const r = await reportsAPI.importCSV(fd);
+      toast.success(`Import OK: ${r.data?.data?.updated || r.data?.updated || 'done'}`);
+      qc.invalidateQueries({ queryKey: ['onts'] });
+    } catch (e) { toast.error(e?.response?.data?.error || 'Import failed'); }
+  };
+
   const submitBatch = async (action) => {
+    if (!canBatch) { setShowPermissionModal(true); return; }
     const destructive = ['delete', 'disable', 'stop', 'restoreDefaults'].includes(action);
     if (destructive && !confirm(`Apply "${action}" to ${selected.size} ONU(s)? This may interrupt service.`)) return;
     setBatchBusy(true);
     try {
-      const r = await ontAPI.batch({ ontIds: [...selected], action });
+      const mapped = ACTION_MAP[action] || { action, getParams: () => ({}) };
+      let params = mapped.getParams(batchForm);
+
+      // For set_external_id_to_sn, resolve externalId per-ONT in the job.
+      if (action === 'set_external_id_to_sn') {
+        params = { useSerial: true };
+      }
+
+      const r = await ontAPI.batch({ ontIds: [...selected], action: mapped.action, params });
       const jobId = r.data?.data?.jobId;
       toast.success(`Batch queued (${selected.size} ONUs) — job ${jobId}`);
       clearSel();
@@ -874,7 +1026,20 @@ export default function ONTs() {
     { key: 'critical',label: 'Critical',color: 'text-red' },
   ];
 
-  const hasFilters = search || filterOLT || filterPort || filterSignal || filterStatus || filterZone || filterVlan || filterMode || filterOnuType || filterOdb || filterWanMode || filterMgmtIpMode || filterTr069 || filterVoip || filterCatv || filterConfigMethod || filterDownloadSpeed || filterUploadSpeed || filterLastStatusChange || filterShouldRebuild;
+  const hasFilters = search || filterOLT || filterBoard || filterPort || filterSignal || filterStatus || filterZone || filterVlan || filterMode || filterOnuType || filterProfile || filterPonType || filterOdb || filterWanMode || filterMgmtIpMode || filterTr069 || filterVoip || filterCatv || filterConfigMethod || filterIpProtocol || filterSvlan || filterCvlan || filterTagTransform || filterDownloadSpeed || filterUploadSpeed || filterLastStatusChange || filterShouldRebuild || filterResyncFailed;
+
+  const clearAllFilters = () => {
+    setSearch(''); setFilterOLT(''); setFilterBoard(''); setFilterPort('');
+    setFilterSignal(''); setFilterStatus(''); setFilterZone(''); setFilterVlan('');
+    setFilterMode(''); setFilterOnuType(''); setFilterProfile(''); setFilterPonType('');
+    setFilterOdb(''); setFilterWanMode(''); setFilterMgmtIpMode(''); setFilterTr069('');
+    setFilterVoip(''); setFilterCatv(''); setFilterConfigMethod(''); setFilterIpProtocol('');
+    setFilterSvlan(''); setFilterCvlan(''); setFilterTagTransform('');
+    setFilterDownloadSpeed(''); setFilterUploadSpeed(''); setFilterLastStatusChange('');
+    setFilterShouldRebuild('');
+    setFilterResyncFailed('');
+    setPage(1);
+  };
 
   const avgRxMeta  = getSignalMeta(stats.avgRx);
 
@@ -889,11 +1054,23 @@ export default function ONTs() {
   return (
     <div className="container-fluid content-wrap">
 
-      <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
-        Configured ONUs
-        <span className="badge badge-gray" style={{ fontSize: 12, marginLeft: 10, verticalAlign: 'middle' }}>{filtered.length}</span>
-        {isFetching && !isLoading && <span className="polling-dot" title="Updating…" style={{ marginLeft: 8 }} />}
-      </h2>
+        <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
+          Configured ONUs
+          <span className="badge badge-gray" style={{ fontSize: 12, marginLeft: 10, verticalAlign: 'middle' }}>
+            {filtered.length}
+            <span style={{ opacity: 0.6, marginLeft: 4 }}>of {stats.total}</span>
+          </span>
+          {isFetching && !isLoading && <span className="polling-dot" title="Updating…" style={{ marginLeft: 8 }} />}
+          <button className="btn btn-xs" onClick={() => refetch()} style={{ marginLeft: 8 }} title="Refresh">
+            <IconReload size={12} />
+          </button>
+          {hasFilters && (
+            <a href="#" onClick={e => { e.preventDefault(); clearAllFilters(); }}
+              style={{ fontSize: 11, color: '#8cc8ff', marginLeft: 12, cursor: 'pointer', verticalAlign: 'middle' }}>
+              Clear filters
+            </a>
+          )}
+        </h2>
 
       <div className="alert alert-success flash-message" style={{ display: 'none' }} />
 
@@ -928,8 +1105,10 @@ export default function ONTs() {
 
           <div className="form-group">
             <label className="control-label" htmlFor="board">Board</label>
-            <select name="board" id="board" className="form-control input-90 select-search text-nowrap">
+            <select name="board" id="board" className="form-control input-90 select-search text-nowrap"
+              value={filterBoard} onChange={e => { setFilterBoard(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {boardOpts.map(b => <option key={b} value={String(b)}>{b}</option>)}
             </select>
           </div>
 
@@ -985,15 +1164,19 @@ export default function ONTs() {
 
           <div className="form-group margin-right">
             <label className="control-label" htmlFor="customTemplate">Profile</label>
-            <select name="custom_template" id="customTemplate" className="form-control input-120 select-search text-nowrap">
+            <select name="custom_template" id="customTemplate" className="form-control input-120 select-search text-nowrap"
+              value={filterProfile} onChange={e => { setFilterProfile(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {profileOpts.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
           <div className="form-group margin-right">
             <label className="control-label" htmlFor="ponType">PON type</label>
-            <select name="pon_type" id="ponType" className="form-control input-90 select-search text-nowrap">
+            <select name="pon_type" id="ponType" className="form-control input-90 select-search text-nowrap"
+              value={filterPonType} onChange={e => { setFilterPonType(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {ponTypeOpts.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -1041,6 +1224,15 @@ export default function ONTs() {
             </ul>
           </div>
 
+          <div className="form-group pon-type-filter margin-right" title="Resync failed ONUs">
+            <label className="control-label">Resync </label>
+            <ul className="pagination">
+              <li className={`status-filter ${filterResyncFailed === 'failed' ? 'active' : ''}`} value="failed"
+                onClick={() => { setFilterResyncFailed(filterResyncFailed === 'failed' ? '' : 'failed'); setPage(1); }}>
+                <span><IconAlertTriangle size={14} className="text-warning" /></span>
+              </li>
+            </ul>
+          </div>
           <div className="form-group pon-type-filter margin-right">
             <ul className="pagination">
               <li className={`onu_mode-filter ${filterMode === 'bridge' ? 'active' : ''}`} value="bridging" title="Bridging"
@@ -1070,7 +1262,7 @@ export default function ONTs() {
             <IconChevronDown size={13} /> More filters
           </a>
           <a id="more-filters-import-export-toggle" className="more-filters-toggle-import-export" href="#"
-            onClick={e => { e.preventDefault(); toast.success('Import / Export (próximamente)'); }}>
+            onClick={e => { e.preventDefault(); setShowImportExport(s => !s); }}>
             Import / Export
           </a>
         </div>
@@ -1095,6 +1287,7 @@ export default function ONTs() {
             <select name="tr069_profile_id" id="tr069ProfileId" className="form-control input-90 select-search text-nowrap"
               value={filterTr069} onChange={e => { setFilterTr069(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {tr069Opts.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
 
@@ -1155,6 +1348,7 @@ export default function ONTs() {
             <select name="download_speed" id="downloadSpeed" className="form-control input-120 select-search text-nowrap"
               value={filterDownloadSpeed} onChange={e => { setFilterDownloadSpeed(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {SPEED_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
@@ -1163,12 +1357,13 @@ export default function ONTs() {
             <select name="upload_speed" id="uploadSpeed" className="form-control input-120 select-search text-nowrap"
               value={filterUploadSpeed} onChange={e => { setFilterUploadSpeed(e.target.value); setPage(1); }}>
               <option value="">Any</option>
+              {SPEED_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
 
           <div className="form-group margin-right">
             <label className="control-label" htmlFor="lastStatusChange">Status changed before</label>
-            <input type="text" className="form-control input-100 input-search" id="lastStatusChange"
+            <input type="date" className="form-control input-100 input-search" id="lastStatusChange"
               value={filterLastStatusChange} onChange={e => { setFilterLastStatusChange(e.target.value); setPage(1); }} />
           </div>
 
@@ -1182,35 +1377,56 @@ export default function ONTs() {
             </select>
           </div>
 
-          {/* SVLAN/CVLAN filters (hidden) */}
-          <div id="svlan-cvlan-filters-row" className="filters-row" style={{ display: 'none', marginTop: 10, width: '100%' }}>
-            <div className="form-group margin-right" id="filter-svlan-group" style={{ display: 'none' }}>
+          {/* SVLAN/CVLAN/Tag-transform filters */}
+          <div id="svlan-cvlan-filters-row" className="filters-row" style={{ marginTop: 10, width: '100%' }}>
+            <div className="form-group margin-right" id="filter-svlan-group">
               <label className="control-label" htmlFor="svlanFilter">SVLAN</label>
-              <select name="svlan_id" id="svlanFilter" className="form-control input-90 select-search text-nowrap">
+              <select name="svlan_id" id="svlanFilter" className="form-control input-90 select-search text-nowrap"
+                value={filterSvlan} onChange={e => { setFilterSvlan(e.target.value); setPage(1); }}>
                 <option value="">Any</option>
+                {svlanOpts.map(v => <option key={v} value={String(v)}>{v}</option>)}
               </select>
             </div>
-            <div className="form-group margin-right" id="filter-cvlan-group" style={{ display: 'none' }}>
+            <div className="form-group margin-right" id="filter-cvlan-group">
               <label className="control-label" htmlFor="cvlanFilter">CVLAN</label>
-              <select name="cvlan_id" id="cvlanFilter" className="form-control input-90 select-search text-nowrap">
+              <select name="cvlan_id" id="cvlanFilter" className="form-control input-90 select-search text-nowrap"
+                value={filterCvlan} onChange={e => { setFilterCvlan(e.target.value); setPage(1); }}>
                 <option value="">Any</option>
+                {cvlanOpts.map(v => <option key={v} value={String(v)}>{v}</option>)}
               </select>
             </div>
-            <div className="form-group margin-right" id="filter-tag-transform-group" style={{ display: 'none' }}>
+            <div className="form-group margin-right" id="filter-tag-transform-group">
               <label className="control-label" htmlFor="tagTransformMode">Tag-transform</label>
-              <select name="tag_transform_mode" id="tagTransformMode" className="form-control input-120 select-search text-nowrap">
+              <select name="tag_transform_mode" id="tagTransformMode" className="form-control input-120 select-search text-nowrap"
+                value={filterTagTransform} onChange={e => { setFilterTagTransform(e.target.value); setPage(1); }}>
                 <option value="">Any</option>
+                {tagTransformOpts.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
           </div>
 
           <div className="text-right margin-top more-filter-actions" style={{ display: 'flex', gap: 12, alignItems: 'center', paddingTop: 8, borderTop: '1px solid rgba(255,255,255,0.08)', width: '100%' }}>
             <a href="#" id="export-selection" className="btn btn-link" title="Export"
-              onClick={e => { e.preventDefault(); toast.success('Export (próximamente)'); }}>
+              onClick={async e => {
+                e.preventDefault();
+                try {
+                  const r = await reportsAPI.exportData({ olt_id: filterOLT || undefined });
+                  const rows = r.data?.data || r.data || [];
+                  if (!rows.length) { toast.error('No data to export'); return; }
+                  const csv = ['serial_number,description,status,vlan,zone,odb,board,port,onu_id,rx_power,tx_power,distance,firmware,model,mac_address,address,contact']
+                    .concat(rows.map(o => [o.serial_number, o.description, o.status, o.vlan, o.zone, o.odb, o.board, o.port, o.onu_id, o.rx_power, o.tx_power, o.distance, o.firmware, o.model, o.mac_address, o.address, o.contact].map(v => `"${v ?? ''}"`).join(',')))
+                    .join('\n');
+                  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a'); a.href = url; a.download = `onts-export-${new Date().toISOString().slice(0,10)}.csv`; a.click();
+                  URL.revokeObjectURL(url);
+                  toast.success('Export OK');
+                } catch (e) { toast.error('Export failed'); }
+              }}>
               <IconUpload size={12} /> Export
             </a>
             <a href="#" id="import-onus-details" className="btn btn-link" title="Import ONUs location details"
-              onClick={e => { e.preventDefault(); toast.success('Import (próximamente)'); }}>
+              onClick={e => { e.preventDefault(); setShowImportModal(true); }}>
               <IconDownload size={12} /> Import
             </a>
           </div>
@@ -1240,7 +1456,7 @@ export default function ONTs() {
                 <div className="panel-body">
 
                   {/* Active batch tasks (hidden) */}
-                  <div id="active-batch-tasks" className="margin-bottom" style={{ display: 'none' }}>
+                  <div id="active-batch-tasks" className="margin-bottom">
                     <div className="clearfix margin-bottom-sm">
                       <strong className="pull-left"><IconGauge size={14} /> Active Batch Tasks</strong>
                       <button className="btn btn-danger pull-right" id="stop-selected-batch-tasks" disabled>Stop batch actions</button>
@@ -1286,7 +1502,7 @@ export default function ONTs() {
                   </div>
 
                   {/* ── Change SVLAN/CVLAN ── */}
-                  <div className="batch-action-row" id="batch-action-svlan-cvlan-row" style={{ display: 'none' }}>
+                  <div className="batch-action-row" id="batch-action-svlan-cvlan-row">
                     <a href="#" className="batch-action-row-title"
                       onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'svlan' ? null : 'svlan'); }}>
                       <IconChevronRight size={12} className="batch-action-chevron" />
@@ -1373,14 +1589,18 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-download-speed">Download</label>
-                            <select id="batch-download-speed" className="form-control form-control-sm input-sm">
+                            <select id="batch-download-speed" className="form-control form-control-sm input-sm"
+                              value={batchForm.downloadSpeed || ''} onChange={e => updBatch('downloadSpeed', e.target.value)}>
                               <option value="">Please select</option>
+                              {SPEED_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                           </div>
                           <div className="form-group">
                             <label htmlFor="batch-upload-speed">Upload</label>
-                            <select id="batch-upload-speed" className="form-control form-control-sm input-sm">
+                            <select id="batch-upload-speed" className="form-control form-control-sm input-sm"
+                              value={batchForm.uploadSpeed || ''} onChange={e => updBatch('uploadSpeed', e.target.value)}>
                               <option value="">Please select</option>
+                              {SPEED_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                           </div>
                           <button type="button" className="btn btn-primary batch-action-btn"
@@ -1403,8 +1623,10 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-onu-type">New ONU Type</label>
-                            <select id="batch-onu-type" className="form-control form-control-sm input-sm">
+                            <select id="batch-onu-type" className="form-control form-control-sm input-sm"
+                              value={batchForm.onuType || ''} onChange={e => updBatch('onuType', e.target.value)}>
                               <option value="">Please select</option>
+                              {onuTypeOpts.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                           </div>
                           <button type="button" className="btn btn-primary batch-action-btn"
@@ -1427,8 +1649,10 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-custom-profile">New Custom Profile</label>
-                            <select id="batch-custom-profile" className="form-control form-control-sm input-sm">
+                            <select id="batch-custom-profile" className="form-control form-control-sm input-sm"
+                              value={batchForm.customProfile || ''} onChange={e => updBatch('customProfile', e.target.value)}>
                               <option value="">None (remove)</option>
+                              {profileOpts.map(t => <option key={t} value={t}>{t}</option>)}
                             </select>
                           </div>
                           <button type="button" className="btn btn-primary batch-action-btn"
@@ -1451,7 +1675,8 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-mgmt-ip-mode">Mode</label>
-                            <select id="batch-mgmt-ip-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                            <select id="batch-mgmt-ip-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}
+                              value={batchForm.mgmtIpMode || ''} onChange={e => updBatch('mgmtIpMode', e.target.value)}>
                               <option value="">Please select</option>
                               <option value="Inactive">Inactive</option>
                               <option value="Static">Static IP (from IP Pools)</option>
@@ -1478,7 +1703,8 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-tr069-mode">TR-069</label>
-                            <select id="batch-tr069-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}>
+                            <select id="batch-tr069-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}
+                              value={batchForm.tr069Mode || ''} onChange={e => updBatch('tr069Mode', e.target.value)}>
                               <option value="">Please select</option>
                               <option value="disable">Disable</option>
                               <option value="enable">Enable</option>
@@ -1504,7 +1730,8 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-wan-config-method">Configuration method</label>
-                            <select id="batch-wan-config-method" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                            <select id="batch-wan-config-method" className="form-control form-control-sm input-sm" style={{ width: 220 }}
+                              value={batchForm.wanConfigMethod || ''} onChange={e => updBatch('wanConfigMethod', e.target.value)}>
                               <option value="">Please select</option>
                               <option value="OMCI">OMCI</option>
                               <option value="TR069">TR069</option>
@@ -1530,7 +1757,8 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-wan-mode">WAN mode</label>
-                            <select id="batch-wan-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}>
+                            <select id="batch-wan-mode" className="form-control form-control-sm input-sm" style={{ width: 220 }}
+                              value={batchForm.wanSetupMode || ''} onChange={e => updBatch('wanSetupMode', e.target.value)}>
                               <option value="">Please select</option>
                               <option value="Setup via ONU webpage">Setup via ONU webpage</option>
                               <option value="DHCP">DHCP</option>
@@ -1575,7 +1803,8 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-ipv6-mode">IPv6</label>
-                            <select id="batch-ipv6-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}>
+                            <select id="batch-ipv6-mode" className="form-control form-control-sm input-sm" style={{ width: 120 }}
+                              value={batchForm.ipv6Mode || ''} onChange={e => updBatch('ipv6Mode', e.target.value)}>
                               <option value="">Please select</option>
                               <option value="enable">Enable</option>
                               <option value="disable">Disable</option>
@@ -1601,11 +1830,13 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-web-user">Web user</label>
-                            <input type="text" id="batch-web-user" className="form-control form-control-sm input-sm" placeholder="5-16 alphanumeric" style={{ width: 150 }} />
+                            <input type="text" id="batch-web-user" className="form-control form-control-sm input-sm" placeholder="5-16 alphanumeric" style={{ width: 150 }}
+                              value={batchForm.webUser || ''} onChange={e => updBatch('webUser', e.target.value)} />
                           </div>
                           <div className="form-group">
                             <label htmlFor="batch-web-pass">Web pass</label>
-                            <input type="text" id="batch-web-pass" className="form-control form-control-sm input-sm" placeholder="8-16 chars" style={{ width: 150 }} />
+                            <input type="text" id="batch-web-pass" className="form-control form-control-sm input-sm" placeholder="8-16 chars" style={{ width: 150 }}
+                              value={batchForm.webPass || ''} onChange={e => updBatch('webPass', e.target.value)} />
                           </div>
                           <button type="button" className="btn btn-primary batch-action-btn"
                             onClick={() => submitBatch('setWebUserPass')} disabled={batchBusy}>Apply</button>
@@ -1627,14 +1858,16 @@ export default function ONTs() {
                         <div className="batch-action-controls">
                           <div className="form-group">
                             <label htmlFor="batch-zone">Zone</label>
-                            <select id="batch-zone" className="form-control form-control-sm input-sm">
+                            <select id="batch-zone" className="form-control form-control-sm input-sm"
+                              value={batchForm.zone || ''} onChange={e => updBatch('zone', e.target.value)}>
                               <option value="">Please select</option>
                               {zoneOpts.map(z => <option key={z} value={z}>{z}</option>)}
                             </select>
                           </div>
                           <div className="form-group">
                             <label htmlFor="batch-odb">ODB</label>
-                            <select id="batch-odb" className="form-control form-control-sm input-sm">
+                            <select id="batch-odb" className="form-control form-control-sm input-sm"
+                              value={batchForm.odb || ''} onChange={e => updBatch('odb', e.target.value)}>
                               <option value="__keep__">Copy ODB to new zone</option>
                               <option value="">None</option>
                             </select>
@@ -1660,28 +1893,87 @@ export default function ONTs() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'center' }}>
                             <div className="form-group" style={{ margin: 0, alignItems: 'center' }}>
                               <label htmlFor="batch-dns1" style={{ margin: '0 8px 0 0' }}>Primary DNS</label>
-                              <input type="text" id="batch-dns1" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.8.8" />
+                              <input type="text" id="batch-dns1" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.8.8"
+                                value={batchForm.dns1 || ''} onChange={e => updBatch('dns1', e.target.value)} />
                             </div>
                             <div className="form-group" style={{ margin: 0, alignItems: 'center' }}>
                               <label htmlFor="batch-dns2" style={{ margin: '0 8px 0 0' }}>Secondary DNS</label>
-                              <input type="text" id="batch-dns2" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.4.4" />
+                              <input type="text" id="batch-dns2" className="form-control form-control-sm input-sm" style={{ width: 130 }} placeholder="8.8.4.4"
+                                value={batchForm.dns2 || ''} onChange={e => updBatch('dns2', e.target.value)} />
                             </div>
                           </div>
                           <hr style={{ margin: 0, width: '100%', maxWidth: 420, borderTop: '1px solid rgba(255,255,255,0.12)' }} />
                           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, lineHeight: 1, margin: '6px 0' }}>
                             <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <input type="checkbox" defaultChecked style={{ margin: 0 }} /> Apply to Management IP
+                              <input type="checkbox" checked={batchForm.applyDnsMgmt !== false} style={{ margin: 0 }}
+                                onChange={e => updBatch('applyDnsMgmt', e.target.checked)} /> Apply to Management IP
                             </label>
                             <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <input type="checkbox" defaultChecked style={{ margin: 0 }} /> Apply to WAN IP
+                              <input type="checkbox" checked={batchForm.applyDnsWan !== false} style={{ margin: 0 }}
+                                onChange={e => updBatch('applyDnsWan', e.target.checked)} /> Apply to WAN IP
                             </label>
                             <label style={{ margin: 0, fontWeight: 'normal', display: 'flex', alignItems: 'center', gap: 6 }} title="Separate VoIP DNS">
-                              <input type="checkbox" style={{ margin: 0 }} /> Apply to Separate VoIP IP
+                              <input type="checkbox" checked={batchForm.applyDnsVoip || false} style={{ margin: 0 }}
+                                onChange={e => updBatch('applyDnsVoip', e.target.checked)} /> Apply to Separate VoIP IP
                             </label>
                           </div>
                           <span className="text-muted batch-action-help"><IconInfoCircle size={11} /> <span id="batch-dns-help"></span></span>
                           <button type="button" className="btn btn-primary batch-action-btn"
                             onClick={() => submitBatch('change_dns_servers')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── DHCP Option 82 ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'dhcp82' ? null : 'dhcp82'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconServer size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs DHCP Option 82</span>
+                    </a>
+                    {batchForm.section === 'dhcp82' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-dhcp82-mode">DHCP Option 82</label>
+                            <select id="batch-dhcp82-mode" className="form-control form-control-sm input-sm" style={{ width: 140 }}
+                              value={batchForm.dhcp82Mode || ''} onChange={e => updBatch('dhcp82Mode', e.target.value)}>
+                              <option value="">Please select</option>
+                              <option value="enable">Enable</option>
+                              <option value="disable">Disable</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('dhcpOption82')} disabled={batchBusy}>Apply</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* ── PPPoE Plus ── */}
+                  <div className="batch-action-row">
+                    <a href="#" className="batch-action-row-title"
+                      onClick={e => { e.preventDefault(); updBatch('section', batchForm.section === 'pppoePlus' ? null : 'pppoePlus'); }}>
+                      <IconChevronRight size={12} className="batch-action-chevron" />
+                      <IconBroadcast size={14} className="text-success" />
+                      <span className="batch-action-label">Change ONUs PPPoE Plus</span>
+                    </a>
+                    {batchForm.section === 'pppoePlus' && (
+                      <div className="batch-action-row-content">
+                        <div className="batch-action-controls">
+                          <div className="form-group">
+                            <label htmlFor="batch-pppoe-plus-mode">PPPoE Plus</label>
+                            <select id="batch-pppoe-plus-mode" className="form-control form-control-sm input-sm" style={{ width: 140 }}
+                              value={batchForm.pppoePlusMode || ''} onChange={e => updBatch('pppoePlusMode', e.target.value)}>
+                              <option value="">Please select</option>
+                              <option value="enable">Enable</option>
+                              <option value="disable">Disable</option>
+                            </select>
+                          </div>
+                          <button type="button" className="btn btn-primary batch-action-btn"
+                            onClick={() => submitBatch('pppoePlus')} disabled={batchBusy}>Apply</button>
                         </div>
                       </div>
                     )}
@@ -1771,22 +2063,19 @@ export default function ONTs() {
                 <th style={{ width: 36, textAlign: 'center', paddingLeft: 12 }}>
                   <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
                 </th>
-                <SortTh sortKey="status" sortState={sortState} onSort={handleSort} style={{ width: 70 }}>Status</SortTh>
-                <th style={{ width: 60, textAlign: 'center' }}>View</th>
+                <SortTh sortKey="status" sortState={sortState} onSort={handleSort} style={{ width: 60, textAlign: 'center' }}>Status</SortTh>
+                <th style={{ width: 55, textAlign: 'center' }}>View</th>
                 <SortTh sortKey="client" sortState={sortState} onSort={handleSort}>Name</SortTh>
-                <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort} style={{ width: 130 }}>SN / MAC</SortTh>
-                <SortTh sortKey="model" sortState={sortState} onSort={handleSort} style={{ width: 100 }}>ONU Type</SortTh>
-                <SortTh sortKey="olt" sortState={sortState} onSort={handleSort} style={{ width: 110 }}>OLT</SortTh>
+                <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort} style={{ width: 140 }}>SN / MAC</SortTh>
+                <SortTh sortKey="model" sortState={sortState} onSort={handleSort} style={{ width: 100 }}>ONU</SortTh>
                 <SortTh sortKey="zone" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>Zone</SortTh>
                 <SortTh sortKey="odb" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>ODB</SortTh>
-                <SortTh sortKey="pon_port" sortState={sortState} onSort={handleSort} style={{ width: 90 }}>PON</SortTh>
-                <SortTh sortKey="rx_power" sortState={sortState} onSort={handleSort} style={{ width: 70, textAlign: 'right' }}>Signal</SortTh>
-                <SortTh sortKey="wan_mode" sortState={sortState} onSort={handleSort} style={{ width: 50, textAlign: 'center' }}>B/R</SortTh>
-                <SortTh sortKey="vlan" sortState={sortState} onSort={handleSort} style={{ width: 55, textAlign: 'center' }}>VLAN</SortTh>
+                <SortTh sortKey="rx_power" sortState={sortState} onSort={handleSort} style={{ width: 65, textAlign: 'right' }}>Signal</SortTh>
+                <SortTh sortKey="wan_mode" sortState={sortState} onSort={handleSort} style={{ width: 40, textAlign: 'center' }}>B/R</SortTh>
+                <SortTh sortKey="vlan" sortState={sortState} onSort={handleSort} style={{ width: 50, textAlign: 'center' }}>VLAN</SortTh>
                 <th style={{ width: 40, textAlign: 'center' }}>VoIP</th>
                 <th style={{ width: 35, textAlign: 'center' }}>TV</th>
                 <SortTh sortKey="provisioned_at" sortState={sortState} onSort={handleSort} style={{ width: 85 }}>Auth date</SortTh>
-                <th style={{ width: 70, textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -1799,7 +2088,7 @@ export default function ONTs() {
                   <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" className="checkbox" checked={selected.has(ont.id)} onChange={() => toggleOne(ont.id)} />
                   </td>
-                  <td><StatusBadge status={ont.status} /></td>
+                  <td style={{ textAlign: 'center' }}><StatusBadge status={ont.status} /></td>
                   <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                     <button className="sol-viewbtn" onClick={() => navigate(`/onts/view/${ont.id}`)}>
                       <IconEye size={11} /> View
@@ -1817,18 +2106,19 @@ export default function ONTs() {
                     {(ont.mac) && <div className="mono" style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 1 }}>{ont.mac}</div>}
                   </td>
                   <td><span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.model || '—'}</span></td>
-                  <td>
-                    <div style={{ fontSize: 12, lineHeight: 1.3 }}>{ont.olt?.name || '—'}</div>
-                    {ont.olt?.brand && <div style={{ marginTop: 2 }}><BrandTag brand={ont.olt.brand} /></div>}
-                  </td>
                   <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.zone || '—'}</span></td>
                   <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.odb || '—'}</span></td>
-                  <td><span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.description || ont.pon_port || '—'}</span></td>
                   <td style={{ textAlign: 'right' }}><SignalValue value={ont.rx_power} size="sm" /></td>
                   <td style={{ textAlign: 'center' }}>
                     {ont.wan_mode ? (
-                      <span className={`label ${ont.wan_mode === 'bridge' ? 'label-green' : 'label-yellow'}`} style={{ fontSize: 9 }}>
-                        {ont.wan_mode === 'bridge' ? 'BRIDGE' : ont.wan_mode.toUpperCase().slice(0, 4)}
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        width: 22, height: 22, borderRadius: 4, fontSize: 11, fontWeight: 700,
+                        background: ont.wan_mode === 'bridge'
+                          ? 'rgba(92,184,92,0.2)' : 'rgba(240,173,78,0.2)',
+                        color: ont.wan_mode === 'bridge' ? '#5cb85c' : '#f0ad4e',
+                      }}>
+                        {ont.wan_mode === 'bridge' ? 'B' : 'R'}
                       </span>
                     ) : (
                       <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
@@ -1841,24 +2131,20 @@ export default function ONTs() {
                       <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>
                     )}
                   </td>
-                  <td style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>—</td>
-                  <td style={{ textAlign: 'center', fontSize: 13, color: 'var(--text-muted)' }}>—</td>
+                  <td style={{ textAlign: 'center' }}>
+                    {ont.voip_enabled
+                      ? <IconCircleCheck size={14} style={{ color: '#5cb85c' }} />
+                      : <IconX size={14} style={{ color: '#94a3b8', opacity: 0.5 }} />}
+                  </td>
+                  <td style={{ textAlign: 'center' }}>
+                    {ont.catv_enabled
+                      ? <IconCircleCheck size={14} style={{ color: '#5cb85c' }} />
+                      : <IconX size={14} style={{ color: '#94a3b8', opacity: 0.5 }} />}
+                  </td>
                   <td>
                     <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {ont.provisioned_at ? new Date(ont.provisioned_at).toLocaleDateString('es-AR') : '—'}
                     </span>
-                  </td>
-                  <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'inline-flex', gap: 4 }}>
-                      <button className="sol-act teal tooltip" data-tip="Reboot"
-                        onClick={e => handleReboot(e, ont.id)} disabled={rebootMut.isPending}>
-                        <IconPower size={13} />
-                      </button>
-                      <button className="sol-act red tooltip" data-tip="Delete"
-                        onClick={e => handleDelete(e, ont.id)}>
-                        <IconTrash size={13} />
-                      </button>
-                    </div>
                   </td>
                 </tr>
               ))}
@@ -1867,15 +2153,29 @@ export default function ONTs() {
         )}
 
         {/* ── Pagination ── */}
-        {!isLoading && filtered.length > PAGE_SIZE && (
+        {!isLoading && filtered.length > pageSize && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 16px', borderTop: '1px solid var(--border)',
           }}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-            </span>
-            <div style={{ display: 'flex', gap: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Show</span>
+              <select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+                style={{
+                  height: 30, fontSize: 12, padding: '2px 6px',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#f1f5f9', borderRadius: 4, outline: 'none',
+                }}>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>entries</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 8 }}>
+                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of {filtered.length}
+              </span>
               <span onClick={() => page > 1 && setPage(p => p - 1)}
                 style={{ cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, display: 'inline-block',
                   background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: page <= 1 ? 'rgba(255,255,255,0.35)' : '#e2e8f0' }}>
@@ -1895,6 +2195,11 @@ export default function ONTs() {
                   background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: page >= totalPages ? 'rgba(255,255,255,0.35)' : '#e2e8f0' }}>
                 Next ›
               </span>
+              <span onClick={() => page < totalPages && setPage(totalPages)}
+                style={{ cursor: page >= totalPages ? 'not-allowed' : 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, display: 'inline-block',
+                  background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', color: page >= totalPages ? 'rgba(255,255,255,0.35)' : '#e2e8f0' }}>
+                »
+              </span>
             </div>
           </div>
         )}
@@ -1904,6 +2209,10 @@ export default function ONTs() {
       {drawerONT && (
         <ONTDrawer ont={drawerONT} onClose={() => setDrawerONT(null)} />
       )}
+
+      {/* Modals */}
+      <PermissionRequiredModal open={showPermissionModal} onClose={() => setShowPermissionModal(false)} />
+      <ImportLocationModal open={showImportModal} onClose={() => setShowImportModal(false)} onImport={handleImportFile} />
 
     </div>
   );

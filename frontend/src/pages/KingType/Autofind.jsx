@@ -1,14 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { oltAPI, vsolAPI, ontAPI } from '../../services/api';
+import { oltAPI, kingtypeAPI, ontAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import { IconArrowLeft, IconRefresh, IconPlus, IconSearch, IconChevronDown } from '@tabler/icons-react';
 
-export default function Autofind() {
+export default function KingTypeAutofind() {
   const { id } = useParams();
   const qc = useQueryClient();
-  const [profile, setProfile] = useState('default');
+  const [profile, setProfile] = useState('LINEKTONU');
   const [selectedPort, setSelectedPort] = useState('');
   const [selected, setSelected] = useState(new Set());
   const [authorizing, setAuthorizing] = useState(null);
@@ -19,8 +19,8 @@ export default function Autofind() {
   });
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['vsol', id, 'autofind', selectedPort],
-    queryFn: () => vsolAPI.autofind(id, selectedPort || undefined).then(r => r.data?.data ?? r.data),
+    queryKey: ['kingtype', id, 'autofind', selectedPort],
+    queryFn: () => kingtypeAPI.autofind(id, selectedPort || undefined).then(r => r.data?.data ?? r.data),
   });
 
   const raw = useMemo(() => {
@@ -63,9 +63,7 @@ export default function Autofind() {
   const authorizeSelected = async () => {
     const toAuth = raw.filter(o => selected.has(o.serialNumber));
     for (const onu of toAuth) {
-      try {
-        await authorizeMut.mutateAsync(onu);
-      } catch { /* continue */ }
+      try { await authorizeMut.mutateAsync(onu); } catch {}
     }
     setSelected(new Set());
   };
@@ -74,8 +72,8 @@ export default function Autofind() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="page-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <Link to={`/olts/${id}/vsol`} className="btn"><IconArrowLeft size={14} /> Back</Link>
-          <span className="page-title">Autofind — {olt?.name || 'VSOL'}</span>
+          <Link to={`/olts/${id}/kingtype`} className="btn"><IconArrowLeft size={14} /> Back</Link>
+          <span className="page-title">Autofind — {olt?.name || 'KingType'}</span>
           <span className="badge badge-blue">{total} total</span>
           <span className="badge badge-green">{provisioned} provisioned</span>
           <span className="badge" style={{ color: 'var(--orange)', borderColor: 'rgba(210,153,34,0.3)', background: 'rgba(210,153,34,0.1)' }}>{raw.length} new</span>
@@ -88,7 +86,7 @@ export default function Autofind() {
       <div className="card" style={{ padding: 12, display: 'flex', gap: 14, alignItems: 'flex-end', flexWrap: 'wrap' }}>
         <div>
           <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Default Profile</label>
-          <input className="input-base" style={{ width: 150 }} value={profile} onChange={e => setProfile(e.target.value)} placeholder="default" />
+          <input className="input-base" style={{ width: 150 }} value={profile} onChange={e => setProfile(e.target.value)} placeholder="LINEKTONU" />
         </div>
         <div>
           <label style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>PON Port</label>
@@ -128,7 +126,7 @@ export default function Autofind() {
       ) : raw.length === 0 ? (
         <div className="card"><div className="empty-state">
           <IconSearch size={40} style={{ opacity: 0.3, marginBottom: 10, display: 'block', marginLeft: 'auto', marginRight: 'auto' }} />
-          No unprovisioned ONUs found — all discovered ONUs are already in the database.
+          No unprovisioned ONUs found
         </div></div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>

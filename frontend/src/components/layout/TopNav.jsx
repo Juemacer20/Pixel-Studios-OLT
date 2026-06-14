@@ -10,6 +10,42 @@ import { useTheme } from '../../hooks/useTheme';
 import { oltAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
+function SaveConfigGlobalModal({ open, onClose }) {
+  const [busy, setBusy] = useState(false);
+  const handleSave = async () => {
+    setBusy(true);
+    try { await oltAPI.saveConfig(); toast.success('Configuration saved to OLT'); onClose(); }
+    catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
+    finally { setBusy(false); }
+  };
+  if (!open) return null;
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button className="close" onClick={onClose}>&times;</button>
+              <h3>Save configuration</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 13 }}>
+                This will save the running configuration to the startup configuration on the OLT.
+                All changes will be persisted across reboots.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <a href="#" className="btn btn-link" onClick={onClose}>No, cancel</a>
+              <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? 'Saving…' : 'Yes, save configuration'}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── Menú principal (etiquetas tipo SmartOLT, mapeadas a rutas reales) ──
 const MAIN = [
   { to: '/dashboard',  label: 'Dashboard',    Icon: IconLayoutDashboard },
@@ -68,17 +104,14 @@ export default function TopNav() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggle } = useTheme();
+  const [saveOpen, setSaveOpen] = useState(false);
 
   const handleLogout = () => { clearAuth(); navigate('/login'); };
-  const handleSave = async () => {
-    if (!confirm('¿Guardar la configuración? Las acciones ya persisten por OLT; esto registra un guardado global.')) return;
-    try { await oltAPI.saveConfig(); toast.success('Configuración guardada'); }
-    catch (e) { toast.error(e?.response?.data?.error || 'Error al guardar'); }
-  };
 
   return (
+    <>
       <header className="sol-topnav">
-        <div className="sol-brand"><span className="logo">◉</span> Pixel Studios OLT</div>
+        <div className="sol-brand"><span className="logo">◉</span> Pixel Studios OLT <span className="badge badge-gray" style={{ fontSize: 9, marginLeft: 6, verticalAlign: 'middle' }}>v3.3.0</span></div>
 
         <nav className="sol-nav">
           {MAIN.map(({ to, label, Icon }) => {
@@ -93,7 +126,7 @@ export default function TopNav() {
           <NavLink to="/config-comparison" className={`sol-nav-item${location.pathname === '/config-comparison' ? ' active' : ''}`}>
             <IconGitCompare size={15} /> Config mismatches
           </NavLink>
-          <button className="sol-nav-item save" onClick={handleSave}>
+          <button className="sol-nav-item save" onClick={() => setSaveOpen(true)}>
             <IconDeviceFloppy size={15} /> Save config
           </button>
           <Dropdown label="Settings" items={SETTINGS} navigate={navigate} />
@@ -110,5 +143,8 @@ export default function TopNav() {
           <button className="sol-logout" onClick={handleLogout}><IconPower size={15} /> Log out</button>
         </div>
       </header>
+
+      <SaveConfigGlobalModal open={saveOpen} onClose={() => setSaveOpen(false)} />
+    </>
   );
 }

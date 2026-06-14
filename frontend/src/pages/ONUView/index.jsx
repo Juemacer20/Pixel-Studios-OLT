@@ -22,6 +22,9 @@ import {
   TR069ProfileModal,
   FirmwareUpgradeModal,
   MoveOnuModal,
+  HistoryModal,
+  LiveSignalModal,
+  MoreGraphsModal,
   fetchTR069Stat,
 } from './OnuModals';
 
@@ -34,14 +37,17 @@ function v(s) { return s ?? '—'; }
 
 function ChangeOnuTypeModal({ open, ontId, onClose }) {
   const [typeId, setTypeId] = useState('');
+  const [profileId, setProfileId] = useState('');
   const [busy, setBusy] = useState(false);
   const handleSave = async () => {
     if (!typeId) return;
     setBusy(true);
-    try { await ontAPI.changeType(ontId, { onuTypeId: typeId }); toast.success('ONU type changed'); onClose(); }
+    try { await ontAPI.changeType(ontId, { onuTypeId: typeId, customTemplateId: profileId || undefined }); toast.success('ONU type changed'); onClose(); }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
+  const ONU_TYPES = ['HG8245H', 'HG8240H', 'HG8010H', 'EG8145V5', 'EG8141A5', 'HS8145V', 'VSOL', 'KT-AZUL', 'F601V6.0', 'GP1704-1G', 'GP1704-4GV-22A'];
+  const PROFILES = ['Generic_1', 'Generic_2', 'Generic_3', 'Generic_4', 'Generic_5', 'Generic_6'];
   if (!open) return null;
   return (
     <>
@@ -57,13 +63,103 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
               <div className="form-group">
                 <label className="control-label col-sm-4">ONU type</label>
                 <div className="col-sm-6">
-                  <input className="form-control" value={typeId} onChange={e => setTypeId(e.target.value)} placeholder="ONU type ID" />
+                  <select className="form-control" value={typeId} onChange={e => setTypeId(e.target.value)}>
+                    <option value="">— Select —</option>
+                    {ONU_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="control-label col-sm-4">Custom template</label>
+                <div className="col-sm-6">
+                  <select className="form-control" value={profileId} onChange={e => setProfileId(e.target.value)}>
+                    <option value="">None</option>
+                    {PROFILES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
                 </div>
               </div>
             </div>
             <div className="modal-footer">
               <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
               <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? 'Changing…' : 'Change'}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function EPONChannelModal({ open, ontId, onClose }) {
+  const [eponType, setEponType] = useState('epon');
+  const [busy, setBusy] = useState(false);
+  const handleSave = async () => {
+    setBusy(true);
+    try { await ontAPI.eponChannel(ontId, { eponType }); toast.success('EPON channel updated'); onClose(); }
+    catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
+    finally { setBusy(false); }
+  };
+  if (!open) return null;
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button className="close" onClick={onClose}>&times;</button>
+              <h3>Update EPON channel</h3>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="control-label col-sm-4">EPON type</label>
+                <div className="col-sm-6">
+                  <select className="form-control" value={eponType} onChange={e => setEponType(e.target.value)}>
+                    <option value="epon">EPON</option>
+                    <option value="epon_10g">10G-EPON</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
+              <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? 'Updating…' : 'Update'}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function SaveConfigModal({ open, onClose }) {
+  const [busy, setBusy] = useState(false);
+  const handleSave = async () => {
+    setBusy(true);
+    try { await ontAPI.saveConfig(); toast.success('Configuration saved to OLT'); onClose(); }
+    catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
+    finally { setBusy(false); }
+  };
+  if (!open) return null;
+  return (
+    <>
+      <div className="modal-backdrop" onClick={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content">
+            <div className="modal-header">
+              <button className="close" onClick={onClose}>&times;</button>
+              <h3>Save Configuration</h3>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 13 }}>
+                This will save the running configuration to the startup configuration on the OLT.
+                All changes made to this ONU will be persisted across reboots.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
+              <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? 'Saving…' : 'Save'}</a>
             </div>
           </div>
         </div>
@@ -124,6 +220,7 @@ export default function ONUView() {
   const [modal, setModal] = useState(null);
   const [busy, setBusy] = useState(false);
   const [readResult, setReadResult] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const runAction = (name) => {
     const actions = {
@@ -133,7 +230,7 @@ export default function ONUView() {
       'Start ONU': { confirm: true, msg: 'Start (activate) this ONU?', run: () => ontAPI.start(id) },
       'Stop ONU': { confirm: true, danger: true, msg: 'Stop (deactivate) this ONU?', run: () => ontAPI.stop(id) },
       'Resync config': { confirm: true, msg: 'Recreate (resync) the OLT config for this ONU?', run: () => ontAPI.resync(id) },
-      'Restore defaults': { confirm: true, danger: true, msg: 'Restore to factory defaults?', run: () => ontAPI.restoreDefaults(id) },
+      'Reset ONU': { confirm: true, danger: true, msg: 'Restore ONU to factory defaults? All settings will be lost.', run: () => ontAPI.restoreDefaults(id) },
       'Delete': { confirm: true, danger: true, msg: 'Delete this ONU? Cannot be undone.', run: () => ontAPI.delete(id).then(() => { qc.invalidateQueries({ queryKey: ['onts'] }); navigate('/onts'); }) },
       'Firmware Upgrade - Reset to defaults': 'firmwareUpgrade',
     };
@@ -288,7 +385,7 @@ export default function ONUView() {
           <dt>Authorization date</dt>
           <dd>
             <span>{o.created_at ? new Date(o.created_at).toLocaleString() : '—'}</span>
-            <a href="#historyModal" className="history margin-left" onClick={() => toast('History — próximamente', { icon: '⚙️' })}>History</a>
+            <a href="#historyModal" className="history margin-left" onClick={() => setModal({ type: 'history' })}>History</a>
           </dd>
 
           <dt>ONU external ID</dt>
@@ -333,12 +430,59 @@ export default function ONUView() {
           <dt>Last down cause</dt>
           <dd><span className="text-muted">{v(o.last_down_cause)}</span></dd>
 
-          <dt>ONU/OLT Rx signal</dt>
+          <dt>Signal (Tx/Rx)</dt>
           <dd id="signal_wrapper">
+            <span style={{ color: '#f0ad4e' }}>{o.tx_power != null ? `${o.tx_power} dBm` : '—'}</span>
+            <span className="text-muted"> / </span>
             <span style={{ color: rxColor(o.rx_power) }}>{o.rx_power != null ? `${o.rx_power} dBm` : '—'}</span>
-            {o.olt_rx != null ? <span className="text-muted"> / {o.olt_rx} dBm</span> : null}
-            {o.distance != null ? <span className="text-muted"> ({o.distance}m)</span> : null}
+            {o.olt_rx != null ? <span className="text-muted"> (OLT: {o.olt_rx} dBm)</span> : null}
+            {o.distance != null ? <span className="text-muted"> · {o.distance}m</span> : null}
           </dd>
+
+          {o.temperature != null || o.voltage != null || o.bias_current != null ? (
+            <>
+              <dt>Enrichment</dt>
+              <dd>
+                {o.temperature != null ? <span className="text-muted">{o.temperature}°C</span> : null}
+                {o.voltage != null ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.voltage}V</span> : null}
+                {o.bias_current != null ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.bias_current} mA</span> : null}
+                {o.enriched_at ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>({new Date(o.enriched_at).toLocaleString()})</span> : null}
+              </dd>
+            </>
+          ) : null}
+
+          {o.cpu_pct != null || o.mem_pct != null ? (
+            <>
+              <dt>CPU / MEM</dt>
+              <dd>
+                {o.cpu_pct != null ? <span className="text-muted">CPU: {o.cpu_pct}%</span> : null}
+                {o.mem_pct != null ? <span className="text-muted" style={{ marginLeft: 8 }}>MEM: {o.mem_pct}%</span> : null}
+              </dd>
+            </>
+          ) : null}
+
+          {o.last_up || o.last_down || o.online_duration ? (
+            <>
+              <dt>Online duration</dt>
+              <dd>
+                {o.online_duration ? <span className="text-muted">{o.online_duration}</span> : null}
+                {o.last_up ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>up: {new Date(o.last_up).toLocaleString()}</span> : null}
+                {o.last_down ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>down: {new Date(o.last_down).toLocaleString()}</span> : null}
+              </dd>
+            </>
+          ) : null}
+
+          {o.ports ? (
+            <>
+              <dt>Ports</dt>
+              <dd>
+                {o.ports.eth != null ? <span className="badge badge-blue" style={{ marginRight: 4 }}>{o.ports.eth}x ETH</span> : null}
+                {o.ports.pots != null && o.ports.pots > 0 ? <span className="badge" style={{ marginRight: 4, background: 'rgba(210,153,34,0.15)', color: '#d29922' }}>{o.ports.pots}x POTS</span> : null}
+                {o.ports.catv != null && o.ports.catv > 0 ? <span className="badge" style={{ background: 'rgba(92,184,92,0.15)', color: '#5cb85c' }}>{o.ports.catv}x CATV</span> : null}
+                {o.ports.vdsl != null && o.ports.vdsl > 0 ? <span className="badge" style={{ marginLeft: 4, background: 'rgba(71,146,230,0.15)', color: '#4792e6' }}>{o.ports.vdsl}x VDSL</span> : null}
+              </dd>
+            </>
+          ) : null}
 
           <dt>Attached VLANs</dt>
           <dd>
@@ -390,6 +534,60 @@ export default function ONUView() {
           <dd className="routerModeItem pppoeItem">
             <span className="hidden_pppoe_password margin-right">{o.pppoe_pass ? '**********' : '—'}</span>
           </dd>
+
+          {o.wan_info && o.wan_info.length > 0 ? (
+            <>
+              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>WAN</dt>
+              <dd style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>
+                {o.wan_info.map((w, i) => (
+                  <div key={i} style={{ fontSize: 12, marginBottom: i < o.wan_info.length - 1 ? 6 : 0, paddingBottom: i < o.wan_info.length - 1 ? 6 : 0, borderBottom: i < o.wan_info.length - 1 ? '1px dashed var(--border)' : 'none' }}>
+                    <div><strong>{w.name || `WAN ${w.index}`}</strong> <span className="text-muted">({w.service_type})</span></div>
+                    <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+                      <span className="text-muted">{w.ipv4_access || w.ipv4_access_type} · {w.connection_type}</span>
+                      {w.ipv4_status ? <span className={`badge ${w.ipv4_status === 'Connected' ? 'badge-green' : ''}`} style={{ fontSize: 10 }}>{w.ipv4_status}</span> : null}
+                    </div>
+                    <div style={{ marginTop: 2 }}>
+                      {w.ipv4_address ? <span className="mono" style={{ fontSize: 11 }}>{w.ipv4_address}{w.mask ? `/${w.mask}` : ''}</span> : null}
+                      {w.default_gateway ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>gw: {w.default_gateway}</span> : null}
+                      {w.manage_vlan ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>VLAN: {w.manage_vlan}</span> : null}
+                    </div>
+                    <div style={{ marginTop: 1 }}>
+                      {w.mac_address ? <span className="mono" style={{ fontSize: 10, color: 'var(--text-muted)' }}>MAC: {w.mac_address}</span> : null}
+                      {w.encap_type || w.l2_encap_type ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>{w.encap_type || w.l2_encap_type}</span> : null}
+                      {w.pppoe_username ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>PPPoE: {w.pppoe_username}</span> : null}
+                    </div>
+                  </div>
+                ))}
+              </dd>
+            </>
+          ) : o.ip_address ? (
+            <>
+              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>WAN</dt>
+              <dd style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>
+                <span className="mono">{o.ip_address}</span>
+                {o.wan_mask ? <span className="text-muted" style={{ marginLeft: 4 }}>/{o.wan_mask}</span> : null}
+                {o.wan_gateway ? <span className="text-muted" style={{ marginLeft: 8 }}>gw: {o.wan_gateway}</span> : null}
+                {o.wan_vlan ? <span className="text-muted" style={{ marginLeft: 8 }}>VLAN: {o.wan_vlan}</span> : null}
+                <div style={{ marginTop: 2 }}>
+                  {o.mac ? <span className="mono" style={{ fontSize: 10, color: 'var(--text-muted)' }}>{o.mac}</span> : null}
+                  {o.wan_ip_source ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.wan_ip_source}</span> : null}
+                  {o.wan_encap ? <span className="text-muted" style={{ marginLeft: 4 }}>· {o.wan_encap}</span> : null}
+                </div>
+              </dd>
+            </>
+          ) : null}
+
+          {(o.download_profile || o.upload_profile) ? (
+            <>
+              <dt>Speed profiles</dt>
+              <dd>
+                {o.download_profile ? <span className="badge" style={{ background: 'rgba(31,111,235,0.12)', color: '#4792e6', marginRight: 4 }}>↓ {o.download_profile}{o.download_mbps ? ` (${o.download_mbps} Mbps)` : ''}</span> : null}
+                {o.upload_profile ? <span className="badge" style={{ background: 'rgba(92,184,92,0.12)', color: '#5cb85c' }}>↑ {o.upload_profile}{o.upload_mbps ? ` (${o.upload_mbps} Mbps)` : ''}</span> : null}
+                {o.vlan ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>VLAN: {o.vlan}</span> : null}
+                {o.gem ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>GEM: {o.gem}</span> : null}
+              </dd>
+            </>
+          ) : null}
         </dl>
       </div>
 
@@ -397,28 +595,19 @@ export default function ONUView() {
         <dt>Status</dt>
         <dd>
           <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
-            try { const r = await ontAPI.signal(id); setReadResult({ title: 'ONU status', data: r.data?.data || r.data }); }
-            catch (e) { toast.error('Failed'); }
-          }}>Get status</button>
-
-          <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
-            try { const r = await ontAPI.runningConfig(id); setReadResult({ title: 'Running config', data: r.data?.data || r.data }); }
-            catch (e) { toast.error('Failed'); }
-          }}>Show running-config</button>
-
-          <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
-            try { const r = await ontAPI.swInfo(id); setReadResult({ title: 'SW info', data: r.data?.data || r.data }); }
-            catch (e) { toast.error('Failed'); }
-          }}>SW info</button>
-
-          <button className="btn btn-success margin-bottom status_buttons"
-            onClick={() => fetchTR069Stat(id, setReadResult)}>
-            TR069 Stat
-          </button>
+            setRefreshing(true);
+            const results = {};
+            try { const r = await ontAPI.signal(id); results.status = r.data?.data || r.data; } catch { results.status = { error: 'Failed' }; }
+            try { const r = await ontAPI.runningConfig(id); results.config = r.data?.data || r.data; } catch { results.config = { error: 'Failed' }; }
+            try { const r = await ontAPI.swInfo(id); results.sw = r.data?.data || r.data; } catch { results.sw = { error: 'Failed' }; }
+            try { await fetchTR069Stat(id, (r) => { results.tr069 = r?.data || r; }); } catch { results.tr069 = { error: 'Failed' }; }
+            setReadResult({ title: 'ONU status', data: results });
+            setRefreshing(false);
+          }} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh all'}</button>
 
           <button className="btn btn-success margin-bottom live"
             style={{ backgroundColor: '#1fb325', borderColor: '#1fb325' }}
-            onClick={() => toast('LIVE! — próximamente', { icon: '⚙️' })}>
+            onClick={() => setModal({ type: 'liveSignal' })}>
             LIVE!
           </button>
 
@@ -430,13 +619,16 @@ export default function ONUView() {
         <dd />
 
         <dt>Traffic/Signal</dt>
-        <dd>
+        <dd style={{ position: 'relative' }}>
           <div className="graphs-container" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
             <div className="graph-item" style={{
               flex: '0 1 calc(50% - 8px)', minWidth: 'min(100%, 360px)', maxWidth: '100%',
               backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)',
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
+                <span style={{ color: '#5bc0de' }}>●</span> Up <span style={{ color: '#e08a16' }}>●</span> Down
+              </div>
               <iframe src={`/onts/${id}/traffic`} style={{ width: '100%', height: 200, border: 'none' }}
                 title="Traffic graph" />
             </div>
@@ -445,10 +637,17 @@ export default function ONUView() {
               backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)',
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
+                <span style={{ color: '#5cb85c' }}>●</span> 1490nm (Rx) <span style={{ color: '#f0ad4e' }}>●</span> 1310nm (Tx)
+              </div>
               <iframe src={`/onts/${id}/signal`} style={{ width: '100%', height: 200, border: 'none' }}
                 title="Signal graph" />
             </div>
           </div>
+          <a href="#" className="more" onClick={e => { e.preventDefault(); setModal({ type: 'moreGraphs' }); }}
+            style={{ position: 'absolute', top: -22, right: 0, fontSize: 12, cursor: 'pointer' }}>
+            More graphs ▸
+          </a>
         </dd>
 
         <dt>Speed profiles</dt>
@@ -552,35 +751,49 @@ export default function ONUView() {
           </table>
         </dd>
 
-        <br />
-        <dt />
-        <dd>
-          <div className="form-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <a href="#rebootModal" className="btn btn-warning margin-bottom"
-              onClick={() => runAction('Reboot')}>
-              <IconReload size={14} style={{ marginRight: 4 }} /> Reboot
-            </a>
-            <a href="#rebuildModal" className="btn btn-warning margin-bottom"
-              style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
-              onClick={() => runAction('Resync config')}>
-              <IconReload size={14} style={{ marginRight: 4 }} /> Resync config
-            </a>
-            <a href="#restoreFDModal" className="btn btn-warning margin-bottom"
-              style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
-              onClick={() => runAction('Restore defaults')}>
-              <IconReload size={14} style={{ marginRight: 4 }} /> Restore defaults
-            </a>
-            <a href="#disableModal" className="btn btn-warning margin-bottom"
-              onClick={() => runAction('Disable ONU')}>
-              Disable ONU
-            </a>
-            <a href="#deleteModal" className="btn btn-danger margin-bottom"
-              onClick={() => runAction('Delete')}>
-              <IconTrash size={14} style={{ marginRight: 4 }} /> Delete
-            </a>
-          </div>
-        </dd>
       </dl>
+
+      {/* ── Quick Actions Footer ── */}
+      <div className="col-xs-12" style={{ marginTop: 8, marginBottom: 16 }}>
+        <div style={{
+          display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
+          padding: '10px 14px', background: 'var(--card-bg)', border: '1px solid var(--border)',
+          borderRadius: 6,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>Actions:</span>
+          <button className="btn btn-warning btn-sm" onClick={() => runAction('Reboot')}>
+            <IconReload size={13} style={{ marginRight: 3 }} /> Reboot
+          </button>
+          <button className="btn btn-warning btn-sm"
+            style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
+            onClick={() => runAction('Resync config')}>
+            Resync config
+          </button>
+          <button className="btn btn-warning btn-sm"
+            style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
+            onClick={() => runAction('Reset ONU')}>
+            Reset ONU
+          </button>
+          <button className="btn btn-primary btn-sm" onClick={() => runAction('Save Config')}>
+            Save Config
+          </button>
+          <button className="btn btn-success btn-sm" onClick={() => runAction('Enable ONU')}>
+            Enable
+          </button>
+          <button className="btn btn-warning btn-sm" onClick={() => runAction('Disable ONU')}>
+            Disable
+          </button>
+          <button className="btn btn-success btn-sm" onClick={() => runAction('Start ONU')}>
+            Start
+          </button>
+          <button className="btn btn-warning btn-sm" onClick={() => runAction('Stop ONU')}>
+            Stop
+          </button>
+          <button className="btn btn-danger btn-sm" onClick={() => runAction('Delete')}>
+            <IconTrash size={13} style={{ marginRight: 3 }} /> Delete
+          </button>
+        </div>
+      </div>
 
       {/* ── Modals ── */}
       <ChangeOnuTypeModal
@@ -666,6 +879,12 @@ export default function ONUView() {
         onClose={() => setModal(null)}
       />
 
+      <EPONChannelModal
+        open={m('Update EPON channel')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
       <VoIPModal
         open={m('VoIP service')}
         ontId={id}
@@ -693,6 +912,30 @@ export default function ONUView() {
       <MoveOnuModal
         open={m('Move ONU')}
         ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <HistoryModal
+        open={m('history')}
+        ontId={id}
+        ontName={name}
+        onClose={() => setModal(null)}
+      />
+
+      <MoreGraphsModal
+        open={m('moreGraphs')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <LiveSignalModal
+        open={m('liveSignal')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <SaveConfigModal
+        open={m('Save Config')}
         onClose={() => setModal(null)}
       />
 

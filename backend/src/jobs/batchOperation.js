@@ -18,12 +18,29 @@ async function applyBatchAction(id, action, params, userId) {
   switch (action) {
     case 'reboot':          return ontService.rebootONT(id, userId);
     case 'delete':          return ontService.deleteONT(id);
-    case 'externalId':      return ontService.updateExternalId(id, params?.externalId, userId);
+    case 'externalId': {
+      if (params?.useSerial) {
+        const ont = await prisma.oNT.findUnique({ where: { id }, select: { serial_number: true } });
+        if (!ont) throw new Error(`ONT ${id} not found`);
+        return ontService.updateExternalId(id, ont.serial_number, userId);
+      }
+      return ontService.updateExternalId(id, params?.externalId, userId);
+    }
     case 'updateLocation':  return ontService.updateLocationDetails(id, params || {}, userId);
     case 'enable': case 'disable': case 'start': case 'stop':
     case 'resync': case 'restoreDefaults': case 'changeType':
     case 'speedProfile': case 'updateVLANs': case 'webUserPass': case 'move':
+    case 'updateMode': case 'updateMgmtIP': case 'tr069Profile':
+    case 'ethernetPort': case 'wifiPort': case 'reallocateId':
+    case 'gponChannel': case 'eponChannel': case 'firmwareUpgrade':
+    case 'updateIPTV': case 'voip': case 'disableVoip':
+    // New batch-only aliases (DB-only or passthrough to executeOntAction)
+    case 'updateSvlan': case 'updateAttachedVlans':
+    case 'wanSetup': case 'ipv6':
+    case 'dnsServers': case 'dhcpOption82': case 'pppoePlus':
       return ontService.executeOntAction(id, action, params || {}, userId);
+    case 'customProfile':
+      return ontService.updateONT(id, { custom_template: params?.profile || null });
     default:
       throw new Error(`Unsupported batch action: ${action}`);
   }

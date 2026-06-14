@@ -98,6 +98,8 @@ export const ontAPI = {
   firmwareUpgrade: (id, data) => api.post(`/onts/${id}/firmware-upgrade`, data),
   runningConfig:   (id) => api.get(`/onts/${id}/running-config`),
   swInfo:          (id) => api.get(`/onts/${id}/sw-info`),
+  saveConfig:      () => api.post('/olts/save-config'),
+  auditLog:        (id) => api.get(`/onts/${id}/audit-log`),
   externalId:      (id, externalId) => api.patch(`/onts/${id}/external-id`, { externalId }),
   updateLocationDetails: (id, data) => api.post(`/onts/${id}/update-location`, data),
   authorize:       (data) => api.post('/onts/authorize', data),
@@ -148,6 +150,7 @@ export const zoneAPI = {
   create: (data) => api.post('/zones', data),
   update: (id, data) => api.put(`/zones/${id}`, data),
   delete: (id) => api.delete(`/zones/${id}`),
+  deleteUnused: () => api.post('/zones/delete-unused'),
 };
 
 export const odbAPI = {
@@ -155,6 +158,7 @@ export const odbAPI = {
   create: (data) => api.post('/odbs', data),
   update: (id, data) => api.put(`/odbs/${id}`, data),
   delete: (id) => api.delete(`/odbs/${id}`),
+  deleteUnused: () => api.post('/odbs/delete-unused'),
 };
 
 export const onuTypeAPI = {
@@ -197,6 +201,7 @@ export const settingsAPI = {
   saveSignalThresholds: (data) => api.put('/settings/signal-thresholds', data),
   billing: () => api.get('/settings/billing'),
   saveBilling: (oltId, data) => api.put(`/settings/billing/${oltId}`, data),
+  apiLogs: () => api.get('/settings/api-logs'),
 };
 
 export const autoActionAPI = {
@@ -250,8 +255,29 @@ export const vsolAPI = {
   config: (oltId) => api.get(`/vsol/${oltId}/config`),
   configText: (oltId) => api.get(`/vsol/${oltId}/config/text`),
   saveConfig: (oltId) => api.post(`/vsol/${oltId}/config/save`),
-  autofind: (oltId) => api.get(`/vsol/${oltId}/autofind`),
+  autofind: (oltId, port) => api.get(`/vsol/${oltId}/autofind${port ? `?port=${port}` : ''}`),
   batch: (oltId, action, data) => api.post(`/vsol/${oltId}/batch/${action}`, data),
+};
+
+export const kingtypeAPI = {
+  ports: (oltId) => api.get(`/kingtype/${oltId}/ports`),
+  portOnus: (oltId, ponIndex) => api.get(`/kingtype/${oltId}/pon/${ponIndex}/onus`),
+  onuDetail: (oltId, ponIndex, onuId) => api.get(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}`),
+  onuOptical: (oltId, ponIndex, onuId) => api.get(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/optical`),
+  onuStats: (oltId, ponIndex, onuId) => api.get(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/stats`),
+  onuEth: (oltId, ponIndex, onuId) => api.get(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/eth`),
+  addOnu: (oltId, ponIndex, data) => api.post(`/kingtype/${oltId}/pon/${ponIndex}/onu`, data),
+  activateOnu: (oltId, ponIndex, onuId) => api.post(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/activate`),
+  deactivateOnu: (oltId, ponIndex, onuId) => api.post(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/deactivate`),
+  rebootOnu: (oltId, ponIndex, onuId) => api.post(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/reboot`),
+  deleteOnu: (oltId, ponIndex, onuId) => api.delete(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}`),
+  setOnuDescription: (oltId, ponIndex, onuId, description) => api.put(`/kingtype/${oltId}/pon/${ponIndex}/onu/${onuId}/description`, { description }),
+  profiles: (oltId) => api.get(`/kingtype/${oltId}/profiles`),
+  config: (oltId) => api.get(`/kingtype/${oltId}/config`),
+  configText: (oltId) => api.get(`/kingtype/${oltId}/config/text`),
+  saveConfig: (oltId) => api.post(`/kingtype/${oltId}/config/save`),
+  autofind: (oltId, port) => api.get(`/kingtype/${oltId}/autofind${port ? `?port=${port}` : ''}`),
+  batch: (oltId, action, data) => api.post(`/kingtype/${oltId}/batch/${action}`, data),
 };
 
 export default api;

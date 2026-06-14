@@ -15,15 +15,78 @@ function randomContract() { return `CTR-${randomInt(100000, 999999)}-${randomInt
 async function main() {
   console.log('🌱 Seeding Pixel Studios OLT database...');
 
-  // Speed profiles
-  const speedProfiles = await Promise.all([
+  // Speed profiles (55 standard GPON profiles)
+  const DOWNLOAD_PROFILES = [
+    { name: '256 Kbps', download_mbps: 0.256, burst_down: 0.5 },
+    { name: '512 Kbps', download_mbps: 0.512, burst_down: 1 },
+    { name: '1 Mbps', download_mbps: 1, burst_down: 2 },
+    { name: '2 Mbps', download_mbps: 2, burst_down: 4 },
+    { name: '3 Mbps', download_mbps: 3, burst_down: 6 },
+    { name: '4 Mbps', download_mbps: 4, burst_down: 8 },
+    { name: '5 Mbps', download_mbps: 5, burst_down: 10 },
+    { name: '6 Mbps', download_mbps: 6, burst_down: 12 },
+    { name: '8 Mbps', download_mbps: 8, burst_down: 16 },
+    { name: '10 Mbps', download_mbps: 10, burst_down: 15 },
+    { name: '12 Mbps', download_mbps: 12, burst_down: 18 },
+    { name: '15 Mbps', download_mbps: 15, burst_down: 22 },
+    { name: '20 Mbps', download_mbps: 20, burst_down: 30 },
+    { name: '25 Mbps', download_mbps: 25, burst_down: 35 },
+    { name: '30 Mbps', download_mbps: 30, burst_down: 45 },
+    { name: '35 Mbps', download_mbps: 35, burst_down: 50 },
+    { name: '40 Mbps', download_mbps: 40, burst_down: 60 },
+    { name: '50 Mbps', download_mbps: 50, burst_down: 75 },
+    { name: '60 Mbps', download_mbps: 60, burst_down: 90 },
+    { name: '70 Mbps', download_mbps: 70, burst_down: 100 },
+    { name: '80 Mbps', download_mbps: 80, burst_down: 120 },
+    { name: '100 Mbps', download_mbps: 100, burst_down: 150 },
+    { name: '120 Mbps', download_mbps: 120, burst_down: 180 },
+    { name: '150 Mbps', download_mbps: 150, burst_down: 200 },
+    { name: '200 Mbps', download_mbps: 200, burst_down: 300 },
+    { name: '300 Mbps', download_mbps: 300, burst_down: 450 },
+    { name: '500 Mbps', download_mbps: 500, burst_down: 750 },
+  ];
+  const UPLOAD_PROFILES = [
+    { name: '128 Kbps', upload_mbps: 0.128, burst_up: 0.256 },
+    { name: '256 Kbps', upload_mbps: 0.256, burst_up: 0.5 },
+    { name: '384 Kbps', upload_mbps: 0.384, burst_up: 0.5 },
+    { name: '512 Kbps', upload_mbps: 0.512, burst_up: 1 },
+    { name: '600 Kbps', upload_mbps: 0.6, burst_up: 1 },
+    { name: '1 Mbps', upload_mbps: 1, burst_up: 2 },
+    { name: '1.5 Mbps', upload_mbps: 1.5, burst_up: 2 },
+    { name: '2 Mbps', upload_mbps: 2, burst_up: 3 },
+    { name: '3 Mbps', upload_mbps: 3, burst_up: 5 },
+    { name: '4 Mbps', upload_mbps: 4, burst_up: 6 },
+    { name: '5 Mbps', upload_mbps: 5, burst_up: 7 },
+    { name: '6 Mbps', upload_mbps: 6, burst_up: 9 },
+    { name: '8 Mbps', upload_mbps: 8, burst_up: 12 },
+    { name: '10 Mbps', upload_mbps: 10, burst_up: 15 },
+    { name: '12 Mbps', upload_mbps: 12, burst_up: 18 },
+    { name: '15 Mbps', upload_mbps: 15, burst_up: 22 },
+    { name: '20 Mbps', upload_mbps: 20, burst_up: 30 },
+    { name: '25 Mbps', upload_mbps: 25, burst_up: 35 },
+    { name: '30 Mbps', upload_mbps: 30, burst_up: 45 },
+    { name: '40 Mbps', upload_mbps: 40, burst_up: 60 },
+    { name: '50 Mbps', upload_mbps: 50, burst_up: 75 },
+    { name: '60 Mbps', upload_mbps: 60, burst_up: 90 },
+    { name: '80 Mbps', upload_mbps: 80, burst_up: 120 },
+    { name: '100 Mbps', upload_mbps: 100, burst_up: 150 },
+    { name: '150 Mbps', upload_mbps: 150, burst_up: 200 },
+    { name: '200 Mbps', upload_mbps: 200, burst_up: 300 },
+    { name: '300 Mbps', upload_mbps: 300, burst_up: 450 },
+    { name: '500 Mbps', upload_mbps: 500, burst_up: 750 },
+  ];
+  const COMBINED_PROFILES = [
     { name: 'Básico 10/5', download_mbps: 10, upload_mbps: 5, burst_down: 15, burst_up: 7 },
     { name: 'Hogar 25/10', download_mbps: 25, upload_mbps: 10, burst_down: 35, burst_up: 15 },
     { name: 'Hogar Plus 50/20', download_mbps: 50, upload_mbps: 20, burst_down: 75, burst_up: 30 },
     { name: 'Premium 100/30', download_mbps: 100, upload_mbps: 30, burst_down: 150, burst_up: 45 },
     { name: 'Empresarial 200/100', download_mbps: 200, upload_mbps: 100, burst_down: 300, burst_up: 150 },
     { name: 'Gigabit 1000/500', download_mbps: 1000, upload_mbps: 500, burst_down: 1000, burst_up: 500 },
-  ].map(sp => prisma.speedProfile.create({ data: sp })));
+  ];
+  const ALL_PROFILES = [...DOWNLOAD_PROFILES, ...UPLOAD_PROFILES, ...COMBINED_PROFILES];
+  const speedProfiles = await Promise.all(
+    ALL_PROFILES.map(sp => prisma.speedProfile.create({ data: sp }))
+  );
   console.log(`✅ ${speedProfiles.length} speed profiles`);
 
   // Service profiles
