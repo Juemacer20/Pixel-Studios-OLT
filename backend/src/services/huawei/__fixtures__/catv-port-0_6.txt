@@ -1,0 +1,13 @@
+display ont port state 0 6 catv-port all 
+{ <cr>||<K> }: 
+
+  Command:
+          display ont port state 0 6 catv-port all
+  --------------------------------------------------
+  ONT-ID   ONT      ONT       LinkState  TxPower
+           port-ID  Port-type            (dBmV)
+  --------------------------------------------------
+       6         1       CATV up         16.000  
+  --------------------------------------------------
+
+MA5800-X15(config-if-gpon-0/1)#

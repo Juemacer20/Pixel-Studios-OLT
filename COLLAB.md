@@ -57,7 +57,7 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2 enriquecimiento ONU BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port (VLAN+velocidades) + 🔴 eth-port. VoIP/CATV descartados (POTS en LocalBlock / sin CATV provisionada). Flags ENRICH_WAN, ENRICH_SP | ✅ backend hecho, validado e2e y desplegado a dev. **PENDIENTE → OpenCode: UI en ONUView (ver docs/UI_ONUVIEW_FASE2.md)** | 2026-06-14 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port + 🔴 eth-port + 🔴 CATV(RF) + IPTV(multicast). Flags ENRICH_WAN/ENRICH_SP/ENRICH_CATV. **Agregué OLT Itelsa-SantaAna a la DB dev (ONLINE, 439 ONTs escaneadas)** | ✅ backend hecho, validado e2e y desplegado a dev. **PENDIENTE → OpenCode: UI en ONUView (ver docs/UI_ONUVIEW_FASE2.md)** | 2026-06-14 |
 | OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
 
 ## 6. Regla de oro

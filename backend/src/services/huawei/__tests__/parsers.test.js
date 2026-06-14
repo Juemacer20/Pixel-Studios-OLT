@@ -39,6 +39,9 @@ describe('_parseOntDetailInfo', () => {
     expect(r.last_down.toISOString()).toBe('2026-06-11T20:50:01.000Z');
     expect(r.ports).toEqual({ pots: 1, eth: 4, vdsl: 0, tdm: 0, moca: 0, catv: 8 });
     expect(r.mgmt_ip).toBeUndefined(); // "ONT IP 0 address/mask : -"
+    // IPTV = multicast: esta ONU tiene Multicast mode Unconcern → sin IPTV
+    expect(r.has_iptv).toBe(false);
+    expect(r.iptv_vlan).toBeUndefined();
   });
 
   test('"Last down time: -" → undefined y CATV 0 (fixture 43_25)', () => {
@@ -125,6 +128,29 @@ describe('_parseEthPortState', () => {
 
   test('sin filas → objeto vacío', () => {
     expect(adapter._parseEthPortState('  no ports here\n')).toEqual({});
+  });
+});
+
+// FASE 2 — CATV (puerto RF). IPTV (multicast) se detecta aparte en _parseOntDetailInfo.
+describe('_parseCatvPort', () => {
+  const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
+
+  test('ONU con puerto RF: CATV up + TxPower dBmV (fixture 0_6)', () => {
+    const r = adapter._parseCatvPort(fixture('catv-port-0_6.txt'));
+    expect(r.has_catv).toBe(true);
+    expect(r.catv_ports).toHaveLength(1);
+    expect(r.catv_ports[0]).toEqual({ port: 1, link: 'up', tx_power_dbmv: 16 });
+  });
+
+  test('ONU RF con TxPower "-" (Broadcom GP1704) → has_catv true, tx null (fixture 0_14)', () => {
+    const r = adapter._parseCatvPort(fixture('catv-port-0_14.txt'));
+    expect(r.has_catv).toBe(true);
+    expect(r.catv_ports[0]).toEqual({ port: 1, link: 'up', tx_power_dbmv: null });
+  });
+
+  test('ONU sin RF ("port type does not match") → objeto vacío', () => {
+    const r = adapter._parseCatvPort('  Failure: The ONT port type or port ID does not match the profile of the ONT\n');
+    expect(r).toEqual({});
   });
 });
 

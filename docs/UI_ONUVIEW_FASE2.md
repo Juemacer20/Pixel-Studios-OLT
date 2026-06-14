@@ -60,6 +60,22 @@ usa un `select` explícito, **agregalos** (si no, ya vienen todos).
 | `service_ports` | Json | Array de service-ports `[{service_port_id,vlan,vlan_attr,gem,flow_type,tt_rx,tt_tx,sp_state}]` |
 | `eth_ports` | Json | Array de puertos eth `[{port,type(GE/FE),speed(Mbps o null),duplex,link(up/down),ring}]` |
 
+### 📺 TV — CATV (RF) vs IPTV (multicast) — ¡son servicios DISTINTOS!
+> **CATV** = la ONT tiene **puerto RF** (señal de TV por coaxial). **IPTV** = la ONT maneja
+> **multicast** (TV por IP). Una ONT puede tener uno, otro, ambos o ninguno. Mostrarlos separados.
+
+| Campo DB | Tipo | Qué es |
+|---|---|---|
+| `has_catv` | Boolean | La ONT tiene puerto RF activo (servicio CATV) |
+| `catv_ports` | Json | `[{port, link(up/down), tx_power_dbmv(número o null)}]` — potencia RF en dBmV |
+| `has_iptv` | Boolean | La ONT maneja multicast (servicio IPTV) |
+| `iptv_vlan` | Int | VLAN multicast (si aplica) |
+
+> Detección: `has_catv` sale de `display ont port state ... catv-port all` (solo se sondea en OLTs
+> con `iptv_enabled=true`, gated por `ENRICH_CATV`). `has_iptv`/`iptv_vlan` salen GRATIS de los
+> campos Multicast/IGMP de `display ont info`. Algunas ONUs RF (ej. Broadcom GP1704) reportan
+> `tx_power_dbmv: null` (no dan lectura de potencia) — mostrar "up" igual.
+
 ## Layout sugerido (clonar secciones de la ficha de SmartOLT)
 1. **Datos generales** (ya existe): sumar **ONU type/modelo, firmware, sw_version, perfiles
    line/service, distancia** (ya venían de FASE 1) + **mgmt IP, ONU mode (configuration_method),

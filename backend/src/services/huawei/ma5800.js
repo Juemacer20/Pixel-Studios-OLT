@@ -296,6 +296,18 @@ class MA5800 {
       last_down: date(grab('Last down time')),
       mgmt_ip: mgmtIp,
       ports: this._parsePortInventory(text),
+      // IPTV = multicast (distinto de CATV/RF). Si "Multicast forward/mode" no es Unconcern,
+      // o hay una Multicast forward VLAN, la ONU maneja IPTV. Gratis: ya viene acá.
+      ...(() => {
+        const fwdVlan = num(grab('Multicast forward VLAN'));
+        const mode = grab('Multicast mode'); // Concern / Unconcern
+        const fwdMode = grab('Multicast forward mode');
+        const concern = (v) => !!v && /concern/i.test(v) && !/unconcern/i.test(v);
+        return {
+          iptv_vlan: fwdVlan,
+          has_iptv: fwdVlan != null || concern(mode) || concern(fwdMode),
+        };
+      })(),
     };
   }
 
@@ -327,6 +339,27 @@ class MA5800 {
       }
     }
     return Object.keys(ports).length ? ports : undefined;
+  }
+
+  /**
+   * Parsea `display ont port state <port> <id> catv-port all` (FASE 2). CATV = puerto RF.
+   * Fila: ONT-ID, port-ID, Port-type(CATV), LinkState(up/down), TxPower(dBmV). Devuelve
+   * `catv_ports` + `has_catv:true`. ONUs sin RF dan "port type does not match" → {}. Read-only.
+   */
+  _parseCatvPort(raw) {
+    // Fila: "       6         1       CATV up         16.000"  (TxPower puede ser "-" en algunas
+    // ONUs, p.ej. Broadcom GP1704 → sin lectura de potencia: tx_power_dbmv = null).
+    const rowRe = /^\s*\d+\s+(\d+)\s+CATV\s+(up|down)\s+(\S+)\s*$/gim;
+    const ports = [];
+    let m;
+    while ((m = rowRe.exec(raw)) !== null) {
+      ports.push({
+        port: parseInt(m[1], 10),
+        link: m[2],
+        tx_power_dbmv: m[3] === '-' ? null : parseFloat(m[3]),
+      });
+    }
+    return ports.length ? { catv_ports: ports, has_catv: true } : {};
   }
 
   /** Parsea `display ont version <port> <id>`: Equipment-ID, Main Software Version, ONT Version. */
@@ -532,12 +565,18 @@ class MA5800 {
         const eth = opts.serviceport
           ? this._parseEthPortState(await collect(`display ont port state ${loc.port} ${loc.onu_id} eth-port all`))
           : {};
+        // CATV = puerto RF. catv-port también necesita interface gpon. Las ONUs sin RF
+        // devuelven "port type does not match" → _parseCatvPort retorna {} (no rompe la sesión).
+        const catv = opts.catv
+          ? this._parseCatvPort(await collect(`display ont port state ${loc.port} ${loc.onu_id} catv-port all`))
+          : {};
         merged.set(key(loc), {
           ...loc,
           ...this._parseOntDetailInfo(detailRaw),
           ...this._parseOntVersion(versionRaw),
           ...wan,
           ...eth,
+          ...catv,
         });
       }
       if (currentBoard !== null) await collect('quit'); // volver a la vista config
@@ -561,7 +600,7 @@ class MA5800 {
       }
 
       const results = [...merged.values()];
-      const tags = [opts.wan && '+wan', opts.serviceport && '+sp'].filter(Boolean).join(' ');
+      const tags = [opts.wan && '+wan', opts.serviceport && '+sp', opts.catv && '+catv'].filter(Boolean).join(' ');
       logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs${tags ? ' (' + tags + ')' : ''}`);
       return results;
     });

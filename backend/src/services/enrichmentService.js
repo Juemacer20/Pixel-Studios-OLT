@@ -58,9 +58,12 @@ async function enrichBatch(batch) {
     // activar con ENRICH_WAN / ENRICH_SP=true (los usamos en dev). Ver docs/ENRIQUECIMIENTO_ONU_FASE2.md.
     const wan = process.env.ENRICH_WAN === 'true';
     const serviceport = process.env.ENRICH_SP === 'true';
+    // CATV = puerto RF. Solo se sondea en OLTs marcadas con servicio de TV (olt.iptv_enabled),
+    // para no gastar un comando por ONU en OLTs sin CATV (todas darían "port type does not match").
+    const catv = process.env.ENRICH_CATV === 'true' && !!olt.iptv_enabled;
     let details = [];
     try {
-      details = await adapter.getOntDetailInfoBatch(onts, { wan, serviceport });
+      details = await adapter.getOntDetailInfoBatch(onts, { wan, serviceport, catv });
     } catch (e) {
       logger.warn(`enrichBatch ${olt.name}: ${e.message}`);
       // Marcar enriched_at igual para no reintentar en bucle hasta la ventana stale
@@ -85,7 +88,9 @@ async function enrichBatch(batch) {
                          'wan_encap', 'wan_mask', 'wan_gateway', 'wan_vlan', 'wan_info',
                          // FASE 2 — GRUPO 🔴 service-port + eth-port (solo si ENRICH_SP=true):
                          'vlan', 'gem', 'service_port_id', 'download_profile', 'upload_profile',
-                         'download_mbps', 'upload_mbps', 'service_ports', 'eth_ports']) {
+                         'download_mbps', 'upload_mbps', 'service_ports', 'eth_ports',
+                         // IPTV (multicast, gratis de display ont info) + CATV/RF (ENRICH_CATV):
+                         'has_iptv', 'iptv_vlan', 'has_catv', 'catv_ports']) {
           if (d[k] != null) data[k] = d[k];
         }
       }

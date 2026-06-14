@@ -1,0 +1,5 @@
+-- FASE 2 — CATV (puerto RF) + IPTV (multicast). Nullable.
+ALTER TABLE "onts" ADD COLUMN IF NOT EXISTS "has_iptv" BOOLEAN;
+ALTER TABLE "onts" ADD COLUMN IF NOT EXISTS "iptv_vlan" INTEGER;
+ALTER TABLE "onts" ADD COLUMN IF NOT EXISTS "has_catv" BOOLEAN;
+ALTER TABLE "onts" ADD COLUMN IF NOT EXISTS "catv_ports" JSONB;

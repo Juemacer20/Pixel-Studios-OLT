@@ -185,6 +185,10 @@ model ONT {
   upload_mbps          Int?
   service_ports        Json?
   eth_ports            Json?
+  has_iptv             Boolean?
+  iptv_vlan            Int?
+  has_catv             Boolean?
+  catv_ports           Json?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 
