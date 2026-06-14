@@ -54,12 +54,13 @@ async function enrichBatch(batch) {
     const olt = await prisma.oLT.findUnique({ where: { id: oltId } });
     const adapter = getAdapter(olt);
     if (typeof adapter.getOntDetailInfoBatch !== 'function') continue; // VSOL/KingType: no-op
-    // 🔴 wan-info = +1 comando/ONU. OFF por defecto (cuidar barrido de ~9000 en prod);
-    // activar con ENRICH_WAN=true (lo usamos en dev). Ver docs/ENRIQUECIMIENTO_ONU_FASE2.md.
+    // 🔴 comandos extra = +1..2 comandos/ONU. OFF por defecto (cuidar barrido de ~9000 en prod);
+    // activar con ENRICH_WAN / ENRICH_SP=true (los usamos en dev). Ver docs/ENRIQUECIMIENTO_ONU_FASE2.md.
     const wan = process.env.ENRICH_WAN === 'true';
+    const serviceport = process.env.ENRICH_SP === 'true';
     let details = [];
     try {
-      details = await adapter.getOntDetailInfoBatch(onts, { wan });
+      details = await adapter.getOntDetailInfoBatch(onts, { wan, serviceport });
     } catch (e) {
       logger.warn(`enrichBatch ${olt.name}: ${e.message}`);
       // Marcar enriched_at igual para no reintentar en bucle hasta la ventana stale
@@ -81,7 +82,10 @@ async function enrichBatch(batch) {
                          'online_duration', 'last_up', 'last_down', 'mgmt_ip', 'ports',
                          // FASE 2 — GRUPO 🔴 WAN (solo si ENRICH_WAN=true, vía display ont wan-info):
                          'ip_address', 'mac', 'wan_mode', 'pppoe_user', 'wan_ip_source',
-                         'wan_encap', 'wan_mask', 'wan_gateway', 'wan_vlan', 'wan_info']) {
+                         'wan_encap', 'wan_mask', 'wan_gateway', 'wan_vlan', 'wan_info',
+                         // FASE 2 — GRUPO 🔴 service-port (solo si ENRICH_SP=true): VLAN + velocidades:
+                         'vlan', 'gem', 'service_port_id', 'download_profile', 'upload_profile',
+                         'download_mbps', 'upload_mbps', 'service_ports']) {
           if (d[k] != null) data[k] = d[k];
         }
       }

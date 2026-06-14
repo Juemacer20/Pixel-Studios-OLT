@@ -401,6 +401,67 @@ class MA5800 {
   }
 
   /**
+   * Parsea `display service-port port 0/<s>/<p> ont <id>` (FASE 2 🔴). Cada fila gpon trae:
+   * INDEX (service-port id), VLAN ID, VLAN ATTR, PORT TYPE, F/S, P, VPI (=ONT id), VCI (=GEM),
+   * FLOW TYPE, FLOW PARA, RX (índice traffic-table downstream), TX (upstream), STATE. Devuelve
+   * el array `service_ports` + escalares de la primaria. Los RX/TX son ÍNDICES (resolver con
+   * `_parseTrafficTable` para el Mbps real). Read-only.
+   */
+  _parseServicePort(raw) {
+    // Fila: "  20   10 common   gpon 0/1 /15 1    1     vlan  10         32   30   up"
+    const rowRe = /^\s*(\d+)\s+(\d+)\s+(\S+)\s+gpon\s+\S+\s+\S+\s+(\d+)\s+(\d+)\s+(\S+)\s+(\S+)\s+(\d+)\s+(\d+)\s+(\w+)\s*$/gim;
+    const rows = [];
+    let m;
+    while ((m = rowRe.exec(raw)) !== null) {
+      rows.push({
+        service_port_id: parseInt(m[1], 10),
+        vlan: parseInt(m[2], 10),
+        vlan_attr: m[3],
+        gem: parseInt(m[5], 10), // VCI = GEM index para GPON
+        flow_type: m[6],
+        tt_rx: parseInt(m[8], 10),
+        tt_tx: parseInt(m[9], 10),
+        sp_state: m[10],
+      });
+    }
+    if (!rows.length) return {};
+    const p = rows[0];
+    return {
+      service_port_id: p.service_port_id,
+      vlan: p.vlan,
+      gem: p.gem,
+      tt_rx: p.tt_rx,
+      tt_tx: p.tt_tx,
+      sp_state: p.sp_state,
+      service_ports: rows,
+    };
+  }
+
+  /**
+   * Parsea `display traffic table ip index <n>`: nombre del perfil y PIR (rate cap).
+   * Devuelve { index, name, pir_kbps, cir_kbps, mbps }. mbps = round(PIR/1000).
+   */
+  _parseTrafficTable(raw) {
+    const text = raw
+      .replace(/---- More \( Press 'Q' to break \) ----/g, '')
+      .replace(/\x1b\[[0-9]*[A-Za-z]/g, '');
+    const grab = (label) => {
+      const m = text.match(new RegExp(`^\\s*${label}\\s*:\\s*(.+?)\\s*$`, 'im'));
+      return m ? m[1].trim() : undefined;
+    };
+    const kbps = (v) => (v && /\d+/.test(v) ? parseInt(v.match(/\d+/)[0], 10) : undefined);
+    const pir = kbps(grab('PIR'));
+    const name = grab('Traffic Table Name');
+    return {
+      index: kbps(grab('Traffic Table Index')),
+      name: name && name !== '-' ? name : undefined,
+      cir_kbps: kbps(grab('CIR')),
+      pir_kbps: pir,
+      mbps: pir != null ? Math.round(pir / 1000) : undefined,
+    };
+  }
+
+  /**
    * Trae el detalle de varias ONTs en UNA sesión telnet. `locations` es
    * [{ board, port, onu_id, serial_number }]. Devuelve la misma lista con los
    * campos parseados mergeados: { ...location, model, firmware, sw_version,
@@ -411,12 +472,26 @@ class MA5800 {
   async getOntDetailInfoBatch(locations, opts = {}) {
     if (!Array.isArray(locations) || !locations.length) return [];
     return this._session(async (collect) => {
-      const results = [];
-      let currentBoard = null;
+      // Cache índice traffic-table → {name, mbps} (pocos perfiles, compartidos entre ONUs):
+      // evita re-consultar `display traffic table` por cada ONU.
+      const ttCache = new Map();
+      const resolveTt = async (idx) => {
+        if (idx == null) return undefined;
+        if (!ttCache.has(idx)) {
+          ttCache.set(idx, this._parseTrafficTable(await collect(`display traffic table ip index ${idx}`)));
+        }
+        return ttCache.get(idx);
+      };
       // Ordenar por board para minimizar cambios de contexto interface
-      const sorted = [...locations].sort((a, b) => (a.board - b.board) || (a.port - b.port));
-      for (const loc of sorted) {
-        if (loc.board == null || loc.port == null || loc.onu_id == null) continue;
+      const valid = [...locations]
+        .filter((l) => l.board != null && l.port != null && l.onu_id != null)
+        .sort((a, b) => (a.board - b.board) || (a.port - b.port));
+      const key = (l) => `${l.board}/${l.port}/${l.onu_id}`;
+      const merged = new Map();
+
+      // PASO 1: comandos que requieren el contexto `interface gpon 0/<board>`.
+      let currentBoard = null;
+      for (const loc of valid) {
         if (loc.board !== currentBoard) {
           if (currentBoard !== null) await collect('quit');
           await collect(`interface gpon 0/${loc.board}`);
@@ -427,15 +502,36 @@ class MA5800 {
         const wan = opts.wan
           ? this._parseWanInfo(await collect(`display ont wan-info ${loc.port} ${loc.onu_id}`))
           : {};
-        results.push({
+        merged.set(key(loc), {
           ...loc,
           ...this._parseOntDetailInfo(detailRaw),
           ...this._parseOntVersion(versionRaw),
           ...wan,
         });
       }
-      if (currentBoard !== null) await collect('quit');
-      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs${opts.wan ? ' (+wan)' : ''}`);
+      if (currentBoard !== null) await collect('quit'); // volver a la vista config
+
+      // PASO 2: service-port y traffic-table son comandos de CONFIG (NO de interface gpon).
+      if (opts.serviceport) {
+        for (const loc of valid) {
+          const sp = this._parseServicePort(
+            await collect(`display service-port port 0/${loc.board}/${loc.port} ont ${loc.onu_id}`)
+          );
+          if (sp.service_ports) {
+            const dl = await resolveTt(sp.tt_rx); // RX = downstream
+            const ul = await resolveTt(sp.tt_tx); // TX = upstream
+            sp.download_profile = dl && dl.name;
+            sp.download_mbps = dl && dl.mbps;
+            sp.upload_profile = ul && ul.name;
+            sp.upload_mbps = ul && ul.mbps;
+          }
+          merged.set(key(loc), { ...merged.get(key(loc)), ...sp });
+        }
+      }
+
+      const results = [...merged.values()];
+      const tags = [opts.wan && '+wan', opts.serviceport && '+sp'].filter(Boolean).join(' ');
+      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs${tags ? ' (' + tags + ')' : ''}`);
       return results;
     });
   }

@@ -79,6 +79,39 @@ describe('_parseWanInfo', () => {
   });
 });
 
+// FASE 2 — GRUPO 🔴: service-port (VLAN attached + índices de traffic-table) y traffic-table (Mbps).
+describe('_parseServicePort', () => {
+  const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
+
+  test('extrae fila gpon: index/vlan/gem/rx/tx/state (fixture 15_1)', () => {
+    const r = adapter._parseServicePort(fixture('service-port-15_1.txt'));
+    expect(r.service_port_id).toBe(20);
+    expect(r.vlan).toBe(10);
+    expect(r.gem).toBe(1);
+    expect(r.tt_rx).toBe(32);
+    expect(r.tt_tx).toBe(30);
+    expect(r.sp_state).toBe('up');
+    expect(r.service_ports).toHaveLength(1);
+    expect(r.service_ports[0]).toMatchObject({ service_port_id: 20, vlan: 10, gem: 1, tt_rx: 32, tt_tx: 30 });
+  });
+
+  test('sin filas de service-port → objeto vacío', () => {
+    expect(adapter._parseServicePort('  Total : 0  (Up/Down : 0/0)\n')).toEqual({});
+  });
+});
+
+describe('_parseTrafficTable', () => {
+  const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
+
+  test('extrae nombre de perfil y PIR→Mbps (fixture index 32)', () => {
+    const r = adapter._parseTrafficTable(fixture('traffic-table-32.txt'));
+    expect(r.index).toBe(32);
+    expect(r.name).toBe('SMARTOLT-40M-DOWN');
+    expect(r.pir_kbps).toBe(41984);
+    expect(r.mbps).toBe(42); // round(41984/1000)
+  });
+});
+
 describe('_parseOntVersion', () => {
   const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
 

@@ -1,0 +1,46 @@
+display traffic table ip index 32 
+{ <cr>||<K> }: 
+
+  Command:
+          display traffic table ip index 32 
+  --------------------------------------------------------
+  Traffic Table Index          : 32
+  Traffic Table Name           : SMARTOLT-40M-DOWN
+  Specified Outer-Priority     : 0
+  Outer-Priority Mapping Source: -
+  Outer-Priority Mapping Index : -
+  Default Outer-Priority       : -
+  Specified Inner-Priority     : 0
+  Inner-Priority Mapping Source: -
+  Inner-Priority Mapping Index : -
+  Default Inner-Priority       : -
+  Specified DSCP               : -
+  DSCP Mapping Source          : -
+  DSCP Mapping Index           : -
+  CIR                          : 41984 kbps
+  CBS                          : 1345488 bytes
+  PIR                          : 41984 kbps
+  PBS                          : 1345488 bytes
+  Fix                          : 0 kbps
+  CAR Threshold Profile        : -
+  Color Mode                   : color-blind
+  Coupling Flag                : enable
+  Rate Profile Index           : -
+---- More ( Press 'Q' to break ) ----[37D                                     [37D  Rate Profile Name            : -
+  Color Policy                 : dei
+  Color DEI                    : unmark-dei
+  Color Source                 : outer-dei
+  Drop Precedence              : remarked-outer-priority
+  Priority Policy              : local-pri
+  Que-Policy Profile ID        : -
+  Pri-Group Profile ID         : -
+  Pri-Group Profile Name       : -
+  Referenced Status            : used
+  E2E Mapping Priority         : -
+  E2E Mapping Index            : -
+  E2E Default Priority         : -
+  Yellow WRR Weight            : auto
+  Green WRR Weight             : auto
+  --------------------------------------------------------
+
+MA5800-X15(config)#

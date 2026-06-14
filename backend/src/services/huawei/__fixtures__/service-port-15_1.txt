@@ -1,0 +1,26 @@
+display service-port port 0/1/15 ont 1 
+{ <cr>|e2e<K>|gemport<K>|sort-by<K>||<K> }: 
+
+  Command:
+          display service-port port 0/1/15 ont 1 
+  Switch-Oriented Flow List
+  -----------------------------------------------------------------------------
+   INDEX VLAN VLAN     PORT F/ S/ P VPI  VCI   FLOW  FLOW       RX   TX   STATE
+         ID   ATTR     TYPE                    TYPE  PARA
+  -----------------------------------------------------------------------------
+      20   10 common   gpon 0/1 /15 1    1     vlan  10         32   30   up   
+  -----------------------------------------------------------------------------
+   Total : 1  (Up/Down :    1/0)
+   Note : F--Frame, S--Slot, P--Port,
+          VPI indicates CM index for DOCSIS,
+          VPI indicates ONT ID for PON, VCI indicates GEM index for GPON,
+          v/e--vlan/encap, pritag--priority-tagged,
+          ppp--pppoe, ip--ipoe, ip4--ipv4oe, ip6--ipv6oe.
+          When FLOW TYPE is plist, the value of FLOW PARA is a byte in
+          hexadecimal format and indicates a priority list. Eight bits
+          of its binary value indicate priorities 0-7 from the least
+          significant bit to the most significant bit. Value 1 indicates
+          that the priority is used. For example, if FLOW PARA is 0x23 and
+          its binary format is 0010 0011, priorities 0, 1 and 5 are used
+
+MA5800-X15(config)#

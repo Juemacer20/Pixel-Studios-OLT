@@ -177,6 +177,13 @@ model ONT {
   wan_gateway          String?
   wan_vlan             Int?
   wan_info             Json?
+  service_port_id      Int?
+  gem                  Int?
+  download_profile     String?
+  upload_profile       String?
+  download_mbps        Int?
+  upload_mbps          Int?
+  service_ports        Json?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 
