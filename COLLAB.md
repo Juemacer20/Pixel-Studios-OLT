@@ -57,8 +57,8 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2 GRUPO GRATIS: parser `_parseOntDetailInfo` (temp/CPU/mem/TR069/duración/timestamps/puertos) + schema 8 cols + persist enrich | ✅ backend hecho (UI ONUView pendiente: la tiene OpenCode sin commitear) | 2026-06-14 |
-| OpenCode | main | Fix batch action mapping + Resync filter + API Logs + modales | 🚧 en curso (sin commitear) | 2026-06-14 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 GRUPO GRATIS (temp/CPU/mem/TR069/puertos) + GRUPO 🔴 WAN (`_parseWanInfo` desde `display ont wan-info`: IP/MAC/gateway/VLAN/encap/PPPoE, flag ENRICH_WAN) | ✅ backend hecho y validado e2e en dev (UI ONUView pendiente: la tiene OpenCode) | 2026-06-14 |
+| OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
 
 ## 6. Regla de oro
 

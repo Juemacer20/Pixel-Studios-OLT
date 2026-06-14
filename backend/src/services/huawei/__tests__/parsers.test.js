@@ -53,6 +53,32 @@ describe('_parseOntDetailInfo', () => {
   });
 });
 
+// FASE 2 — GRUPO 🔴: WAN/IP/PPPoE/MAC desde `display ont wan-info <port> <id>`.
+describe('_parseWanInfo', () => {
+  const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
+
+  test('extrae WAN IPoE/Static + escalares y array wan_info (fixture 15_1)', () => {
+    const r = adapter._parseWanInfo(fixture('ont-wan-info-15_1.txt'));
+    expect(r.wan_ip_source).toBe('Static');
+    expect(r.wan_encap).toBe('IPoE');
+    expect(r.ip_address).toBe('10.0.0.2');
+    expect(r.wan_mask).toBe('255.255.255.0');
+    expect(r.wan_gateway).toBe('10.0.0.1');
+    expect(r.wan_vlan).toBe(10);
+    expect(r.mac).toBe('aa:aa:bb:bb:cc:cc'); // Huawei DC21-... → colon-lower
+    expect(r.wan_mode).toBe('IP routed');
+    expect(r.pppoe_user).toBeUndefined(); // ONU Static, sin PPPoE
+    expect(r.wan_info).toHaveLength(1);
+    expect(r.wan_info[0].name).toBe('1_INTERNET_R_VID_10');
+    expect(r.wan_info[0].service_type).toBe('Internet');
+    expect(r.wan_info[0].ipv4_status).toBe('Connected');
+  });
+
+  test('sin bloques WAN → objeto vacío', () => {
+    expect(adapter._parseWanInfo('  F/S/P : 0/1/1\n  ONT ID : 1\n  no wan here\n')).toEqual({});
+  });
+});
+
 describe('_parseOntVersion', () => {
   const adapter = new MA5800({ ip: '10.0.0.1', name: 'test' });
 

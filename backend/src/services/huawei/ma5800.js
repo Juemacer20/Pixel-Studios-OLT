@@ -344,13 +344,71 @@ class MA5800 {
   }
 
   /**
+   * Parsea `display ont wan-info <port> <id>` (FASE 2 🔴). Una ONU puede tener varias
+   * WAN (bloques `Index : N`): devuelve el array completo en `wan_info` y, además, los
+   * escalares clave de la WAN "primaria" (la de Service type Internet, o la primera).
+   * Read-only. MAC se normaliza de formato Huawei `xxxx-xxxx-xxxx` a `xx:xx:xx:xx:xx:xx`.
+   */
+  _parseWanInfo(raw) {
+    const text = raw
+      .replace(/---- More \( Press 'Q' to break \) ----/g, '')
+      .replace(/\x1b\[[0-9]*[A-Za-z]/g, '');
+    const clean = (v) => (v && !/^(-|invalid|none|na)$/i.test(v.trim()) ? v.trim() : undefined);
+    const num = (v) => (v != null && /-?\d+/.test(v) ? parseInt(v.match(/-?\d+/)[0], 10) : undefined);
+    const grabIn = (block, label) => {
+      const m = block.match(new RegExp(`^\\s*${label}\\s*:\\s*(.+?)\\s*$`, 'im'));
+      return m ? m[1].trim() : undefined;
+    };
+    const macNorm = (v) => {
+      const hex = clean(v) && v.replace(/[^0-9a-fA-F]/g, '');
+      return hex && hex.length === 12 ? hex.toLowerCase().match(/../g).join(':') : clean(v);
+    };
+
+    // Dividir en bloques WAN: cada uno arranca en una línea "Index : N".
+    const parts = text
+      .split(/^(?=\s*Index\s*:\s*\d+)/m)
+      .filter((b) => /^\s*Index\s*:\s*\d+/m.test(b));
+    const wans = parts.map((b) => ({
+      index: num(grabIn(b, 'Index')),
+      name: clean(grabIn(b, 'Name')),
+      service_type: clean(grabIn(b, 'Service type')),
+      connection_type: clean(grabIn(b, 'Connection type')),
+      ipv4_status: clean(grabIn(b, 'IPv4 Connection status')),
+      ipv4_access: clean(grabIn(b, 'IPv4 access type')),
+      ipv4_address: clean(grabIn(b, 'IPv4 address')),
+      mask: clean(grabIn(b, 'Subnet mask')),
+      gateway: clean(grabIn(b, 'Default gateway')),
+      manage_vlan: num(grabIn(b, 'Manage VLAN')),
+      mac: clean(grabIn(b, 'MAC address')),
+      encap: clean(grabIn(b, 'L2 encap-type')),
+      pppoe_user: clean(grabIn(b, 'PPPoE username')),
+    }));
+    if (!wans.length) return {};
+
+    const p = wans.find((w) => /internet/i.test(w.service_type || '')) || wans[0];
+    return {
+      wan_ip_source: p.ipv4_access, // Static / DHCP / PPPoE
+      wan_encap: p.encap, // IPoE / PPPoE
+      ip_address: p.ipv4_address,
+      wan_mask: p.mask,
+      wan_gateway: p.gateway,
+      wan_vlan: p.manage_vlan,
+      mac: macNorm(p.mac),
+      wan_mode: p.connection_type, // IP routed / bridged
+      pppoe_user: p.pppoe_user,
+      wan_info: wans,
+    };
+  }
+
+  /**
    * Trae el detalle de varias ONTs en UNA sesión telnet. `locations` es
    * [{ board, port, onu_id, serial_number }]. Devuelve la misma lista con los
    * campos parseados mergeados: { ...location, model, firmware, sw_version,
    * distance, line_profile, srv_profile, last_down_cause, configuration_method,
-   * config_state, match_state }. Read-only (solo comandos `display`).
+   * config_state, match_state, ...GRUPO GRATIS }. Con `opts.wan` agrega además
+   * `display ont wan-info` por ONU (FASE 2 🔴: +1 comando/ONU). Read-only.
    */
-  async getOntDetailInfoBatch(locations) {
+  async getOntDetailInfoBatch(locations, opts = {}) {
     if (!Array.isArray(locations) || !locations.length) return [];
     return this._session(async (collect) => {
       const results = [];
@@ -366,14 +424,18 @@ class MA5800 {
         }
         const detailRaw = await collect(`display ont info ${loc.port} ${loc.onu_id}`);
         const versionRaw = await collect(`display ont version ${loc.port} ${loc.onu_id}`);
+        const wan = opts.wan
+          ? this._parseWanInfo(await collect(`display ont wan-info ${loc.port} ${loc.onu_id}`))
+          : {};
         results.push({
           ...loc,
           ...this._parseOntDetailInfo(detailRaw),
           ...this._parseOntVersion(versionRaw),
+          ...wan,
         });
       }
       if (currentBoard !== null) await collect('quit');
-      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs`);
+      logger.info(`MA5800 getOntDetailInfoBatch ${this.olt.ip}: ${results.length} ONTs${opts.wan ? ' (+wan)' : ''}`);
       return results;
     });
   }

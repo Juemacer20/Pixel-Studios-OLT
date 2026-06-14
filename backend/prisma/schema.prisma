@@ -171,6 +171,12 @@ model ONT {
   last_up              DateTime?
   last_down            DateTime?
   ports                Json?
+  wan_ip_source        String?
+  wan_encap            String?
+  wan_mask             String?
+  wan_gateway          String?
+  wan_vlan             Int?
+  wan_info             Json?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 
