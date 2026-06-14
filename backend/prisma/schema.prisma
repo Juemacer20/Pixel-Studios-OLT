@@ -163,6 +163,14 @@ model ONT {
   wan_mode             String?
   pppoe_user           String?
   configuration_method String?
+  cpu_pct              Int?
+  mem_pct              Int?
+  tr069_enabled        Boolean?
+  tr069_ip_index       Int?
+  online_duration      String?
+  last_up              DateTime?
+  last_down            DateTime?
+  ports                Json?
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 

@@ -249,13 +249,33 @@ class MA5800 {
    * service-port) y Description ya la trae el scan por SNMP (y viene multilínea).
    */
   _parseOntDetailInfo(raw) {
+    // El paginador deja basura pegada al inicio de algunas líneas (TR069, inventario
+    // de puertos): `---- More ( Press 'Q' to break ) ----\x1b[37D ... \x1b[37D`.
+    // La quitamos antes de parsear, sino esos campos quedan inalcanzables por `^\s*`.
+    const text = raw
+      .replace(/---- More \( Press 'Q' to break \) ----/g, '')
+      .replace(/\x1b\[[0-9]*[A-Za-z]/g, '');
+
     const grab = (label) => {
       const re = new RegExp(`^\\s*${label}[^:\\n]*:\\s*(.+?)\\s*$`, 'im');
-      const m = raw.match(re);
+      const m = text.match(re);
       return m ? m[1].trim() : undefined;
     };
     const num = (v) => (v != null && /-?\d+/.test(v) ? parseInt(v.match(/-?\d+/)[0], 10) : undefined);
     const clean = (v) => (v && !/^(-|none|na)$/i.test(v) ? v : undefined);
+    // "2026-06-11 17:50:59-03:00" → Date (ISO confiable: espacio→T). "-" → undefined.
+    const date = (v) => {
+      if (!clean(v)) return undefined;
+      const d = new Date(v.trim().replace(' ', 'T'));
+      return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+    const bool = (v) => (clean(v) ? /enable/i.test(v) : undefined);
+    // Mgmt IP de "ONT IP 0 address/mask : 10.1.2.3/255.255.255.0" → solo la IP.
+    const mgmtIp = (() => {
+      const v = grab('ONT IP 0 address');
+      const m = v && v.match(/\d+\.\d+\.\d+\.\d+/);
+      return m ? m[0] : undefined;
+    })();
 
     return {
       distance: num(grab('ONT distance')),
@@ -265,7 +285,48 @@ class MA5800 {
       configuration_method: clean(grab('Management mode')), // OMCI / TR069
       config_state: clean(grab('Config state')),
       match_state: clean(grab('Match state')),
+      // FASE 2 — GRUPO GRATIS (ya venían en esta misma salida):
+      temperature: num(grab('Temperature')),
+      cpu_pct: num(grab('CPU occupation')),
+      mem_pct: num(grab('Memory occupation')),
+      tr069_enabled: bool(grab('TR069 management')),
+      tr069_ip_index: num(grab('TR069 IP index')),
+      online_duration: clean(grab('ONT online duration')),
+      last_up: date(grab('Last up time')),
+      last_down: date(grab('Last down time')),
+      mgmt_ip: mgmtIp,
+      ports: this._parsePortInventory(text),
     };
+  }
+
+  /**
+   * Extrae el inventario de puertos del bloque `Port-type / Port-number /
+   * Max-adaptive-number` de `display ont info`. Devuelve `{pots,eth,vdsl,tdm,moca,catv}`
+   * (Port-number numérico, o el Max-adaptive cuando dice "adaptive"). Acotado a ese
+   * bloque (corta en el separador `----`) para NO confundirse con las tablas QinQ/DSCP
+   * de más abajo, que también empiezan con "ETH ...".
+   */
+  _parsePortInventory(text) {
+    const idx = text.search(/Port-type\s+Port-number\s+Max-adaptive-number/);
+    if (idx === -1) return undefined;
+    const lines = text.slice(idx).split('\n').slice(1); // saltar la línea de encabezado
+    const ports = {};
+    let started = false;
+    for (const line of lines) {
+      if (/^\s*-{5,}/.test(line)) {
+        if (started) break; // separador de cierre del bloque
+        continue; // separador inmediato bajo el encabezado
+      }
+      const m = line.match(/^\s*(POTS|ETH|VDSL|TDM|MOCA|CATV)\s+(\d+|adaptive)\s+(\S+)/i);
+      if (m) {
+        started = true;
+        const n = /adaptive/i.test(m[2]) ? parseInt(m[3], 10) : parseInt(m[2], 10);
+        ports[m[1].toLowerCase()] = Number.isNaN(n) ? 0 : n;
+      } else if (started && line.trim()) {
+        break; // fila no reconocida tras los datos → fin del bloque
+      }
+    }
+    return Object.keys(ports).length ? ports : undefined;
   }
 
   /** Parsea `display ont version <port> <id>`: Equipment-ID, Main Software Version, ONT Version. */

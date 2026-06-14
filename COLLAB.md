@@ -57,8 +57,8 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | main | enriquecimiento ONU FASE 1 (huawei/enrich) | ✅ hecho y mergeado | 2026-06-13 |
-| OpenCode | main | ONTs pixel-perfect + VSOL/KingType | 🚧 en curso (sin commitear) | 2026-06-13 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 GRUPO GRATIS: parser `_parseOntDetailInfo` (temp/CPU/mem/TR069/duración/timestamps/puertos) + schema 8 cols + persist enrich | ✅ backend hecho (UI ONUView pendiente: la tiene OpenCode sin commitear) | 2026-06-14 |
+| OpenCode | main | Fix batch action mapping + Resync filter + API Logs + modales | 🚧 en curso (sin commitear) | 2026-06-14 |
 
 ## 6. Regla de oro
 

@@ -72,7 +72,10 @@ async function enrichBatch(batch) {
       const data = { enriched_at: new Date() };
       if (d) {
         for (const k of ['model', 'firmware', 'sw_version', 'distance', 'line_profile',
-                         'srv_profile', 'last_down_cause', 'configuration_method']) {
+                         'srv_profile', 'last_down_cause', 'configuration_method',
+                         // FASE 2 — GRUPO GRATIS (mismo `display ont info`, sin comando extra):
+                         'temperature', 'cpu_pct', 'mem_pct', 'tr069_enabled', 'tr069_ip_index',
+                         'online_duration', 'last_up', 'last_down', 'mgmt_ip', 'ports']) {
           if (d[k] != null) data[k] = d[k];
         }
       }
