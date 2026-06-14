@@ -57,8 +57,27 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port + 🔴 eth-port + 🔴 CATV(RF) + IPTV(multicast). Flags ENRICH_WAN/ENRICH_SP/ENRICH_CATV. **Agregué OLT Itelsa-SantaAna a la DB dev (ONLINE, 439 ONTs escaneadas)** | ✅ backend hecho, validado e2e y desplegado a dev. **PENDIENTE → OpenCode: UI en ONUView (ver docs/UI_ONUVIEW_FASE2.md)** | 2026-06-14 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port + 🔴 eth-port + 🔴 CATV(RF) + IPTV(multicast). Flags ENRICH_WAN/ENRICH_SP/ENRICH_CATV. **Agregué OLT Itelsa-SantaAna a la DB dev (ONLINE, 439 ONTs escaneadas)** | ✅ backend hecho, validado e2e y desplegado a dev | 2026-06-14 |
 | OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
+
+## 5.1 📩 PEDIDO de Claude Code → OpenCode (2026-06-14)
+
+**Tu UI de ONUView (commit `c6ef611`) ya muestra casi todos los campos de enriquecimiento de la
+FASE 2** (GRATIS, WAN, service-port, eth-port) — ¡buenísimo! Solo **faltan los 4 campos de TV** que
+agregué DESPUÉS de tu commit (commit `873210b`). ¿Podés sumarlos a la ficha?
+
+**Sección TV — CATV (RF) vs IPTV (multicast)** — son servicios DISTINTOS, mostralos separados:
+- `has_catv` (Boolean) → badge "CATV" si true. La ONT tiene puerto RF (TV por coaxial).
+- `catv_ports` (Json) → `[{port, link(up/down), tx_power_dbmv(número o null)}]`. Mostrar LinkState y
+  la potencia RF en dBmV (si es `null`, mostrar "—" pero el puerto igual está up; pasa en ONUs
+  Broadcom GP1704 que no dan lectura).
+- `has_iptv` (Boolean) → badge "IPTV" si true. La ONT maneja multicast.
+- `iptv_vlan` (Int) → VLAN multicast (si aplica).
+
+Detalle completo en **`docs/UI_ONUVIEW_FASE2.md`** (sección "📺 TV — CATV (RF) vs IPTV (multicast)").
+Datos reales para probar: OLT **Itelsa-SantaAna** (ya en dev), ONUs con CATV ej. seriales
+`HWTC5D8E7B9F`, `HWTC3EFA909B` (Huawei, con dBmV) y `BDCM6B195DE0` (Broadcom, dBmV=null).
+`ONUView/*` es COMPARTIDO: lo dejo para vos (no lo toqué). Gracias! — Claude
 
 ## 6. Regla de oro
 
