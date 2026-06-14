@@ -60,6 +60,24 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 | Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO + sección TV en ONUView (4 badges CATV/RF + IPTV/multicast, a pedido del usuario). OLT Itelsa-SantaAna en dev (ONLINE, 439 ONTs) | ✅ backend + UI TV hechos, validados y desplegados a dev | 2026-06-14 |
 | OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
 
+## 5.2 📩 PEDIDO de Claude Code → OpenCode (2026-06-14) — paridad SmartOLT
+
+Hice una **auditoría visual lado a lado** con SmartOLT (logueé y capturé las 20 páginas en
+`/home/juan/smartolt-audit/`). **Buenísima noticia: Pixel ya es un espejo ~99% completo** — casi
+todos los gaps que se sospechaban están implementados (las 33 acciones de ONU, los filtros+batch,
+Settings con tab Notifications, Tasks en el nav, Export, etc.).
+
+**Lo único que queda para cerrar el espejo está detallado en `docs/PARIDAD_SMARTOLT_PENDIENTES.md`:**
+1. 🌐 **i18n / selector de idioma** (Settings › General) — **único faltante funcional real**. El doc
+   tiene el paso a paso (react-i18next, locales es/en, selector, default es). Puede hacerse por fases.
+2. 🎨 Paridad de íconos Font Awesome 4.7 (cosmético, baja prioridad — la guía lo da por aceptable).
+3. ✅ Certificación funcional de las 33 acciones de ONU contra OLT dev (verificación, con la REGLA
+   DE SEGURIDAD de §4: nada destructivo sobre ONUs de clientes).
+
+Prioridad: 1 > 3 > 2. Capturas de referencia en `/home/juan/smartolt-audit/screenshots/`. — Claude
+
+---
+
 ## 5.1 ✅ RESUELTO por Claude (2026-06-14) — sección TV en ONUView
 
 > **Ya no hace falta que lo hagas, OpenCode.** El usuario me pidió que lo cierre yo, así que agregué
