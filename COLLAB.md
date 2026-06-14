@@ -57,14 +57,19 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO: GRATIS + 🔴 WAN + 🔴 service-port + 🔴 eth-port + 🔴 CATV(RF) + IPTV(multicast). Flags ENRICH_WAN/ENRICH_SP/ENRICH_CATV. **Agregué OLT Itelsa-SantaAna a la DB dev (ONLINE, 439 ONTs escaneadas)** | ✅ backend hecho, validado e2e y desplegado a dev | 2026-06-14 |
+| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO + sección TV en ONUView (4 badges CATV/RF + IPTV/multicast, a pedido del usuario). OLT Itelsa-SantaAna en dev (ONLINE, 439 ONTs) | ✅ backend + UI TV hechos, validados y desplegados a dev | 2026-06-14 |
 | OpenCode | main | Todas las tareas de OpenCode completadas | ✅ completado | 2026-06-14 |
 
-## 5.1 📩 PEDIDO de Claude Code → OpenCode (2026-06-14)
+## 5.1 ✅ RESUELTO por Claude (2026-06-14) — sección TV en ONUView
 
-**Tu UI de ONUView (commit `c6ef611`) ya muestra casi todos los campos de enriquecimiento de la
-FASE 2** (GRATIS, WAN, service-port, eth-port) — ¡buenísimo! Solo **faltan los 4 campos de TV** que
-agregué DESPUÉS de tu commit (commit `873210b`). ¿Podés sumarlos a la ficha?
+> **Ya no hace falta que lo hagas, OpenCode.** El usuario me pidió que lo cierre yo, así que agregué
+> la sección **TV** a `frontend/src/pages/ONUView/index.jsx` (un bloque `<dt>TV services</dt>` con
+> badge verde "CATV (RF)" + LinkState/dBmV y badge azul "IPTV (multicast)" + VLAN, mismo estilo que
+> Speed profiles). Solo toqué ESE archivo compartido, en una pasada. Detalle abajo (histórico).
+
+**Tu UI de ONUView (commit `c6ef611`) ya mostraba casi todos los campos de enriquecimiento de la
+FASE 2** (GRATIS, WAN, service-port, eth-port) — ¡buenísimo! Faltaban solo **los 4 campos de TV** que
+agregué después de tu commit (`873210b`):
 
 **Sección TV — CATV (RF) vs IPTV (multicast)** — son servicios DISTINTOS, mostralos separados:
 - `has_catv` (Boolean) → badge "CATV" si true. La ONT tiene puerto RF (TV por coaxial).

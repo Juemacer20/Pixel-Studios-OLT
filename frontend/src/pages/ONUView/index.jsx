@@ -588,6 +588,26 @@ export default function ONUView() {
               </dd>
             </>
           ) : null}
+
+          {(o.has_catv || o.has_iptv) ? (
+            <>
+              <dt>TV services</dt>
+              <dd>
+                {o.has_catv ? (
+                  <span className="badge" style={{ background: 'rgba(92,184,92,0.15)', color: '#5cb85c', marginRight: 4 }}>
+                    CATV (RF){(o.catv_ports && o.catv_ports.length)
+                      ? ` · ${o.catv_ports.map(p => `${p.link}${p.tx_power_dbmv != null ? ` ${p.tx_power_dbmv} dBmV` : ''}`).join(', ')}`
+                      : ''}
+                  </span>
+                ) : null}
+                {o.has_iptv ? (
+                  <span className="badge" style={{ background: 'rgba(71,146,230,0.15)', color: '#4792e6' }}>
+                    IPTV (multicast){o.iptv_vlan ? ` · VLAN ${o.iptv_vlan}` : ''}
+                  </span>
+                ) : null}
+              </dd>
+            </>
+          ) : null}
         </dl>
       </div>
 
