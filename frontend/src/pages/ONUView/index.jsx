@@ -26,6 +26,8 @@ import {
   HistoryModal,
   LiveSignalModal,
   MoreGraphsModal,
+  SignalChart,
+  TrafficChart,
   fetchTR069Stat,
 } from './OnuModals';
 
@@ -640,7 +642,7 @@ export default function ONUView() {
         <dt style={{ marginBottom: 5 }} />
         <dd />
 
-        <dt>Traffic/Signal</dt>
+        <dt>{t('onuView.graphs')}</dt>
         <dd style={{ position: 'relative' }}>
           <div className="graphs-container" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
             <div className="graph-item" style={{
@@ -649,10 +651,9 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5bc0de' }}>●</span> {t('onuView.signal.up')} <span style={{ color: '#e08a16' }}>●</span> {t('onuView.signal.down')}
+                <span style={{ color: '#5AC8FA' }}>●</span> {t('onuView.signal.down')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.up')}
               </div>
-              <iframe src={`/onts/${id}/traffic`} style={{ width: '100%', height: 200, border: 'none' }}
-                title="Traffic graph" />
+              <TrafficChart ontId={id} height={200} />
             </div>
             <div className="graph-item" style={{
               flex: '0 1 calc(50% - 8px)', minWidth: 'min(100%, 360px)', maxWidth: '100%',
@@ -660,10 +661,9 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5cb85c' }}>●</span> {t('onuView.signal.rx')} <span style={{ color: '#f0ad4e' }}>●</span> {t('onuView.signal.tx')}
+                <span style={{ color: '#34C759' }}>●</span> {t('onuView.signal.rx')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.tx')}
               </div>
-              <iframe src={`/onts/${id}/signal`} style={{ width: '100%', height: 200, border: 'none' }}
-                title="Signal graph" />
+              <SignalChart ontId={id} height={200} />
             </div>
           </div>
           <a href="#" className="more" onClick={e => { e.preventDefault(); setModal({ type: 'moreGraphs' }); }}

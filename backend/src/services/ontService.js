@@ -69,7 +69,7 @@ async function getONTSignal(id) {
 }
 
 async function getSignalHistory(ontId, range = '24h') {
-  const ranges = { '24h': 24, '7d': 168, '30d': 720 };
+  const ranges = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 };
   const hours = ranges[range] || 24;
   const since = new Date(Date.now() - hours * 3600 * 1000);
   return prisma.signalHistory.findMany({

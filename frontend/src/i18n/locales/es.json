@@ -155,6 +155,7 @@
     "live": "LIVE!",
     "runningConfig": "Running config",
     "swInfo": "SW info",
+    "graphs": "Traffic/Signal",
     "moreGraphs": "More graphs",
     "actions": "Actions:",
     "reboot": "Reboot",

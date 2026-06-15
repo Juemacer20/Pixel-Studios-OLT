@@ -281,4 +281,40 @@ async function trafficHandler(req, res, next, onlyUplink) {
 router.get('/traffic', (req, res, next) => trafficHandler(req, res, next, false));
 router.get('/uplink', (req, res, next) => trafficHandler(req, res, next, true));
 
+// ─── GET /api/v1/graphs/traffic/:ontId ──────────────────────────────────────
+// Traffic history for a specific ONT (derived from OLT port data).
+router.get('/traffic/:ontId', async (req, res, next) => {
+  try {
+    const { ontId } = req.params;
+    const { range = '24h' } = req.query;
+    const hours = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 }[range] || 24;
+    const since = new Date(Date.now() - hours * 3600 * 1000);
+
+    const ont = await prisma.oNT.findUnique({
+      where: { id: ontId },
+      select: { olt_id: true, board: true, port: true, onu_id: true },
+    });
+
+    if (!ont) return res.status(404).json({ error: 'ONT not found' });
+
+    // Derive traffic from OLT port-level data
+    const oltTraffic = await prisma.oltTrafficHistory.findMany({
+      where: {
+        olt_id: ont.olt_id,
+        timestamp: { gte: since },
+      },
+      orderBy: { timestamp: 'asc' },
+      take: 5000,
+    });
+
+    const history = oltTraffic.map(t => ({
+      timestamp: t.timestamp,
+      rx_mbps: t.rx_mbps ? t.rx_mbps / (ont.onu_id || 1) : null,
+      tx_mbps: t.tx_mbps ? t.tx_mbps / (ont.onu_id || 1) : null,
+    }));
+
+    res.json({ data: { ontId, history } });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

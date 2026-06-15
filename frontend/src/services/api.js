@@ -228,6 +228,7 @@ export const graphsAPI = {
   signal:    (params) => api.get('/graphs/signal', { params }),
   signalOnt: (ontId)  => api.get(`/graphs/signal/${ontId}`),
   traffic:   (params) => api.get('/graphs/traffic', { params }),
+  trafficOnt: (ontId, params) => api.get(`/graphs/traffic/${ontId}`, { params }),
   uplink:    (params) => api.get('/graphs/uplink', { params }),
 };
 

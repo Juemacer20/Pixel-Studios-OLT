@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { ontAPI } from '../../services/api';
+import { useQuery } from '@tanstack/react-query';
+import { ontAPI, graphsAPI } from '../../services/api';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 function ModalBackdrop({ onClose }) {
@@ -1064,18 +1065,19 @@ export function LiveSignalModal({ open, ontId, onClose }) {
     histFetched.current = false;
 
     ontAPI.signalHistory(ontId, '1h').then(r => {
-      const h = (r.data?.data?.history || r.data?.history || []);
-      setHistory(h.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })));
+      const h = (r.data?.data?.history || r.data?.history || r.data?.data || r.data || []);
+      const arr = Array.isArray(h) ? h : [];
+      setHistory(arr.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })));
       setLoading(false);
       histFetched.current = true;
-    }).catch(() => setLoading(false));
+    }).catch(() => { setLoading(false); histFetched.current = true; });
 
     const fetchLive = () => ontAPI.signal(ontId).then(r => {
       const d = r.data?.data || r.data;
       setLive({ rx: d.rx_power, tx: d.tx_power, oltRx: d.olt_rx_power, dist: d.distance, updated: Date.now() });
-      if (histFetched.current) {
+      if (d.rx_power != null || d.tx_power != null) {
         setHistory(prev => {
-          if (!d.rx_power && !d.tx_power) return prev;
+          if (!histFetched.current) return prev;
           const last = prev.length ? prev[prev.length - 1] : null;
           if (last && Date.now() - last.t < 1500) return prev;
           return [...prev.slice(-300), { t: Date.now(), rx: d.rx_power, tx: d.tx_power }];
@@ -1137,8 +1139,6 @@ export function MoreGraphsModal({ open, ontId, onClose }) {
   const [range, setRange] = useState('24h');
   if (!open) return null;
 
-  const rangeParams = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 };
-
   return (
     <ModalFrame title="Signal & Traffic graphs" onClose={onClose}
       footer={<SaveFooter onClose={onClose} onSave={null} saveLabel="Close" />}>
@@ -1154,20 +1154,120 @@ export function MoreGraphsModal({ open, ontId, onClose }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
-            <span style={{ color: '#5cb85c' }}>●</span> RX signal <span style={{ color: '#f0ad4e' }}>●</span> TX signal
+            <span style={{ color: '#34C759' }}>●</span> RX <span style={{ color: '#FF9500' }}>●</span> TX
           </div>
-          <iframe src={`/onts/${ontId}/signal?range=${range}`}
-            style={{ width: '100%', height: 220, border: 'none' }} title="Signal graph" />
+          <SignalChartRange ontId={ontId} range={range} height={220} />
         </div>
         <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
           <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
-            <span style={{ color: '#5bc0de' }}>●</span> Traffic Up <span style={{ color: '#e08a16' }}>●</span> Traffic Down
+            <span style={{ color: '#5AC8FA' }}>●</span> Down <span style={{ color: '#FF9500' }}>●</span> Up
           </div>
-          <iframe src={`/onts/${ontId}/traffic?range=${range}`}
-            style={{ width: '100%', height: 220, border: 'none' }} title="Traffic graph" />
+          <TrafficChart ontId={ontId} height={220} />
         </div>
       </div>
     </ModalFrame>
+  );
+}
+
+/* ─── Signal Chart (inline Recharts, no iframe) ─── */
+function fmtTime(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+export function SignalChart({ ontId, height = 200 }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['signal-chart', ontId],
+    queryFn: () => graphsAPI.signalOnt(ontId).then(r => r.data?.data || r.data),
+    refetchInterval: 60000,
+  });
+  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading signal…</div>;
+  const history = data?.history || [];
+  const points = history.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
+  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No signal data</div>;
+  return (
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
+          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
+          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
+          <Tooltip
+            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
+            labelFormatter={fmtTime}
+          />
+          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
+          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ─── Traffic Chart (inline Recharts, no iframe) ─── */
+export function TrafficChart({ ontId, height = 200 }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!ontId) return;
+    setLoading(true);
+    graphsAPI.trafficOnt(ontId, { range: '24h' }).then(r => {
+      const d = r.data?.data || r.data;
+      setData((Array.isArray(d) ? d : d?.history) || []);
+    }).catch(() => setData([])).finally(() => setLoading(false));
+  }, [ontId]);
+  if (loading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading traffic…</div>;
+  const hist = Array.isArray(data) ? data : (data?.history || []);
+  const points = hist.map(p => ({ t: new Date(p.timestamp || p.t).getTime(), rx: p.rx_mbps || p.rx, tx: p.tx_mbps || p.tx })).filter(p => p.rx != null || p.tx != null);
+  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No traffic data</div>;
+  return (
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
+          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
+          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" Mbps" domain={['auto', 'auto']} />
+          <Tooltip
+            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
+            labelFormatter={fmtTime}
+          />
+          <Line type="monotone" dataKey="rx" stroke="#5AC8FA" name="Down" dot={false} strokeWidth={1.5} />
+          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="Up" dot={false} strokeWidth={1.5} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+/* ─── Combined graphs for MoreGraphsModal ──────── */
+export function SignalChartRange({ ontId, range, height = 220 }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['signal-range', ontId, range],
+    queryFn: () => ontAPI.signalHistory(ontId, range).then(r => r.data?.data || r.data),
+    refetchInterval: 30000,
+  });
+  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>;
+  const points = (Array.isArray(data) ? data : (data?.history || data?.data || [])).map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
+  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No data</div>;
+  const tickFmt = range === '30d' || range === '7d' ? fmtDate : fmtTime;
+  return (
+    <div style={{ width: '100%', height }}>
+      <ResponsiveContainer>
+        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
+          <XAxis dataKey="t" tickFormatter={tickFmt} stroke="var(--text-muted)" fontSize={10} />
+          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
+          <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }} labelFormatter={range === '30d' || range === '7d' ? (v) => new Date(v).toLocaleString() : fmtTime} />
+          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
+          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
