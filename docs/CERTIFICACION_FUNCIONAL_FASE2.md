@@ -33,7 +33,7 @@
 
 | # | Acción | Resultado | Notas |
 |---|--------|-----------|-------|
-| 11 | getPortStats | ⚠️ | SNMP OID inválido (`argument is not a valid OID string`) |
+| 11 | getPortStats | ✅ | Fixed — ahora usa ifIndex derivado de slot/port/onu_id |
 
 ## Write — probados por construcción de comando (22)
 
@@ -75,7 +75,7 @@
 
 ## Issues detectados
 
-1. **getPortStats** (`ma5800.js`): el método SNMP usa un OID incorrecto para consultar estadísticas de puerto. Revisar `1.3.6.1.4.1.2011.6.128.1.1.2.46.1.*` contra la MIB real del MA5800.
+1. ~~**getPortStats** (`ma5800.js`): SNMP OID inválido.~~ **✅ FIXED**: ahora deriva el ifIndex de slot/port/onu_id.
 2. **getONTStatus** (`ma5800.js`): `online: false` para ONU con status ONLINE en DB. Posible race condition entre el scan y la consulta óptica (la ONU estaba online pero el comando `display ont optical-info` puede no devolver datos si la ONU está en transición).
 
 ## VSOL / KingType

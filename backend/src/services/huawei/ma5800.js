@@ -795,7 +795,11 @@ class MA5800 {
     }
   }
 
-  async getPortStats(portId) {
+  async getPortStats(portId, location) {
+    if (location?.slot != null && location?.port != null) {
+      const ifIndex = 0xFA000000 + Number(location.slot) * 0x2000 + Number(location.port) * 0x100 + Number(location.onu_id || 0);
+      return this.snmp.getPortStats(ifIndex);
+    }
     return this.snmp.getPortStats(portId);
   }
 
