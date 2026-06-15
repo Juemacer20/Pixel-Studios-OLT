@@ -5,12 +5,14 @@ import {
   IconStethoscope, IconListCheck, IconChevronDown, IconDeviceFloppy,
   IconWorld, IconUser, IconPower, IconGitCompare, IconSun, IconMoon,
 } from '@tabler/icons-react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useTheme } from '../../hooks/useTheme';
 import { oltAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
 function SaveConfigGlobalModal({ open, onClose }) {
+  const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const handleSave = async () => {
     setBusy(true);
@@ -27,17 +29,16 @@ function SaveConfigGlobalModal({ open, onClose }) {
           <div className="modal-content">
             <div className="modal-header">
               <button className="close" onClick={onClose}>&times;</button>
-              <h3>Save configuration</h3>
+              <h3>{t('nav.saveConfigTitle')}</h3>
             </div>
             <div className="modal-body">
               <p style={{ fontSize: 13 }}>
-                This will save the running configuration to the startup configuration on the OLT.
-                All changes will be persisted across reboots.
+                {t('nav.saveConfigBody')}
               </p>
             </div>
             <div className="modal-footer">
-              <a href="#" className="btn btn-link" onClick={onClose}>No, cancel</a>
-              <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? 'Saving…' : 'Yes, save configuration'}</a>
+              <a href="#" className="btn btn-link" onClick={onClose}>{t('nav.cancel')}</a>
+              <a href="#" className="btn btn-primary" onClick={handleSave}>{busy ? t('nav.saving') : t('nav.saveConfigConfirm')}</a>
             </div>
           </div>
         </div>
@@ -47,32 +48,32 @@ function SaveConfigGlobalModal({ open, onClose }) {
 }
 
 // ── Menú principal (etiquetas tipo SmartOLT, mapeadas a rutas reales) ──
-const MAIN = [
-  { to: '/dashboard',  label: 'Dashboard',    Icon: IconLayoutDashboard },
-  { to: '/onu/unconfigured', label: 'Unconfigured', Icon: IconPlugConnected },
-  { to: '/onts',       label: 'Configured',   Icon: IconCircleCheck },
-  { to: '/graphs',     label: 'Graphs',       Icon: IconChartLine },
-  { to: '/diagnostics', label: 'Diagnostics', Icon: IconStethoscope },
-  { to: '/events',     label: 'Tasks',        Icon: IconListCheck },
+const MAIN = (t) => [
+  { to: '/dashboard',  label: t('nav.dashboard'),    Icon: IconLayoutDashboard },
+  { to: '/onu/unconfigured', label: t('nav.unconfigured'), Icon: IconPlugConnected },
+  { to: '/onts',       label: t('nav.configured'),   Icon: IconCircleCheck },
+  { to: '/graphs',     label: t('nav.graphs'),       Icon: IconChartLine },
+  { to: '/diagnostics', label: t('nav.diagnostics'), Icon: IconStethoscope },
+  { to: '/events',     label: t('nav.tasks'),        Icon: IconListCheck },
 ];
 
-const REPORTS = [
-  { to: '/reports/tasks',          label: 'Tasks' },
-  { to: '/reports/authorizations', label: 'Authorizations' },
-  { to: '/reports/export',         label: 'Export' },
-  { to: '/reports/import',         label: 'Import' },
+const REPORTS = (t) => [
+  { to: '/reports/tasks',          label: t('nav.reportsTasks') },
+  { to: '/reports/authorizations', label: t('nav.reportsAuthorizations') },
+  { to: '/reports/export',         label: t('nav.reportsExport') },
+  { to: '/reports/import',         label: t('nav.reportsImport') },
 ];
 
-const SETTINGS = [
-  { to: '/zones',           label: 'Zones' },
-  { to: '/odbs',            label: 'ODBs' },
-  { to: '/onu-types',       label: 'ONU types' },
-  { to: '/speed-profiles',  label: 'Speed profiles' },
-  { to: '/olts',            label: 'OLTs' },
-  { to: '/tr069',           label: 'VPN & TR069' },
-  { to: '/auth-presets',    label: 'Authorization presets' },
-  { to: '/settings',        label: 'General' },
-  { to: '/users',           label: 'Users' },
+const SETTINGS = (t) => [
+  { to: '/zones',           label: t('nav.zones') },
+  { to: '/odbs',            label: t('nav.odbs') },
+  { to: '/onu-types',       label: t('nav.onuTypes') },
+  { to: '/speed-profiles',  label: t('nav.speedProfiles') },
+  { to: '/olts',            label: t('nav.olts') },
+  { to: '/tr069',           label: t('nav.vpnTr069') },
+  { to: '/auth-presets',    label: t('nav.authPresets') },
+  { to: '/settings',        label: t('nav.general') },
+  { to: '/users',           label: t('nav.users') },
 ];
 
 function Dropdown({ label, items, navigate }) {
@@ -100,6 +101,7 @@ function Dropdown({ label, items, navigate }) {
 }
 
 export default function TopNav() {
+  const { t } = useTranslation();
   const { user, clearAuth } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -107,14 +109,17 @@ export default function TopNav() {
   const [saveOpen, setSaveOpen] = useState(false);
 
   const handleLogout = () => { clearAuth(); navigate('/login'); };
+  const mainItems = MAIN(t);
+  const reportsItems = REPORTS(t);
+  const settingsItems = SETTINGS(t);
 
   return (
     <>
       <header className="sol-topnav">
-        <div className="sol-brand"><span className="logo">◉</span> Pixel Studios OLT <span className="badge badge-gray" style={{ fontSize: 9, marginLeft: 6, verticalAlign: 'middle' }}>v3.3.0</span></div>
+        <div className="sol-brand"><span className="logo">◉</span> {t('nav.brand')} <span className="badge badge-gray" style={{ fontSize: 9, marginLeft: 6, verticalAlign: 'middle' }}>{t('nav.version')}</span></div>
 
         <nav className="sol-nav">
-          {MAIN.map(({ to, label, Icon }) => {
+          {mainItems.map(({ to, label, Icon }) => {
             const active = location.pathname === to || location.pathname.startsWith(to);
             return (
               <NavLink key={label} to={to} className={`sol-nav-item${active ? ' active' : ''}`}>
@@ -122,25 +127,25 @@ export default function TopNav() {
               </NavLink>
             );
           })}
-          <Dropdown label="Reports" items={REPORTS} navigate={navigate} />
+          <Dropdown label={t('nav.reports')} items={reportsItems} navigate={navigate} />
           <NavLink to="/config-comparison" className={`sol-nav-item${location.pathname === '/config-comparison' ? ' active' : ''}`}>
-            <IconGitCompare size={15} /> Config mismatches
+            <IconGitCompare size={15} /> {t('nav.configMismatches')}
           </NavLink>
           <button className="sol-nav-item save" onClick={() => setSaveOpen(true)}>
-            <IconDeviceFloppy size={15} /> Save config
+            <IconDeviceFloppy size={15} /> {t('nav.saveConfig')}
           </button>
-          <Dropdown label="Settings" items={SETTINGS} navigate={navigate} />
+          <Dropdown label={t('nav.settings')} items={settingsItems} navigate={navigate} />
         </nav>
 
         <div className="sol-right">
-          <button className="sol-iconbtn" title={theme === 'dark' ? 'Light mode' : 'Dark mode'} onClick={toggle}>
+          <button className="sol-iconbtn" title={theme === 'dark' ? t('nav.lightMode') : t('nav.darkMode')} onClick={toggle}>
             {theme === 'dark' ? <IconSun size={17} /> : <IconMoon size={17} />}
           </button>
-          <button className="sol-iconbtn" title="Language"><IconWorld size={17} /></button>
+          <button className="sol-iconbtn" title={t('nav.language')}><IconWorld size={17} /></button>
           <button className="sol-iconbtn" title={user?.email || 'User'} onClick={() => navigate('/users')}>
             <IconUser size={17} />
           </button>
-          <button className="sol-logout" onClick={handleLogout}><IconPower size={15} /> Log out</button>
+          <button className="sol-logout" onClick={handleLogout}><IconPower size={15} /> {t('nav.logOut')}</button>
         </div>
       </header>
 
