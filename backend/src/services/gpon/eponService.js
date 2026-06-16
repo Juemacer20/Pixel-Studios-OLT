@@ -8,7 +8,7 @@ async function getEPONONTs(oltId) {
   });
 }
 
-async function rebootEPONONT(ontId, userId) {
+async function rebootEPONONT(ontId, userId, ip = null) {
   const ont = await prisma.oNT.findUnique({ where: { id: ontId }, include: { olt: true } });
   if (!ont) throw new Error('ONT not found');
   const adapter = getAdapter(ont.olt);
@@ -16,7 +16,7 @@ async function rebootEPONONT(ontId, userId) {
   const result = await adapter.rebootONT(ont.serial_number);
   await adapter.disconnect();
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'EPON_ONT_REBOOT', target: ontId, details: { serial: ont.serial_number } },
+    data: { user_id: userId, action: 'EPON_ONT_REBOOT', target: ontId, details: { serial: ont.serial_number }, ip_address: ip ?? null },
   });
   return result;
 }

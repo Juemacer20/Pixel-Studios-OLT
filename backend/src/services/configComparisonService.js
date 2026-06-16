@@ -52,7 +52,7 @@ async function scanAndCompare(oltId) {
 // Aplica la corrección sincronizando la DB con la OLT (solo DB, sin Telnet de
 // escritura): crea las ONUs presentes en la OLT y faltantes en DB, y marca como
 // OFFLINE las que están en DB pero ya no en la OLT.
-async function applyFix(oltId, userId) {
+async function applyFix(oltId, userId, ip = null) {
   const olt = await prisma.oLT.findUnique({ where: { id: oltId } });
   if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
 
@@ -82,7 +82,7 @@ async function applyFix(oltId, userId) {
     }
   }
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'CONFIG_FIX', action_type: 'OLT_ACTION', target: oltId, target_type: 'OLT', details: { created, markedOffline } },
+    data: { user_id: userId, action: 'CONFIG_FIX', action_type: 'OLT_ACTION', target: oltId, target_type: 'OLT', details: { created, markedOffline }, ip_address: ip ?? null },
   }).catch(() => {});
   logger.info(`configFix ${olt.name}: created=${created} offline=${markedOffline}`);
   return { oltId, oltName: olt.name, created, markedOffline };

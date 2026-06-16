@@ -63,7 +63,7 @@ async function sendCommand(req, res, next) {
   try {
     const { cmd } = req.body;
     if (!cmd) return res.status(400).json({ error: 'Command required' });
-    const result = await oltService.sendOLTCommand(req.params.id, cmd, req.user?.id);
+    const result = await oltService.sendOLTCommand(req.params.id, cmd, req.user?.id, req.ip);
     res.json({ data: result });
   } catch (err) { next(err); }
 }

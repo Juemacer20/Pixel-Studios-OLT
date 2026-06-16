@@ -40,7 +40,7 @@ router.post('/import', checkRole('noc'), upload.single('file'), async (req, res,
       } catch (e) { failed++; errors.push(`${sn}: ${e.code === 'P2025' ? 'not found' : e.message}`); }
     }
     await prisma.auditLog.create({
-      data: { user_id: req.user?.id, action: 'IMPORT_CSV', action_type: 'IMPORT', details: { rows: rows.length, processed, failed } },
+      data: { user_id: req.user?.id, action: 'IMPORT_CSV', action_type: 'IMPORT', details: { rows: rows.length, processed, failed }, ip_address: req.ip ?? null },
     }).catch(() => {});
     res.json({ data: { total: rows.length, processed, failed, errors: errors.slice(0, 100) } });
   } catch (err) { next(err); }

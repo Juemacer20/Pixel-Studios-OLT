@@ -124,7 +124,7 @@ async function getSignalHistory(ontId, range = '24h') {
   });
 }
 
-async function rebootONT(id, userId) {
+async function rebootONT(id, userId, ip = null) {
   const ont = await prisma.oNT.findUnique({ where: { id }, include: { olt: true } });
   if (!ont) throw Object.assign(new Error('ONT not found'), { status: 404 });
   const adapter = getAdapter(ont.olt);
@@ -132,7 +132,7 @@ async function rebootONT(id, userId) {
   const result = await adapter.rebootONT(ont.serial_number);
   await adapter.disconnect();
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_REBOOT', target: id, details: { serial_number: ont.serial_number, result } },
+    data: { user_id: userId, action: 'ONT_REBOOT', target: id, details: { serial_number: ont.serial_number, result }, ip_address: ip ?? null },
   });
   return result;
 }
@@ -185,7 +185,7 @@ const ACTION_TO_ADAPTER = {
   pppoePlus: 'pppoePlus',
 };
 
-async function executeOntAction(id, action, body, userId) {
+async function executeOntAction(id, action, body, userId, ip = null) {
   const adapterMethod = ACTION_TO_ADAPTER[action];
   if (!adapterMethod) throw Object.assign(new Error(`Unknown ONU action: ${action}`), { status: 400 });
 
@@ -216,6 +216,7 @@ async function executeOntAction(id, action, body, userId) {
       target: id,
       target_type: 'ONT',
       details: { serial: ont.serial_number, olt: ont.olt.name, body: body || {} },
+      ip_address: ip ?? null,
     },
   });
   logger.info(`ONT action ${action} on ${ont.serial_number} (${ont.olt.name}): success=${result?.success}`);
@@ -223,15 +224,15 @@ async function executeOntAction(id, action, body, userId) {
 }
 
 // DB-only actions (no OLT command needed) -------------------------------------
-async function updateExternalId(id, externalId, userId) {
+async function updateExternalId(id, externalId, userId, ip = null) {
   const ont = await prisma.oNT.update({ where: { id }, data: { external_id: externalId } });
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_EXTERNAL_ID', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: { externalId } },
+    data: { user_id: userId, action: 'ONT_EXTERNAL_ID', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: { externalId }, ip_address: ip ?? null },
   });
   return ont;
 }
 
-async function updateLocationDetails(id, body, userId) {
+async function updateLocationDetails(id, body, userId, ip = null) {
   const data = {};
   for (const k of ['zone', 'odb', 'description', 'contact', 'latitude', 'longitude']) {
     if (body[k] !== undefined) data[k] = body[k];
@@ -241,13 +242,13 @@ async function updateLocationDetails(id, body, userId) {
   if (data.longitude != null) data.longitude = parseFloat(data.longitude);
   const ont = await prisma.oNT.update({ where: { id }, data });
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data },
+    data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data, ip_address: ip ?? null },
   });
   return ont;
 }
 
 // Authorize (provision) a new ONU: send to OLT, then persist ONT + Client.
-async function authorizeONT(data, userId) {
+async function authorizeONT(data, userId, ip = null) {
   if (!data.oltId) throw Object.assign(new Error('oltId is required'), { status: 400 });
   if (!data.serialNumber) throw Object.assign(new Error('serialNumber is required'), { status: 400 });
   const olt = await prisma.oLT.findUnique({ where: { id: data.oltId } });
@@ -298,7 +299,7 @@ async function authorizeONT(data, userId) {
   await prisma.auditLog.create({
     data: {
       user_id: userId, action: 'AUTHORIZE_ONT', action_type: 'ONT_ACTION', target: ont.id, target_type: 'ONT',
-      details: { serial: data.serialNumber, olt: olt.name, location: loc },
+      details: { serial: data.serialNumber, olt: olt.name, location: loc }, ip_address: ip ?? null,
     },
   });
   logger.info(`Authorized ONU ${data.serialNumber} on ${olt.name}: success=${result.success}`);
