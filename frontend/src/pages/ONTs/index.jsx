@@ -740,13 +740,37 @@ export default function ONTs() {
   }, [searchParams]);
   const updBatch = (k, v) => setBatchForm(p => ({...p, [k]: v}));
 
-  /* ── Queries ── */
+  /* ── Server-side query — re-fetches whenever any active filter changes ── */
   const { data: ontsResp, isLoading, isFetching, refetch } = useQuery({
-    queryKey: ['onts'],
-    queryFn: () =>
-      ontAPI.list({ limit: 500 })
-        .then(r => r.data?.data || r.data?.results || r.data || [])
-        ,
+    queryKey: ['onts', {
+      search, filterOLT, filterStatus, filterBoard, filterPort, filterSignal,
+      filterZone, filterVlan, filterOnuType, filterOdb, filterPonType,
+      filterWanMode, filterConfigMethod, filterResyncFailed,
+      page, pageSize, sortState,
+    }],
+    queryFn: () => {
+      const params = { limit: pageSize, page };
+      if (search)              params.search        = search;
+      if (filterOLT)           params.olt_id        = filterOLT;
+      if (filterBoard)         params.board         = filterBoard;
+      if (filterPort)          params.port          = filterPort;
+      if (filterZone)          params.zone          = filterZone;
+      if (filterVlan)          params.vlan          = filterVlan;
+      if (filterOnuType)       params.model         = filterOnuType;
+      if (filterOdb)           params.odb           = filterOdb;
+      if (filterPonType)       params.pon_type      = filterPonType;
+      if (filterWanMode)       params.wan_mode      = filterWanMode;
+      if (filterConfigMethod)  params.config_method = filterConfigMethod;
+      if (filterResyncFailed === 'failed') params.resync_failed = 'failed';
+      if (filterSignal)        params.signal        = filterSignal;
+      // Status: map internal 'ztp' key → PENDING for backend
+      if (filterStatus === 'ztp')      params.status = 'PENDING';
+      else if (filterStatus)           params.status = filterStatus.toUpperCase();
+      // Sort
+      params.sort_by  = sortState[0];
+      params.sort_dir = sortState[1];
+      return ontAPI.list(params).then(r => r.data?.data || r.data?.results || r.data || {});
+    },
     refetchInterval: 30000,
     retry: 1,
   });
@@ -760,10 +784,15 @@ export default function ONTs() {
     retry: 1,
   });
 
+  // Server returns { data: [...], total, page, pages }
   const rawONTs = useMemo(() => {
-    const list = Array.isArray(ontsResp) ? ontsResp : [];
-    return list;
+    if (ontsResp?.data && Array.isArray(ontsResp.data)) return ontsResp.data;
+    if (Array.isArray(ontsResp)) return ontsResp;
+    return [];
   }, [ontsResp]);
+
+  const serverTotal = ontsResp?.total  ?? rawONTs.length;
+  const serverPages = ontsResp?.pages  ?? 1;
 
   const olts = useMemo(() => {
     const list = Array.isArray(oltsResp) ? oltsResp : [];
@@ -775,12 +804,13 @@ export default function ONTs() {
       .filter(olt => { if (seen.has(olt.id)) return false; seen.add(olt.id); return true; });
   }, [oltsResp, rawONTs]);
 
+  // Port options use the Int port field, not the free-text description string.
   const ponPorts = useMemo(() => {
     const seen = new Set();
     return rawONTs
-      .map(o => o.description)
-      .filter(p => { if (!p || seen.has(p)) return false; seen.add(p); return true; })
-      .sort();
+      .map(o => o.port)
+      .filter(p => { if (p == null || seen.has(p)) return false; seen.add(p); return true; })
+      .sort((a, b) => a - b);
   }, [rawONTs]);
 
   /* ── Mutations ── */
@@ -802,95 +832,16 @@ export default function ONTs() {
     setPage(1);
   }, []);
 
-  /* ── Stats ── */
+  /* ── Stats — computed from current page (server handles actual filtering) ── */
   const stats = useMemo(() => {
-    const st = o => (o.status || '').toLowerCase();
-    const total   = rawONTs.length;
-    const online  = rawONTs.filter(o => st(o) === 'online').length;
-    const offline = rawONTs.filter(o => st(o) === 'offline').length;
-    const los     = rawONTs.filter(o => st(o) === 'los').length;
-    const ztp     = rawONTs.filter(o => ['ztp','pending'].includes(st(o))).length;
-    const rxVals  = rawONTs.map(o => o.rx_power).filter(v => v != null);
-    const avgRx   = rxVals.length ? rxVals.reduce((a, b) => a + b, 0) / rxVals.length : null;
-    return { total, online, offline, los, ztp, avgRx };
-  }, [rawONTs]);
+    const rxVals = rawONTs.map(o => o.rx_power).filter(v => v != null);
+    const avgRx  = rxVals.length ? rxVals.reduce((a, b) => a + b, 0) / rxVals.length : null;
+    return { total: serverTotal, avgRx };
+  }, [rawONTs, serverTotal]);
 
-  /* ── Filtered + sorted list ── */
-  const filtered = useMemo(() => {
-    let list = [...rawONTs];
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter(o =>
-        o.serial_number?.toLowerCase().includes(q) ||
-        o.mac?.toLowerCase().includes(q) ||
-        o.client?.name?.toLowerCase().includes(q) ||
-        o.ip_address?.toLowerCase().includes(q)
-      );
-    }
-    if (filterOLT)    list = list.filter(o => String(o.olt?.id) === filterOLT);
-    if (filterBoard)  list = list.filter(o => String(o.board) === filterBoard);
-    if (filterPort)   list = list.filter(o => o.description === filterPort);
-    if (filterSignal) {
-      const signalKeyMap = { 'good': 'optimal', 'warning': 'warn', 'critical': 'critical' };
-      list = list.filter(o => getSignalMeta(o.rx_power).key === (signalKeyMap[filterSignal] || filterSignal));
-    }
-    if (filterStatus) {
-      if (filterStatus === 'ztp') list = list.filter(o => ['ztp','pending'].includes((o.status||'').toLowerCase()));
-      else                        list = list.filter(o => (o.status||'').toLowerCase() === filterStatus);
-    }
-    if (filterZone) list = list.filter(o => (o.zone || '') === filterZone);
-    if (filterVlan) list = list.filter(o => String(o.vlan ?? '') === filterVlan);
-    if (filterMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterMode.toLowerCase()));
-    if (filterOnuType) list = list.filter(o => (o.model || '').toLowerCase().includes(filterOnuType.toLowerCase()));
-    if (filterProfile) list = list.filter(o => (o.custom_template || '').toLowerCase().includes(filterProfile.toLowerCase()));
-    if (filterPonType) list = list.filter(o => (o.pon_type || '').toLowerCase() === filterPonType.toLowerCase());
-    if (filterOdb) list = list.filter(o => (o.odb || '') === filterOdb);
-    if (filterWanMode) list = list.filter(o => (o.wan_mode || '').toLowerCase().includes(filterWanMode.toLowerCase()));
-    if (filterMgmtIpMode) list = list.filter(o => (o.mgmt_ip_mode || '').toLowerCase() === filterMgmtIpMode.toLowerCase());
-    if (filterTr069) list = list.filter(o => (o.tr069_profile_id || '').toLowerCase().includes(filterTr069.toLowerCase()));
-    if (filterVoip) list = list.filter(o => (o.voip_mode || '').toLowerCase() === filterVoip.toLowerCase());
-    if (filterCatv) list = list.filter(o => String(o.catv_enabled ?? '') === filterCatv);
-    if (filterConfigMethod) list = list.filter(o => (o.config_method || '').toLowerCase() === filterConfigMethod.toLowerCase());
-    if (filterIpProtocol) list = list.filter(o => (o.ip_protocol || '').toLowerCase() === filterIpProtocol.toLowerCase());
-    if (filterSvlan) list = list.filter(o => String(o.svlan ?? '') === filterSvlan);
-    if (filterCvlan) list = list.filter(o => String(o.cvlan ?? '') === filterCvlan);
-    if (filterTagTransform) list = list.filter(o => (o.tag_transform || '').toLowerCase() === filterTagTransform.toLowerCase());
-    if (filterDownloadSpeed) list = list.filter(o => (o.download_speed || '').toLowerCase().includes(filterDownloadSpeed.toLowerCase()));
-    if (filterUploadSpeed) list = list.filter(o => (o.upload_speed || '').toLowerCase().includes(filterUploadSpeed.toLowerCase()));
-    if (filterLastStatusChange) list = list.filter(o => o.last_status_change?.includes(filterLastStatusChange));
-    if (filterShouldRebuild) list = list.filter(o => (o.should_rebuild || '').toLowerCase() === filterShouldRebuild.toLowerCase());
-    if (filterResyncFailed === 'failed') list = list.filter(o => o.last_down_cause != null && o.last_down_cause !== '');
-
-    const [key, dir] = sortState;
-    const GET = {
-      id:            o => o.id || '',
-      serial_number: o => o.serial_number || '',
-      client:        o => o.client?.name || '',
-      olt:           o => o.olt?.name || '',
-      pon_port:      o => o.description || '',
-      rx_power:      o => o.rx_power ?? -999,
-      tx_power:      o => o.tx_power ?? -999,
-      distance:      o => o.distance ?? 0,
-      status:        o => o.status || '',
-      last_seen:     o => o.last_seen || '',
-      provisioned_at: o => o.provisioned_at || '',
-      zone:          o => o.zone || '',
-      odb:           o => o.odb || '',
-      model:         o => o.model || '',
-      vlan:          o => o.vlan ?? '',
-      wan_mode:      o => o.wan_mode || '',
-    };
-    if (GET[key]) {
-      list.sort((a, b) => {
-        const av = GET[key](a), bv = GET[key](b);
-        if (av < bv) return dir === 'asc' ? -1 :  1;
-        if (av > bv) return dir === 'asc' ?  1 : -1;
-        return 0;
-      });
-    }
-    return list;
-  }, [rawONTs, search, filterOLT, filterBoard, filterPort, filterSignal, filterStatus, filterZone, filterVlan, filterMode, filterOnuType, filterProfile, filterPonType, filterOdb, filterWanMode, filterMgmtIpMode, filterTr069, filterVoip, filterCatv, filterConfigMethod, filterIpProtocol, filterSvlan, filterCvlan, filterTagTransform, filterDownloadSpeed, filterUploadSpeed, filterLastStatusChange, filterShouldRebuild, filterResyncFailed, sortState]);
+  // Server already filtered & sorted — current page is the result set.
+  const filtered  = rawONTs;
+  const pageData  = rawONTs;
 
   const zoneOpts = useMemo(() => [...new Set(rawONTs.map(o => o.zone).filter(Boolean))].sort(), [rawONTs]);
   const vlanOpts = useMemo(() => [...new Set(rawONTs.map(o => o.vlan).filter(v => v != null))].sort((a, b) => a - b), [rawONTs]);
@@ -905,9 +856,8 @@ export default function ONTs() {
   const tr069Opts = useMemo(() => [...new Set(rawONTs.map(o => o.tr069_profile_id).filter(Boolean))].sort(), [rawONTs]);
   const SPEED_OPTS = ['10M', '20M', '30M', '50M', '100M', '200M', '300M', '500M', '1G'];
 
-  /* ── Pagination ── */
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageData   = filtered.slice((page - 1) * pageSize, page * pageSize);
+  /* ── Pagination — driven by server ── */
+  const totalPages = Math.max(1, serverPages);
 
   /* ── Selection ── */
   const allVisible = pageData.length > 0 && pageData.every(o => selected.has(o.id));
@@ -1057,8 +1007,8 @@ export default function ONTs() {
         <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16, color: 'var(--text-primary)' }}>
           Configured ONUs
           <span className="badge badge-gray" style={{ fontSize: 12, marginLeft: 10, verticalAlign: 'middle' }}>
-            {filtered.length}
-            <span style={{ opacity: 0.6, marginLeft: 4 }}>of {stats.total}</span>
+            {serverTotal.toLocaleString()}
+            {filtered.length < serverTotal && <span style={{ opacity: 0.6, marginLeft: 4 }}>filtered of {serverTotal.toLocaleString()}</span>}
           </span>
           {isFetching && !isLoading && <span className="polling-dot" title="Updating…" style={{ marginLeft: 8 }} />}
           <button className="btn btn-xs" onClick={() => refetch()} style={{ marginLeft: 8 }} title="Refresh">
@@ -2050,7 +2000,7 @@ export default function ONTs() {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 48, color: 'var(--text-muted)' }}>
             <div className="spinner" /> Loading ONUs...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : pageData.length === 0 ? (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 48, color: 'var(--text-muted)' }}>
             <IconWifi size={40} style={{ opacity: 0.2, marginBottom: 12 }} />
             <div style={{ fontSize: 14 }}>No ONUs found</div>
@@ -2153,7 +2103,7 @@ export default function ONTs() {
         )}
 
         {/* ── Pagination ── */}
-        {!isLoading && filtered.length > pageSize && (
+        {!isLoading && serverTotal > pageSize && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             padding: '10px 16px', borderTop: '1px solid var(--border)',
@@ -2174,7 +2124,7 @@ export default function ONTs() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <span style={{ fontSize: 12, color: 'var(--text-muted)', marginRight: 8 }}>
-                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, filtered.length)} of {filtered.length}
+                {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, serverTotal)} of {serverTotal.toLocaleString()}
               </span>
               <span onClick={() => page > 1 && setPage(p => p - 1)}
                 style={{ cursor: page <= 1 ? 'not-allowed' : 'pointer', padding: '4px 10px', borderRadius: 4, fontSize: 12, display: 'inline-block',

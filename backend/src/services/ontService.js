@@ -2,28 +2,73 @@ const prisma = require('../config/database');
 const { getAdapter } = require('../utils/oltFactory');
 const logger = require('../middleware/logger');
 
+// Sortable columns whitelist — prevents SQL injection via sort_by param.
+const SORT_COLS = new Set([
+  'serial_number', 'status', 'rx_power', 'tx_power', 'olt_rx_power',
+  'distance', 'last_seen', 'provisioned_at', 'zone', 'odb', 'vlan',
+  'board', 'port', 'model', 'ip_address', 'id',
+]);
+
 async function getAllONTs(filters = {}) {
   const where = {};
-  if (filters.status) where.status = filters.status;
-  if (filters.oltId || filters.olt_id) where.olt_id = filters.oltId || filters.olt_id;
+
+  // ── Text search ──────────────────────────────────────────────────────────────
   if (filters.search) {
     where.OR = [
-      { serial_number: { contains: filters.search, mode: 'insensitive' } },
-      { description: { contains: filters.search, mode: 'insensitive' } },
+      { serial_number:  { contains: filters.search, mode: 'insensitive' } },
+      { mac:            { contains: filters.search, mode: 'insensitive' } },
+      { ip_address:     { contains: filters.search, mode: 'insensitive' } },
+      { description:    { contains: filters.search, mode: 'insensitive' } },
       { client: { name: { contains: filters.search, mode: 'insensitive' } } },
     ];
   }
-  const page = parseInt(filters.page) || 1;
-  const limit = parseInt(filters.limit) || 50;
-  const skip = (page - 1) * limit;
+
+  // ── Exact / foreign-key filters ───────────────────────────────────────────
+  if (filters.olt_id || filters.oltId)        where.olt_id = filters.olt_id || filters.oltId;
+  if (filters.status)                         where.status = filters.status.toUpperCase();
+  if (filters.zone)                           where.zone   = filters.zone;
+  if (filters.odb)                            where.odb    = filters.odb;
+  if (filters.model)                          where.model  = { contains: filters.model, mode: 'insensitive' };
+  if (filters.pon_type)                       where.protocol = filters.pon_type.toUpperCase();
+  if (filters.wan_mode)                       where.wan_mode = { contains: filters.wan_mode, mode: 'insensitive' };
+  if (filters.config_method)                  where.configuration_method = filters.config_method;
+  if (filters.board != null && filters.board !== '') where.board = parseInt(filters.board);
+  if (filters.port  != null && filters.port  !== '') where.port  = parseInt(filters.port);
+  if (filters.vlan  != null && filters.vlan  !== '') where.vlan  = parseInt(filters.vlan);
+  if (filters.svlan != null && filters.svlan !== '') where.vlan  = parseInt(filters.svlan); // svlan stored in vlan
+  if (filters.voip === 'enabled')             where.NOT = { ...where.NOT, wan_mode: null }; // proxy: has voip config
+  if (filters.has_catv != null && filters.has_catv !== '') where.has_catv = filters.has_catv === '1' || filters.has_catv === 'true';
+  if (filters.has_iptv != null && filters.has_iptv !== '') where.has_iptv = filters.has_iptv === '1' || filters.has_iptv === 'true';
+  if (filters.resync_failed === 'failed')     where.last_down_cause = { not: null };
+  if (filters.tr069 === 'enabled')            where.tr069_enabled = true;
+  if (filters.tr069 === 'disabled')           where.tr069_enabled = { not: true };
+
+  // ── Signal quality filter ─────────────────────────────────────────────────
+  if (filters.signal === 'critical')          where.rx_power = { lt: -27 };
+  else if (filters.signal === 'warning')      where.rx_power = { gte: -27, lt: -25 };
+  else if (filters.signal === 'good')         where.rx_power = { gte: -20 };
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const page  = Math.max(1, parseInt(filters.page)  || 1);
+  const limit = Math.min(Math.max(1, parseInt(filters.limit) || 25), 500);
+  const skip  = (page - 1) * limit;
+
+  // ── Sorting ───────────────────────────────────────────────────────────────
+  const sortKey = SORT_COLS.has(filters.sort_by) ? filters.sort_by : 'serial_number';
+  const sortDir = filters.sort_dir === 'asc' ? 'asc' : 'desc';
 
   const [data, total] = await Promise.all([
     prisma.oNT.findMany({
       where,
-      include: { client: true, olt: { select: { name: true } }, ponPort: { select: { port_number: true } } },
+      include: {
+        client:   true,
+        olt:      { select: { name: true } },
+        ponPort:  { select: { port_number: true } },
+        speedProfile: { select: { name: true } },
+      },
       skip,
       take: limit,
-      orderBy: { serial_number: 'asc' },
+      orderBy: { [sortKey]: sortDir },
     }),
     prisma.oNT.count({ where }),
   ]);
