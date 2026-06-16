@@ -1,5 +1,14 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+
+function RedirectOltView() {
+  const { id } = useParams();
+  return <Navigate to={`/onu/view/${id}`} replace />;
+}
+function RedirectOltConfig() {
+  const { id } = useParams();
+  return <Navigate to={`/olt/edit/${id}`} replace />;
+}
 import TopNav from './components/layout/TopNav';
 import UpdateBanner from './components/layout/UpdateBanner';
 import Breadcrumbs from './components/layout/Breadcrumbs';
@@ -65,46 +74,75 @@ function AppLayout() {
           <Breadcrumbs />
           <React.Suspense fallback={<Fallback />}>
             <Routes>
-              <Route path="/"                element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard"       element={<Dashboard />} />
-              <Route path="/olts"             element={<OLTs />} />
-              <Route path="/olts/new"         element={<OLTNew />} />
-              <Route path="/olts/:id/config" element={<OLTConfig />} />
-              <Route path="/onts/view/:id"   element={<ONUView />} />
-              <Route path="/onts/*"          element={<ONTs />} />
+              <Route path="/"                          element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard"                 element={<Dashboard />} />
+
+              {/* OLTs — SmartOLT paths */}
+              <Route path="/olt"                       element={<OLTs />} />
+              <Route path="/olt/add"                   element={<OLTNew />} />
+              <Route path="/olt/edit/:id"              element={<OLTConfig />} />
+
+              {/* ONTs / ONUs — SmartOLT paths */}
+              <Route path="/onu/configured"            element={<ONTs />} />
+              <Route path="/onu/view/:id"              element={<ONUView />} />
+              <Route path="/onu/unconfigured"          element={<Unconfigured />} />
+              <Route path="/onu/authorize"             element={<AuthorizeONU />} />
+
+              {/* Redirects rutas viejas → nuevas */}
+              <Route path="/onts/view/:id"             element={<RedirectOltView />} />
+              <Route path="/onts/*"                    element={<Navigate to="/onu/configured" replace />} />
+              <Route path="/olts"                      element={<Navigate to="/olt" replace />} />
+              <Route path="/olts/new"                  element={<Navigate to="/olt/add" replace />} />
+              <Route path="/olts/:id/config"           element={<RedirectOltConfig />} />
+              <Route path="/onu-types"                 element={<Navigate to="/onu_types/listing" replace />} />
+              <Route path="/zones"                     element={<Navigate to="/locations/listing" replace />} />
+              <Route path="/odbs"                      element={<Navigate to="/odbs/listing" replace />} />
+              <Route path="/auth-presets"              element={<Navigate to="/onu_authorization_presets/listing" replace />} />
+              <Route path="/config-comparison"         element={<Navigate to="/config_comparison" replace />} />
+              <Route path="/speed-profiles"            element={<Navigate to="/speed_profiles" replace />} />
+              <Route path="/tr069"                     element={<Navigate to="/system_config" replace />} />
+              <Route path="/reports/authorizations"    element={<Navigate to="/reports/authorizations/list" replace />} />
+
+              {/* SmartOLT canonical paths */}
+              <Route path="/onu_types/listing"                 element={<OnuTypes />} />
+              <Route path="/locations/listing"                 element={<Zones />} />
+              <Route path="/odbs/listing"                      element={<ODBs />} />
+              <Route path="/onu_authorization_presets/listing" element={<AuthPresets />} />
+              <Route path="/config_comparison"                 element={<ConfigComparison />} />
+              <Route path="/speed_profiles"                    element={<SpeedProfiles />} />
+              <Route path="/system_config"                     element={<TR069 />} />
+
+              {/* Reports */}
+              <Route path="/reports"                       element={<Navigate to="/reports/tasks" replace />} />
+              <Route path="/reports/tasks"                 element={<ReportsTasks />} />
+              <Route path="/reports/authorizations/list"   element={<ReportsAuths />} />
+              <Route path="/reports/export"                element={<ReportsExport />} />
+              <Route path="/reports/import"                element={<ReportsImport />} />
+
+              {/* Otros */}
+              <Route path="/graphs"          element={<Graphs />} />
+              <Route path="/diagnostics"     element={<Diagnostics />} />
               <Route path="/clients/*"       element={<Clients />} />
               <Route path="/map"             element={<MapView />} />
-              <Route path="/tr069"           element={<TR069 />} />
               <Route path="/alerts"          element={<Alerts />} />
               <Route path="/events"          element={<Events />} />
-              <Route path="/speed-profiles"  element={<SpeedProfiles />} />
-              <Route path="/reports"             element={<Navigate to="/reports/tasks" replace />} />
-              <Route path="/reports/tasks"       element={<ReportsTasks />} />
-              <Route path="/reports/authorizations" element={<ReportsAuths />} />
-              <Route path="/reports/export"      element={<ReportsExport />} />
-              <Route path="/reports/import"      element={<ReportsImport />} />
               <Route path="/settings"        element={<Settings />} />
               <Route path="/users"           element={<Users />} />
-              <Route path="/zones"           element={<Zones />} />
-              <Route path="/odbs"            element={<ODBs />} />
-              <Route path="/onu-types"       element={<OnuTypes />} />
-              <Route path="/auth-presets"    element={<AuthPresets />} />
-              <Route path="/graphs"          element={<Graphs />} />
-              <Route path="/onu/unconfigured" element={<Unconfigured />} />
-              <Route path="/onu/authorize"   element={<AuthorizeONU />} />
-              <Route path="/config-comparison" element={<ConfigComparison />} />
-              <Route path="/diagnostics"     element={<Diagnostics />} />
-              <Route path="/olts/:id/vsol"              element={<VSOLDashboard />} />
-              <Route path="/olts/:id/vsol/pon/:ponIndex" element={<VSOLOnuList />} />
-              <Route path="/olts/:id/vsol/onu/:ponIndex/:onuId" element={<VSOLOnuView />} />
-              <Route path="/olts/:id/vsol/profiles"     element={<VSOLProfiles />} />
-              <Route path="/olts/:id/vsol/autofind"     element={<VSOLAutofind />} />
-              <Route path="/olts/:id/vsol/batch"        element={<VSOLBatch />} />
-              <Route path="/olts/:id/kingtype"           element={<KingTypeDashboard />} />
-              <Route path="/olts/:id/kingtype/pon/:ponIndex" element={<KingTypeOnuList />} />
-              <Route path="/olts/:id/kingtype/profiles" element={<KingTypeProfiles />} />
-              <Route path="/olts/:id/kingtype/autofind" element={<KingTypeAutofind />} />
-              <Route path="/olts/:id/kingtype/batch"    element={<KingTypeBatch />} />
+
+              {/* VSOL */}
+              <Route path="/olts/:id/vsol"                        element={<VSOLDashboard />} />
+              <Route path="/olts/:id/vsol/pon/:ponIndex"          element={<VSOLOnuList />} />
+              <Route path="/olts/:id/vsol/onu/:ponIndex/:onuId"   element={<VSOLOnuView />} />
+              <Route path="/olts/:id/vsol/profiles"               element={<VSOLProfiles />} />
+              <Route path="/olts/:id/vsol/autofind"               element={<VSOLAutofind />} />
+              <Route path="/olts/:id/vsol/batch"                  element={<VSOLBatch />} />
+
+              {/* KingType */}
+              <Route path="/olts/:id/kingtype"                    element={<KingTypeDashboard />} />
+              <Route path="/olts/:id/kingtype/pon/:ponIndex"      element={<KingTypeOnuList />} />
+              <Route path="/olts/:id/kingtype/profiles"           element={<KingTypeProfiles />} />
+              <Route path="/olts/:id/kingtype/autofind"           element={<KingTypeAutofind />} />
+              <Route path="/olts/:id/kingtype/batch"              element={<KingTypeBatch />} />
             </Routes>
           </React.Suspense>
           </div>
