@@ -123,9 +123,9 @@ export default function Dashboard() {
           footer={[`D: ${fmt(wb.d)}`, `Resync: ${fmt(wb.resync)}`, `New: ${fmt(wb.new)}`]} />
         <StatBox to="/onu/configured"   color="green"  icon={<IconCircleCheck size={30} />}   value={fmt(online)}  label="Online"
           footer={[`Total authorized: ${fmt(total)}`]} />
-        <StatBox to="/onu/configured"   color="slate"  icon={<IconX size={30} />}             value={fmt(offline)} label="Total offline"
+        <StatBox to="/onu/configured?status=offline" color="slate"  icon={<IconX size={30} />}             value={fmt(offline)} label="Total offline"
           footer={[`PwrFail: ${fmt(ob.pwrfail)}`, `LoS: ${fmt(ob.los)}`, `N/A: ${fmt(ob.na)}`]} />
-        <StatBox to="/diagnostics"      color="orange" icon={<IconAlertTriangle size={30} />} value={fmt(low)}     label="Low signals"
+        <StatBox to="/diagnostics?signal=low"      color="orange" icon={<IconAlertTriangle size={30} />} value={fmt(low)}     label="Low signals"
           footer={[`Warning: ${fmt(lb.warning)}`, `Critical: ${fmt(lb.critical)}`]} />
       </div>
 
