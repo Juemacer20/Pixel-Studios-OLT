@@ -110,7 +110,7 @@ async function getPortONTs(oltId, portNumber) {
   });
 }
 
-async function sendOLTCommand(id, cmd, userId) {
+async function sendOLTCommand(id, cmd, userId, ip = null) {
   const olt = await prisma.oLT.findUnique({ where: { id } });
   if (!olt) throw Object.assign(new Error('OLT not found'), { status: 404 });
   const adapter = getAdapter(olt);
@@ -118,7 +118,7 @@ async function sendOLTCommand(id, cmd, userId) {
   const output = await adapter.sendCommand(cmd);
   await adapter.disconnect();
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'CLI_COMMAND', target: id, details: { cmd, output: String(output || '').slice(0, 500) } },
+    data: { user_id: userId, action: 'CLI_COMMAND', target: id, details: { cmd, output: String(output || '').slice(0, 500) }, ip_address: ip ?? null },
   });
   return { output, cmd };
 }

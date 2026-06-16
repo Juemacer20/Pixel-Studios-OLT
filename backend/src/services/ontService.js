@@ -2,28 +2,73 @@ const prisma = require('../config/database');
 const { getAdapter } = require('../utils/oltFactory');
 const logger = require('../middleware/logger');
 
+// Sortable columns whitelist — prevents SQL injection via sort_by param.
+const SORT_COLS = new Set([
+  'serial_number', 'status', 'rx_power', 'tx_power', 'olt_rx_power',
+  'distance', 'last_seen', 'provisioned_at', 'zone', 'odb', 'vlan',
+  'board', 'port', 'model', 'ip_address', 'id',
+]);
+
 async function getAllONTs(filters = {}) {
   const where = {};
-  if (filters.status) where.status = filters.status;
-  if (filters.oltId || filters.olt_id) where.olt_id = filters.oltId || filters.olt_id;
+
+  // ── Text search ──────────────────────────────────────────────────────────────
   if (filters.search) {
     where.OR = [
-      { serial_number: { contains: filters.search, mode: 'insensitive' } },
-      { description: { contains: filters.search, mode: 'insensitive' } },
+      { serial_number:  { contains: filters.search, mode: 'insensitive' } },
+      { mac:            { contains: filters.search, mode: 'insensitive' } },
+      { ip_address:     { contains: filters.search, mode: 'insensitive' } },
+      { description:    { contains: filters.search, mode: 'insensitive' } },
       { client: { name: { contains: filters.search, mode: 'insensitive' } } },
     ];
   }
-  const page = parseInt(filters.page) || 1;
-  const limit = parseInt(filters.limit) || 50;
-  const skip = (page - 1) * limit;
+
+  // ── Exact / foreign-key filters ───────────────────────────────────────────
+  if (filters.olt_id || filters.oltId)        where.olt_id = filters.olt_id || filters.oltId;
+  if (filters.status)                         where.status = filters.status.toUpperCase();
+  if (filters.zone)                           where.zone   = filters.zone;
+  if (filters.odb)                            where.odb    = filters.odb;
+  if (filters.model)                          where.model  = { contains: filters.model, mode: 'insensitive' };
+  if (filters.pon_type)                       where.protocol = filters.pon_type.toUpperCase();
+  if (filters.wan_mode)                       where.wan_mode = { contains: filters.wan_mode, mode: 'insensitive' };
+  if (filters.config_method)                  where.configuration_method = filters.config_method;
+  if (filters.board != null && filters.board !== '') where.board = parseInt(filters.board);
+  if (filters.port  != null && filters.port  !== '') where.port  = parseInt(filters.port);
+  if (filters.vlan  != null && filters.vlan  !== '') where.vlan  = parseInt(filters.vlan);
+  if (filters.svlan != null && filters.svlan !== '') where.vlan  = parseInt(filters.svlan); // svlan stored in vlan
+  if (filters.voip === 'enabled')             where.NOT = { ...where.NOT, wan_mode: null }; // proxy: has voip config
+  if (filters.has_catv != null && filters.has_catv !== '') where.has_catv = filters.has_catv === '1' || filters.has_catv === 'true';
+  if (filters.has_iptv != null && filters.has_iptv !== '') where.has_iptv = filters.has_iptv === '1' || filters.has_iptv === 'true';
+  if (filters.resync_failed === 'failed')     where.last_down_cause = { not: null };
+  if (filters.tr069 === 'enabled')            where.tr069_enabled = true;
+  if (filters.tr069 === 'disabled')           where.tr069_enabled = { not: true };
+
+  // ── Signal quality filter ─────────────────────────────────────────────────
+  if (filters.signal === 'critical')          where.rx_power = { lt: -27 };
+  else if (filters.signal === 'warning')      where.rx_power = { gte: -27, lt: -25 };
+  else if (filters.signal === 'good')         where.rx_power = { gte: -20 };
+
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const page  = Math.max(1, parseInt(filters.page)  || 1);
+  const limit = Math.min(Math.max(1, parseInt(filters.limit) || 25), 500);
+  const skip  = (page - 1) * limit;
+
+  // ── Sorting ───────────────────────────────────────────────────────────────
+  const sortKey = SORT_COLS.has(filters.sort_by) ? filters.sort_by : 'serial_number';
+  const sortDir = filters.sort_dir === 'asc' ? 'asc' : 'desc';
 
   const [data, total] = await Promise.all([
     prisma.oNT.findMany({
       where,
-      include: { client: true, olt: { select: { name: true } }, ponPort: { select: { port_number: true } } },
+      include: {
+        client:   true,
+        olt:      { select: { name: true } },
+        ponPort:  { select: { port_number: true } },
+        speedProfile: { select: { name: true } },
+      },
       skip,
       take: limit,
-      orderBy: { serial_number: 'asc' },
+      orderBy: { [sortKey]: sortDir },
     }),
     prisma.oNT.count({ where }),
   ]);
@@ -32,10 +77,27 @@ async function getAllONTs(filters = {}) {
 }
 
 async function getONTById(id) {
-  return prisma.oNT.findUnique({
-    where: { id },
-    include: { client: true, olt: true, ponPort: true, speedProfile: true, napBox: true },
-  });
+  const [ont, authLog] = await Promise.all([
+    prisma.oNT.findUnique({
+      where: { id },
+      include: { client: true, olt: true, ponPort: true, speedProfile: true, napBox: true },
+    }),
+    prisma.auditLog.findFirst({
+      where: { action: 'AUTHORIZE_ONT', target: id },
+      orderBy: { created_at: 'desc' },
+      select: { user_id: true },
+    }),
+  ]);
+  if (!ont) return null;
+  let authorizedBy = null;
+  if (authLog?.user_id) {
+    const user = await prisma.user.findUnique({
+      where: { id: authLog.user_id },
+      select: { name: true, email: true },
+    });
+    authorizedBy = user?.name || user?.email || null;
+  }
+  return { ...ont, authorizedBy };
 }
 
 async function createONT(data) {
@@ -69,7 +131,7 @@ async function getONTSignal(id) {
 }
 
 async function getSignalHistory(ontId, range = '24h') {
-  const ranges = { '24h': 24, '7d': 168, '30d': 720 };
+  const ranges = { '1h': 1, '24h': 24, '7d': 168, '30d': 720 };
   const hours = ranges[range] || 24;
   const since = new Date(Date.now() - hours * 3600 * 1000);
   return prisma.signalHistory.findMany({
@@ -79,7 +141,7 @@ async function getSignalHistory(ontId, range = '24h') {
   });
 }
 
-async function rebootONT(id, userId) {
+async function rebootONT(id, userId, ip = null) {
   const ont = await prisma.oNT.findUnique({ where: { id }, include: { olt: true } });
   if (!ont) throw Object.assign(new Error('ONT not found'), { status: 404 });
   const adapter = getAdapter(ont.olt);
@@ -87,7 +149,7 @@ async function rebootONT(id, userId) {
   const result = await adapter.rebootONT(ont.serial_number);
   await adapter.disconnect();
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_REBOOT', target: id, details: { serial_number: ont.serial_number, result } },
+    data: { user_id: userId, action: 'ONT_REBOOT', target: id, details: { serial_number: ont.serial_number, result }, ip_address: ip ?? null },
   });
   return result;
 }
@@ -140,7 +202,7 @@ const ACTION_TO_ADAPTER = {
   pppoePlus: 'pppoePlus',
 };
 
-async function executeOntAction(id, action, body, userId) {
+async function executeOntAction(id, action, body, userId, ip = null) {
   const adapterMethod = ACTION_TO_ADAPTER[action];
   if (!adapterMethod) throw Object.assign(new Error(`Unknown ONU action: ${action}`), { status: 400 });
 
@@ -171,6 +233,7 @@ async function executeOntAction(id, action, body, userId) {
       target: id,
       target_type: 'ONT',
       details: { serial: ont.serial_number, olt: ont.olt.name, body: body || {} },
+      ip_address: ip ?? null,
     },
   });
   logger.info(`ONT action ${action} on ${ont.serial_number} (${ont.olt.name}): success=${result?.success}`);
@@ -178,31 +241,32 @@ async function executeOntAction(id, action, body, userId) {
 }
 
 // DB-only actions (no OLT command needed) -------------------------------------
-async function updateExternalId(id, externalId, userId) {
+async function updateExternalId(id, externalId, userId, ip = null) {
   const ont = await prisma.oNT.update({ where: { id }, data: { external_id: externalId } });
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_EXTERNAL_ID', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: { externalId } },
+    data: { user_id: userId, action: 'ONT_EXTERNAL_ID', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: { externalId }, ip_address: ip ?? null },
   });
   return ont;
 }
 
-async function updateLocationDetails(id, body, userId) {
+async function updateLocationDetails(id, body, userId, ip = null) {
   const data = {};
-  for (const k of ['zone', 'odb', 'description', 'contact', 'latitude', 'longitude']) {
+  for (const k of ['zone', 'odb', 'odb_port', 'description', 'contact', 'latitude', 'longitude']) {
     if (body[k] !== undefined) data[k] = body[k];
   }
   if (body.name !== undefined) data.description = body.name;
   if (data.latitude != null) data.latitude = parseFloat(data.latitude);
   if (data.longitude != null) data.longitude = parseFloat(data.longitude);
+  if (data.odb_port != null) data.odb_port = parseInt(data.odb_port);
   const ont = await prisma.oNT.update({ where: { id }, data });
   await prisma.auditLog.create({
-    data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data },
+    data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data, ip_address: ip ?? null },
   });
   return ont;
 }
 
 // Authorize (provision) a new ONU: send to OLT, then persist ONT + Client.
-async function authorizeONT(data, userId) {
+async function authorizeONT(data, userId, ip = null) {
   if (!data.oltId) throw Object.assign(new Error('oltId is required'), { status: 400 });
   if (!data.serialNumber) throw Object.assign(new Error('serialNumber is required'), { status: 400 });
   const olt = await prisma.oLT.findUnique({ where: { id: data.oltId } });
@@ -223,23 +287,23 @@ async function authorizeONT(data, userId) {
 
   const loc = result.location || {};
   // Upsert ONT (an unconfigured stub may already exist for this serial).
+  const authFields = {
+    olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
+    vlan: data.svlanId ? parseInt(data.svlanId) : null,
+    board: loc.board, port: loc.port, onu_id: loc.onu_id,
+    zone: data.zone || null, odb: data.odb || null, odb_port: data.odbPort != null ? parseInt(data.odbPort) : null, last_seen: new Date(),
+    ...(data.externalId != null ? { external_id: data.externalId } : {}),
+    ...(data.configMethod ? { configuration_method: data.configMethod } : {}),
+    ...(data.iptvEnabled != null ? { has_iptv: Boolean(data.iptvEnabled) } : {}),
+    ...(data.iptvVlan ? { iptv_vlan: parseInt(data.iptvVlan) } : {}),
+    ...(data.catvEnabled != null ? { has_catv: Boolean(data.catvEnabled) } : {}),
+    ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
+    ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
+  };
   const ont = await prisma.oNT.upsert({
     where: { serial_number: data.serialNumber },
-    update: {
-      olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
-      vlan: data.svlanId, board: loc.board, port: loc.port, onu_id: loc.onu_id,
-      zone: data.zone, odb: data.odb, last_seen: new Date(),
-      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
-      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
-    },
-    create: {
-      olt_id: data.oltId, serial_number: data.serialNumber, description: data.name,
-      model: data.onuTypeId, status: 'ONLINE', vlan: data.svlanId,
-      board: loc.board, port: loc.port, onu_id: loc.onu_id, zone: data.zone, odb: data.odb,
-      last_seen: new Date(),
-      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
-      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
-    },
+    update: authFields,
+    create: { serial_number: data.serialNumber, ...authFields },
   });
 
   if (data.name || data.address || data.contact) {
@@ -253,7 +317,7 @@ async function authorizeONT(data, userId) {
   await prisma.auditLog.create({
     data: {
       user_id: userId, action: 'AUTHORIZE_ONT', action_type: 'ONT_ACTION', target: ont.id, target_type: 'ONT',
-      details: { serial: data.serialNumber, olt: olt.name, location: loc },
+      details: { serial: data.serialNumber, olt: olt.name, location: loc }, ip_address: ip ?? null,
     },
   });
   logger.info(`Authorized ONU ${data.serialNumber} on ${olt.name}: success=${result.success}`);

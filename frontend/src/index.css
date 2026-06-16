@@ -22,22 +22,22 @@
   --panel-shadow: 0 6px 20px rgba(0,0,0,0.45);
   --radius: 4px;
 
-  /* Paleta semántica SmartOLT (B.2) */
-  --accent: #337ab7;       --accent-hover: #2b689c;
-  --primary: #337ab7;
-  --success: #5cb85c;      --green: #5cb85c;
-  --danger:  #d9534f;      --red:   #d9534f;
-  --warning: #CA8A04;      --orange: #e08a16;
-  --link:    #0064C8;
-  --purple: #a98cff;
-  --cyan: #79b8e6;
-  --yellow: #e3b341;
+  /* Paleta SmartOLT — Apple SF Symbols (B.2) */
+  --accent: #007AFF;       --accent-hover: #0A84FF;
+  --primary: #007AFF;
+  --success: #34C759;      --green: #34C759;
+  --danger:  #FF3B30;      --red:   #FF3B30;
+  --warning: #FF9500;      --orange: #FF9500;
+  --link:    #0A84FF;
+  --purple: #AF52DE;
+  --cyan: #5AC8FA;
+  --yellow: #FFCC00;
 
-  /* Stat boxes (KPI) */
-  --sol-blue: #337ab7;   --sol-blue2: #2b689c;
-  --sol-green: #4DB14B;  --sol-green2: #3c9a3a;
+  /* Stat boxes (KPI) — Apple SF */
+  --sol-blue: #007AFF;   --sol-blue2: #0A84FF;
+  --sol-green: #34C759;  --sol-green2: #28A745;
   --sol-slate: #5a6b7d;  --sol-slate2: #43525f;
-  --sol-orange: #e08a16; --sol-orange2: #c9790f;
+  --sol-orange: #FF9500; --sol-orange2: #E68600;
   --page-grad-1: #0d1b2a; --page-grad-2: #16263d;
 }
 

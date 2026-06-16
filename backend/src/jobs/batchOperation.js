@@ -14,19 +14,19 @@ const queue = new Bull('batch-operation', {
 });
 
 // action → cómo aplicarla a un ONT individual.
-async function applyBatchAction(id, action, params, userId) {
+async function applyBatchAction(id, action, params, userId, ip = null) {
   switch (action) {
-    case 'reboot':          return ontService.rebootONT(id, userId);
+    case 'reboot':          return ontService.rebootONT(id, userId, ip);
     case 'delete':          return ontService.deleteONT(id);
     case 'externalId': {
       if (params?.useSerial) {
         const ont = await prisma.oNT.findUnique({ where: { id }, select: { serial_number: true } });
         if (!ont) throw new Error(`ONT ${id} not found`);
-        return ontService.updateExternalId(id, ont.serial_number, userId);
+        return ontService.updateExternalId(id, ont.serial_number, userId, ip);
       }
-      return ontService.updateExternalId(id, params?.externalId, userId);
+      return ontService.updateExternalId(id, params?.externalId, userId, ip);
     }
-    case 'updateLocation':  return ontService.updateLocationDetails(id, params || {}, userId);
+    case 'updateLocation':  return ontService.updateLocationDetails(id, params || {}, userId, ip);
     case 'enable': case 'disable': case 'start': case 'stop':
     case 'resync': case 'restoreDefaults': case 'changeType':
     case 'speedProfile': case 'updateVLANs': case 'webUserPass': case 'move':
@@ -38,7 +38,7 @@ async function applyBatchAction(id, action, params, userId) {
     case 'updateSvlan': case 'updateAttachedVlans':
     case 'wanSetup': case 'ipv6':
     case 'dnsServers': case 'dhcpOption82': case 'pppoePlus':
-      return ontService.executeOntAction(id, action, params || {}, userId);
+      return ontService.executeOntAction(id, action, params || {}, userId, ip);
     case 'customProfile':
       return ontService.updateONT(id, { custom_template: params?.profile || null });
     default:
@@ -47,24 +47,24 @@ async function applyBatchAction(id, action, params, userId) {
 }
 
 queue.process(3, async (job) => {
-  const { ontIds, action, params, userId } = job.data;
+  const { ontIds, action, params, userId, ip } = job.data;
   let processed = 0, failed = 0;
   const errors = [];
   for (const id of ontIds) {
-    try { await applyBatchAction(id, action, params, userId); processed++; }
+    try { await applyBatchAction(id, action, params, userId, ip); processed++; }
     catch (e) { failed++; errors.push({ id, error: e.message }); }
     await job.progress(Math.round(((processed + failed) / ontIds.length) * 100));
   }
   await prisma.auditLog.create({
     data: { user_id: userId, action: `BATCH_${String(action).toUpperCase()}`, action_type: 'ONT_ACTION',
-      target_type: 'ONT', details: { total: ontIds.length, processed, failed } },
+      target_type: 'ONT', details: { total: ontIds.length, processed, failed }, ip_address: ip ?? null },
   }).catch(() => {});
   logger.info(`Batch ${action}: ${processed} ok, ${failed} failed of ${ontIds.length}`);
   return { processed, failed, total: ontIds.length, errors: errors.slice(0, 50) };
 });
 
-async function enqueueBatch({ ontIds, action, params, userId }) {
-  const job = await queue.add({ ontIds, action, params, userId }, { removeOnComplete: 50, removeOnFail: 50 });
+async function enqueueBatch({ ontIds, action, params, userId, ip }) {
+  const job = await queue.add({ ontIds, action, params, userId, ip }, { removeOnComplete: 50, removeOnFail: 50 });
   return { jobId: job.id, status: 'queued', total: ontIds.length };
 }
 

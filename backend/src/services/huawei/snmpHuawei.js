@@ -217,16 +217,16 @@ class SNMPHuawei {
     }
   }
 
-  async getPortStats(portId) {
+  async getPortStats(ifIndex) {
     if (!this.session) this.connect();
     try {
-      const inOID = `${OIDS.ifInOctets}.${portId}`;
-      const outOID = `${OIDS.ifOutOctets}.${portId}`;
-      const statusOID = `${OIDS.ifOperStatus}.${portId}`;
+      const inOID = `${OIDS.ifInOctets}.${ifIndex}`;
+      const outOID = `${OIDS.ifOutOctets}.${ifIndex}`;
+      const statusOID = `${OIDS.ifOperStatus}.${ifIndex}`;
       const result = await snmpConfig.get(this.session, [inOID, outOID, statusOID]);
-      return { portId, inOctets: result[inOID] || 0, outOctets: result[outOID] || 0, status: result[statusOID] === 1 ? 'up' : 'down' };
+      return { ifIndex, inOctets: result[inOID] || 0, outOctets: result[outOID] || 0, status: result[statusOID] === 1 ? 'up' : 'down' };
     } catch (err) {
-      return { portId, error: err.message };
+      return { ifIndex, error: err.message };
     }
   }
 }

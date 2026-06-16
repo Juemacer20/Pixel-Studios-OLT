@@ -53,7 +53,7 @@ router.post('/:id/enrich', checkRole('noc'), async (req, res, next) => {
 router.post('/save-config', checkRole('noc'), async (req, res, next) => {
   try {
     await prisma.auditLog.create({
-      data: { user_id: req.user?.id, action: 'SAVE_CONFIG', action_type: 'OLT_ACTION', details: { note: 'per-action saves already persist to OLT' } },
+      data: { user_id: req.user?.id, action: 'SAVE_CONFIG', action_type: 'OLT_ACTION', details: { note: 'per-action saves already persist to OLT' }, ip_address: req.ip ?? null },
     }).catch(() => {});
     res.json({ data: { saved: true } });
   } catch (e) { next(e); }
@@ -70,7 +70,7 @@ router.get('/:id/compare', checkRole('noc'), async (req, res, next) => {
 router.post('/:id/compare/fix', checkRole('admin'), async (req, res, next) => {
   try {
     const { applyFix } = require('../services/configComparisonService');
-    res.json({ data: await applyFix(req.params.id, req.user?.id) });
+    res.json({ data: await applyFix(req.params.id, req.user?.id, req.ip) });
   } catch (e) { next(e); }
 });
 router.post('/:id/command', checkRole('noc'), commands, ctrl.sendCommand);

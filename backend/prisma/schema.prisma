@@ -150,6 +150,7 @@ model ONT {
   contact              String?
   zone                 String?
   odb                  String?
+  odb_port             Int?
   enriched_at          DateTime?
   last_down_cause      String?
   line_profile         String?
@@ -646,4 +647,13 @@ model VsolConfigBackup {
   created_at  DateTime @default(now())
 
   @@map("vsol_config_backups")
+}
+
+// Key-value store for application-level settings (General + Polling tabs).
+model SystemConfig {
+  key        String   @id
+  value      String
+  updated_at DateTime @updatedAt
+
+  @@map("system_configs")
 }

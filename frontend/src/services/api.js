@@ -197,6 +197,10 @@ export const apiKeyAPI = {
 };
 
 export const settingsAPI = {
+  general: () => api.get('/settings/general'),
+  saveGeneral: (data) => api.put('/settings/general', data),
+  polling: () => api.get('/settings/polling'),
+  savePolling: (data) => api.put('/settings/polling', data),
   signalThresholds: () => api.get('/settings/signal-thresholds'),
   saveSignalThresholds: (data) => api.put('/settings/signal-thresholds', data),
   billing: () => api.get('/settings/billing'),
@@ -228,6 +232,7 @@ export const graphsAPI = {
   signal:    (params) => api.get('/graphs/signal', { params }),
   signalOnt: (ontId)  => api.get(`/graphs/signal/${ontId}`),
   traffic:   (params) => api.get('/graphs/traffic', { params }),
+  trafficOnt: (ontId, params) => api.get(`/graphs/traffic/${ontId}`, { params }),
   uplink:    (params) => api.get('/graphs/uplink', { params }),
 };
 
@@ -235,6 +240,7 @@ export const reportsAPI = {
   tasks:          (params) => api.get('/reports/tasks', { params }),
   authorizations: (params) => api.get('/reports/authorizations', { params }),
   exportData:     (params) => api.get('/reports/export-data', { params }),
+  exportFields:   ()       => api.get('/reports/export-fields'),
   importCSV:      (formData) => api.post('/reports/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 

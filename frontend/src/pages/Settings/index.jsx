@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n';
 import {
   IconSettings, IconClock, IconWifi, IconBell,
   IconDatabase, IconDeviceFloppy, IconCheck, IconRefresh, IconKey, IconCreditCard, IconTrash,
@@ -179,56 +181,79 @@ function SaveButton({ onSave, saved }) {
 }
 
 // ── Tab panels ───────────────────────────────────────────────────────────────
-function GeneralTab({ data, onChange }) {
-  const [saved, setSaved] = useState(false);
+function GeneralTab() {
+  const { t } = useTranslation();
+  const qc = useQueryClient();
+  const { data: remote } = useQuery({
+    queryKey: ['settings-general'],
+    queryFn: () => settingsAPI.general().then((r) => r.data?.data ?? r.data),
+  });
+  const [form, setForm] = useState(null);
+  const f = form ?? remote ?? INITIAL.general;
 
-  const save = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
+  const saveMut = useMutation({
+    mutationFn: () => settingsAPI.saveGeneral(f),
+    onSuccess: (r) => {
+      toast.success('Settings saved');
+      qc.invalidateQueries({ queryKey: ['settings-general'] });
+      setForm(null);
+      i18n.changeLanguage(f.language);
+    },
+    onError: () => toast.error('Save failed'),
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-          Company information
+          {t('settings.general.companyInfo')}
         </div>
-        <FieldRow label="Company name">
-          <input className="input-base" value={data.company} style={{ maxWidth: 320 }}
-            onChange={e => onChange({ ...data, company: e.target.value })} />
+        <FieldRow label={t('settings.general.companyName')}>
+          <input className="input-base" value={f.company} style={{ maxWidth: 320 }}
+            onChange={e => setForm({ ...f, company: e.target.value })} />
         </FieldRow>
-        <FieldRow label="Timezone">
-          <select className="select-base" style={{ maxWidth: 320 }} value={data.timezone}
-            onChange={e => onChange({ ...data, timezone: e.target.value })}>
+        <FieldRow label={t('settings.general.timezone')}>
+          <select className="select-base" style={{ maxWidth: 320 }} value={f.timezone}
+            onChange={e => setForm({ ...f, timezone: e.target.value })}>
             <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires (UTC-3)</option>
             <option value="America/New_York">America/New_York (UTC-5)</option>
             <option value="Europe/Madrid">Europe/Madrid (UTC+1)</option>
             <option value="UTC">UTC</option>
           </select>
         </FieldRow>
-        <FieldRow label="Language">
-          <select className="select-base" style={{ maxWidth: 180 }} value={data.language}
-            onChange={e => onChange({ ...data, language: e.target.value })}>
+        <FieldRow label={t('settings.general.language')}>
+          <select className="select-base" style={{ maxWidth: 180 }} value={f.language}
+            onChange={e => setForm({ ...f, language: e.target.value })}>
             <option value="es">Español</option>
             <option value="en">English</option>
-            <option value="pt">Português</option>
           </select>
         </FieldRow>
-        <FieldRow label="Logo URL" hint="Optional. Shown in the top bar.">
-          <input className="input-base" value={data.logo_url} style={{ maxWidth: 380 }}
-            placeholder="https://..." onChange={e => onChange({ ...data, logo_url: e.target.value })} />
+        <FieldRow label={t('settings.general.logoUrl')} hint={t('settings.general.logoHint')}>
+          <input className="input-base" value={f.logo_url} style={{ maxWidth: 380 }}
+            placeholder="https://..." onChange={e => setForm({ ...f, logo_url: e.target.value })} />
         </FieldRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <SaveButton onSave={save} saved={saved} />
+          <SaveButton onSave={() => saveMut.mutate()} saved={saveMut.isSuccess} />
         </div>
       </div>
     </div>
   );
 }
 
-function PollingTab({ data, onChange }) {
-  const [saved, setSaved] = useState(false);
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+function PollingTab() {
+  const qc = useQueryClient();
+  const { data: remote } = useQuery({
+    queryKey: ['settings-polling'],
+    queryFn: () => settingsAPI.polling().then((r) => r.data?.data ?? r.data),
+  });
+  const [form, setForm] = useState(null);
+  const f = form ?? remote ?? INITIAL.polling;
+
+  const saveMut = useMutation({
+    mutationFn: () => settingsAPI.savePolling(f),
+    onSuccess: () => { toast.success('Polling settings saved'); qc.invalidateQueries({ queryKey: ['settings-polling'] }); setForm(null); },
+    onError: () => toast.error('Save failed'),
+  });
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -236,31 +261,31 @@ function PollingTab({ data, onChange }) {
         SNMP polling configuration
       </div>
       <FieldRow label="Polling interval" hint="How often devices are polled.">
-        <NumberInput value={data.interval} min={1} max={60} unit="minutes"
-          onChange={v => onChange({ ...data, interval: v })} />
+        <NumberInput value={f.interval} min={1} max={60} unit="minutes"
+          onChange={v => setForm({ ...f, interval: v })} />
       </FieldRow>
       <FieldRow label="SNMP Timeout">
-        <NumberInput value={data.snmp_timeout} min={1} max={30} unit="seconds"
-          onChange={v => onChange({ ...data, snmp_timeout: v })} />
+        <NumberInput value={f.snmp_timeout} min={1} max={30} unit="seconds"
+          onChange={v => setForm({ ...f, snmp_timeout: v })} />
       </FieldRow>
       <FieldRow label="SNMP retries">
-        <NumberInput value={data.snmp_retries} min={0} max={10}
-          onChange={v => onChange({ ...data, snmp_retries: v })} />
+        <NumberInput value={f.snmp_retries} min={0} max={10}
+          onChange={v => setForm({ ...f, snmp_retries: v })} />
       </FieldRow>
       <FieldRow label="SNMP version">
-        <select className="select-base" style={{ width: 120 }} value={data.snmp_version}
-          onChange={e => onChange({ ...data, snmp_version: e.target.value })}>
+        <select className="select-base" style={{ width: 120 }} value={f.snmp_version}
+          onChange={e => setForm({ ...f, snmp_version: e.target.value })}>
           <option value="1">v1</option>
           <option value="2c">v2c</option>
           <option value="3">v3</option>
         </select>
       </FieldRow>
       <FieldRow label="Community string">
-        <input className="input-base" value={data.snmp_community} style={{ maxWidth: 220 }}
-          onChange={e => onChange({ ...data, snmp_community: e.target.value })} />
+        <input className="input-base" value={f.snmp_community} style={{ maxWidth: 220 }}
+          onChange={e => setForm({ ...f, snmp_community: e.target.value })} />
       </FieldRow>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <SaveButton onSave={save} saved={saved} />
+        <SaveButton onSave={() => saveMut.mutate()} saved={saveMut.isSuccess} />
       </div>
     </div>
   );
@@ -313,21 +338,36 @@ const API_METHODS = [
   { method: 'POST /api/v1/reports/import', maxPerHour: 30 },
 ];
 function ApiLogsTab() {
+  const { data: resp } = useQuery({
+    queryKey: ['api-logs'],
+    queryFn: () => settingsAPI.apiLogs().then(r => r.data?.data || r.data),
+    refetchInterval: 30000,
+  });
+  const methods = Array.isArray(resp?.methods) ? resp.methods : [];
+  const totalAll = resp?.totalAll ?? 0;
+  const totalLastHour = resp?.totalLastHour ?? 0;
   return (
-    <div className="card" style={{ padding: 0 }}>
-      <div className="sol-card-h"><span>API rate limits</span></div>
-      <table className="table-base">
-        <thead><tr><th>Method</th><th style={{ textAlign: 'right' }}>Max calls / hour</th><th style={{ textAlign: 'right' }}>Current</th></tr></thead>
-        <tbody>
-          {API_METHODS.map((m) => (
-            <tr key={m.method}>
-              <td className="mono" style={{ fontSize: 11 }}>{m.method}</td>
-              <td style={{ textAlign: 'right' }}>{m.maxPerHour}</td>
-              <td style={{ textAlign: 'right' }}><span className="badge badge-green">0</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      <div className="card" style={{ padding: 0 }}>
+        <div className="sol-card-h"><span>API rate limits</span></div>
+        <table className="table-base">
+          <thead><tr><th>Method</th><th style={{ textAlign: 'right' }}>Max calls / hour</th><th style={{ textAlign: 'right' }}>Current</th></tr></thead>
+          <tbody>
+            {methods.length === 0 ? (
+              <tr><td colSpan={3} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 12 }}>No API calls in the last hour</td></tr>
+            ) : methods.slice(0, 50).map((m) => (
+              <tr key={m.method}>
+                <td className="mono" style={{ fontSize: 11 }}>{m.method}</td>
+                <td style={{ textAlign: 'right' }}>{m.maxPerHour}</td>
+                <td style={{ textAlign: 'right' }}><span className={m.current > m.maxPerHour * 0.8 ? 'badge badge-red' : 'badge badge-green'}>{m.current}</span></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="card" style={{ padding: '12px 16px', fontSize: 12, color: 'var(--text-secondary)' }}>
+        Total API calls (all time): <strong>{totalAll}</strong> &middot; Last hour: <strong>{totalLastHour}</strong>
+      </div>
     </div>
   );
 }
@@ -517,20 +557,22 @@ function BackupTab({ data, onChange }) {
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
-const TABS = [
-  { label: 'General',           icon: <IconSettings size={13} /> },
-  { label: 'Polling',           icon: <IconClock size={13} /> },
-  { label: 'Signal thresholds', icon: <IconWifi size={13} /> },
-  { label: 'Notifications',     icon: <IconBell size={13} /> },
-  { label: 'Backup',            icon: <IconDatabase size={13} /> },
-  { label: 'API Key',           icon: <IconKey size={13} /> },
-  { label: 'API Logs',          icon: <IconClock size={13} /> },
-  { label: 'Billing',           icon: <IconCreditCard size={13} /> },
+const TABS = (t) => [
+  { label: t('settings.tabs.general'),           icon: <IconSettings size={13} /> },
+  { label: t('settings.tabs.polling'),           icon: <IconClock size={13} /> },
+  { label: t('settings.tabs.signalThresholds'), icon: <IconWifi size={13} /> },
+  { label: t('settings.tabs.notifications'),     icon: <IconBell size={13} /> },
+  { label: t('settings.tabs.backup'),            icon: <IconDatabase size={13} /> },
+  { label: t('settings.tabs.apiKey'),           icon: <IconKey size={13} /> },
+  { label: t('settings.tabs.apiLogs'),          icon: <IconClock size={13} /> },
+  { label: t('settings.tabs.billing'),           icon: <IconCreditCard size={13} /> },
 ];
 
 export default function Settings() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState(0);
   const [cfg, setCfg] = useState(INITIAL);
+  const tabs = TABS(t);
 
   const update = (section) => (val) => setCfg(prev => ({ ...prev, [section]: val }));
 
@@ -539,27 +581,27 @@ export default function Settings() {
       <div className="page-header">
         <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <IconSettings size={18} style={{ color: 'var(--accent)' }} />
-          General settings
+          {t('settings.pageTitle')}
         </h1>
       </div>
 
       <div className="tab-bar">
-        {TABS.map((t, i) => (
+        {tabs.map((tabItem, i) => (
           <button
-            key={t.label}
+            key={tabItem.label}
             className={`tab-item ${tab === i ? 'tab-active' : ''}`}
             onClick={() => setTab(i)}
             style={{ display: 'flex', alignItems: 'center', gap: 5 }}
           >
-            {t.icon}
-            {t.label}
+            {tabItem.icon}
+            {tabItem.label}
           </button>
         ))}
       </div>
 
       <div>
-        {tab === 0 && <GeneralTab       data={cfg.general}       onChange={update('general')} />}
-        {tab === 1 && <PollingTab       data={cfg.polling}       onChange={update('polling')} />}
+        {tab === 0 && <GeneralTab />}
+        {tab === 1 && <PollingTab />}
         {tab === 2 && <ThresholdsTab    data={cfg.thresholds}    onChange={update('thresholds')} />}
         {tab === 3 && <NotificationsTab data={cfg.notifications} onChange={update('notifications')} />}
         {tab === 4 && <BackupTab        data={cfg.backup}        onChange={update('backup')} />}

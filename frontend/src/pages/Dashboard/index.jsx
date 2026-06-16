@@ -84,8 +84,16 @@ export default function Dashboard() {
   });
   const pon = outage || { rows: [], totalPons: 0, totalSubs: 0 };
 
+  const { data: feedRaw } = useQuery({
+    queryKey: ['dashboard', 'activity-feed'],
+    queryFn: () => dashboardAPI.activityFeed().then(r => r.data?.data ?? r.data).catch(() => []),
+    refetchInterval: 30_000, retry: 1,
+  });
   const activeAlerts = useAlertStore(s => s.activeAlerts);
-  const feed = useMemo(() => activeAlerts.slice(0, 12), [activeAlerts]);
+  const feed = useMemo(() => {
+    const items = Array.isArray(feedRaw) && feedRaw.length > 0 ? feedRaw : activeAlerts;
+    return items.slice(0, 12);
+  }, [feedRaw, activeAlerts]);
 
   const online   = d.onlineONTs ?? 0;
   const total    = d.totalAuthorized ?? d.totalONTs ?? 0;

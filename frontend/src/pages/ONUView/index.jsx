@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { IconReload, IconTrash, IconExternalLink } from '@tabler/icons-react';
 import { ontAPI } from '../../services/api';
 import toast from 'react-hot-toast';
@@ -25,6 +26,8 @@ import {
   HistoryModal,
   LiveSignalModal,
   MoreGraphsModal,
+  SignalChart,
+  TrafficChart,
   fetchTR069Stat,
 } from './OnuModals';
 
@@ -207,6 +210,7 @@ function ConfirmModal({ open, title, message, onClose, onConfirm, busy, danger }
 }
 
 export default function ONUView() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -419,7 +423,7 @@ export default function ONUView() {
         </div>
 
         <dl className="dl-horizontal">
-          <dt>Status</dt>
+          <dt>{t('onuView.status')}</dt>
           <dd id="onu_status_wrapper">
             <span style={{ color: isOnline ? '#5cb85c' : '#98989D', fontWeight: 600 }}>
               {isOnline ? 'Online' : 'Offline'}
@@ -441,7 +445,7 @@ export default function ONUView() {
 
           {o.temperature != null || o.voltage != null || o.bias_current != null ? (
             <>
-              <dt>Enrichment</dt>
+              <dt>{t('onuView.health.title')}</dt>
               <dd>
                 {o.temperature != null ? <span className="text-muted">{o.temperature}°C</span> : null}
                 {o.voltage != null ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.voltage}V</span> : null}
@@ -453,7 +457,7 @@ export default function ONUView() {
 
           {o.cpu_pct != null || o.mem_pct != null ? (
             <>
-              <dt>CPU / MEM</dt>
+              <dt>{t('onuView.health.cpu')} / {t('onuView.health.mem')}</dt>
               <dd>
                 {o.cpu_pct != null ? <span className="text-muted">CPU: {o.cpu_pct}%</span> : null}
                 {o.mem_pct != null ? <span className="text-muted" style={{ marginLeft: 8 }}>MEM: {o.mem_pct}%</span> : null}
@@ -463,18 +467,18 @@ export default function ONUView() {
 
           {o.last_up || o.last_down || o.online_duration ? (
             <>
-              <dt>Online duration</dt>
+              <dt>{t('onuView.health.uptime')}</dt>
               <dd>
                 {o.online_duration ? <span className="text-muted">{o.online_duration}</span> : null}
-                {o.last_up ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>up: {new Date(o.last_up).toLocaleString()}</span> : null}
-                {o.last_down ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>down: {new Date(o.last_down).toLocaleString()}</span> : null}
+                {o.last_up ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>{t('onuView.health.lastUp', { date: new Date(o.last_up).toLocaleString() })}</span> : null}
+                {o.last_down ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>{t('onuView.health.lastDown', { date: new Date(o.last_down).toLocaleString() })}</span> : null}
               </dd>
             </>
           ) : null}
 
           {o.ports ? (
             <>
-              <dt>Ports</dt>
+              <dt>{t('onuView.health.ports')}</dt>
               <dd>
                 {o.ports.eth != null ? <span className="badge badge-blue" style={{ marginRight: 4 }}>{o.ports.eth}x ETH</span> : null}
                 {o.ports.pots != null && o.ports.pots > 0 ? <span className="badge" style={{ marginRight: 4, background: 'rgba(210,153,34,0.15)', color: '#d29922' }}>{o.ports.pots}x POTS</span> : null}
@@ -500,7 +504,7 @@ export default function ONUView() {
             </a>
           </dd>
 
-          <dt className="mgmtIPModeItem">TR069</dt>
+          <dt className="mgmtIPModeItem">{t('onuView.general.tr069')}</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
               onClick={() => setModal({ type: 'tr069Profile' })}>
@@ -508,7 +512,7 @@ export default function ONUView() {
             </a>
           </dd>
 
-          <dt className="mgmtIPModeItem">Mgmt IP</dt>
+          <dt className="mgmtIPModeItem">{t('onuView.general.mgmtIp')}</dt>
           <dd className="mgmtIPModeItem">
             <a href="#updateMgmtIP" className="update-mgmtIP"
               onClick={() => setModal({ type: 'mgmtIP' })}>
@@ -537,7 +541,7 @@ export default function ONUView() {
 
           {o.wan_info && o.wan_info.length > 0 ? (
             <>
-              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>WAN</dt>
+              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>{t('onuView.wan.title')}</dt>
               <dd style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>
                 {o.wan_info.map((w, i) => (
                   <div key={i} style={{ fontSize: 12, marginBottom: i < o.wan_info.length - 1 ? 6 : 0, paddingBottom: i < o.wan_info.length - 1 ? 6 : 0, borderBottom: i < o.wan_info.length - 1 ? '1px dashed var(--border)' : 'none' }}>
@@ -562,7 +566,7 @@ export default function ONUView() {
             </>
           ) : o.ip_address ? (
             <>
-              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>WAN</dt>
+              <dt style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>{t('onuView.wan.title')}</dt>
               <dd style={{ borderTop: '1px solid var(--border)', paddingTop: 6, marginTop: 6 }}>
                 <span className="mono">{o.ip_address}</span>
                 {o.wan_mask ? <span className="text-muted" style={{ marginLeft: 4 }}>/{o.wan_mask}</span> : null}
@@ -579,7 +583,7 @@ export default function ONUView() {
 
           {(o.download_profile || o.upload_profile) ? (
             <>
-              <dt>Speed profiles</dt>
+              <dt>{t('onuView.speedProfiles.title')}</dt>
               <dd>
                 {o.download_profile ? <span className="badge" style={{ background: 'rgba(31,111,235,0.12)', color: '#4792e6', marginRight: 4 }}>↓ {o.download_profile}{o.download_mbps ? ` (${o.download_mbps} Mbps)` : ''}</span> : null}
                 {o.upload_profile ? <span className="badge" style={{ background: 'rgba(92,184,92,0.12)', color: '#5cb85c' }}>↑ {o.upload_profile}{o.upload_mbps ? ` (${o.upload_mbps} Mbps)` : ''}</span> : null}
@@ -612,7 +616,7 @@ export default function ONUView() {
       </div>
 
       <dl className="dl-horizontal col-xs-12 col-sm-12">
-        <dt>Status</dt>
+        <dt>{t('onuView.status')}</dt>
         <dd>
           <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
             setRefreshing(true);
@@ -623,12 +627,12 @@ export default function ONUView() {
             try { await fetchTR069Stat(id, (r) => { results.tr069 = r?.data || r; }); } catch { results.tr069 = { error: 'Failed' }; }
             setReadResult({ title: 'ONU status', data: results });
             setRefreshing(false);
-          }} disabled={refreshing}>{refreshing ? 'Refreshing…' : 'Refresh all'}</button>
+          }} disabled={refreshing}>{refreshing ? t('onuView.refreshing') : t('onuView.refreshAll')}</button>
 
           <button className="btn btn-success margin-bottom live"
             style={{ backgroundColor: '#1fb325', borderColor: '#1fb325' }}
             onClick={() => setModal({ type: 'liveSignal' })}>
-            LIVE!
+            {t('onuView.live')}
           </button>
 
           <pre id="status" className="hidden status_container text-wrap" />
@@ -638,7 +642,7 @@ export default function ONUView() {
         <dt style={{ marginBottom: 5 }} />
         <dd />
 
-        <dt>Traffic/Signal</dt>
+        <dt>{t('onuView.graphs')}</dt>
         <dd style={{ position: 'relative' }}>
           <div className="graphs-container" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
             <div className="graph-item" style={{
@@ -647,10 +651,9 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5bc0de' }}>●</span> Up <span style={{ color: '#e08a16' }}>●</span> Down
+                <span style={{ color: '#5AC8FA' }}>●</span> {t('onuView.signal.down')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.up')}
               </div>
-              <iframe src={`/onts/${id}/traffic`} style={{ width: '100%', height: 200, border: 'none' }}
-                title="Traffic graph" />
+              <TrafficChart ontId={id} height={200} />
             </div>
             <div className="graph-item" style={{
               flex: '0 1 calc(50% - 8px)', minWidth: 'min(100%, 360px)', maxWidth: '100%',
@@ -658,34 +661,33 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5cb85c' }}>●</span> 1490nm (Rx) <span style={{ color: '#f0ad4e' }}>●</span> 1310nm (Tx)
+                <span style={{ color: '#34C759' }}>●</span> {t('onuView.signal.rx')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.tx')}
               </div>
-              <iframe src={`/onts/${id}/signal`} style={{ width: '100%', height: 200, border: 'none' }}
-                title="Signal graph" />
+              <SignalChart ontId={id} height={200} />
             </div>
           </div>
           <a href="#" className="more" onClick={e => { e.preventDefault(); setModal({ type: 'moreGraphs' }); }}
             style={{ position: 'absolute', top: -22, right: 0, fontSize: 12, cursor: 'pointer' }}>
-            More graphs ▸
+            {t('onuView.moreGraphs')} ▸
           </a>
         </dd>
 
-        <dt>Speed profiles</dt>
+        <dt>{t('onuView.speedProfiles.title')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
             <thead>
               <tr>
-                <th>Service-port ID</th>
-                <th>SVLAN</th>
-                <th>User-VLAN</th>
-                <th>Download</th>
-                <th>Upload</th>
-                <th>Action</th>
+                <th>{t('onuView.speedProfiles.servicePortId')}</th>
+                <th>{t('onuView.speedProfiles.svlan')}</th>
+                <th>{t('onuView.speedProfiles.userVlan')}</th>
+                <th>{t('onuView.speedProfiles.download')}</th>
+                <th>{t('onuView.speedProfiles.upload')}</th>
+                <th>{t('onuView.speedProfiles.action')}</th>
               </tr>
             </thead>
             <tbody>
               {(o.service_ports || []).length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No service ports configured</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t('onuView.speedProfiles.noPorts')}</td></tr>
               ) : (o.service_ports || []).map(sp => (
                 <tr className="valign-center" key={sp.id || sp.service_port_id}>
                   <td>{sp.service_port_id || sp.id}</td>
@@ -696,7 +698,7 @@ export default function ONUView() {
                   <td>
                     <a href="#updateSpeedProfiles" className="btn btn-link update-speed-profiles"
                       onClick={() => setModal({ type: 'speedProfile' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> Configure
+                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.speedProfiles.configure')}
                     </a>
                   </td>
                 </tr>
@@ -705,16 +707,16 @@ export default function ONUView() {
           </table>
         </dd>
 
-        <dt>Ethernet ports</dt>
+        <dt>{t('onuView.ethernetPorts')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
             <thead>
               <tr>
-                <th className="col-md-1">Port</th>
-                <th className="col-md-1">Admin state</th>
-                <th className="col-md-3">Mode</th>
-                <th className="col-md-1">DHCP</th>
-                <th className="col-md-1 text-center">Action</th>
+                <th className="col-md-1">{t('onuView.ethPorts.port')}</th>
+                <th className="col-md-1">{t('onuView.ethPorts.adminState')}</th>
+                <th className="col-md-3">{t('onuView.ethPorts.mode')}</th>
+                <th className="col-md-1">{t('onuView.ethPorts.dhcp')}</th>
+                <th className="col-md-1 text-center">{t('onuView.ethPorts.action')}</th>
               </tr>
             </thead>
             <tbody>
@@ -727,7 +729,7 @@ export default function ONUView() {
                   <td>
                     <a href="#configureNetworkPort" className="btn btn-link configure-vlan"
                       onClick={() => setModal({ type: 'ethPort' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> Configure
+                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.ethPorts.configure')}
                     </a>
                   </td>
                 </tr>
@@ -736,22 +738,22 @@ export default function ONUView() {
           </table>
         </dd>
 
-        <dt>WiFi ports</dt>
+        <dt>{t('onuView.wifiPorts')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
             <thead>
               <tr>
-                <th className="col-md-1">Port</th>
-                <th className="col-md-1">Admin state</th>
-                <th className="col-md-2">Mode</th>
-                <th className="col-md-2">SSID</th>
-                <th className="col-md-1">DHCP</th>
-                <th className="col-md-1 text-center">Action</th>
+                <th className="col-md-1">{t('onuView.wifiPorts.port')}</th>
+                <th className="col-md-1">{t('onuView.wifiPorts.adminState')}</th>
+                <th className="col-md-2">{t('onuView.wifiPorts.mode')}</th>
+                <th className="col-md-2">{t('onuView.wifiPorts.ssid')}</th>
+                <th className="col-md-1">{t('onuView.wifiPorts.dhcp')}</th>
+                <th className="col-md-1 text-center">{t('onuView.wifiPorts.action')}</th>
               </tr>
             </thead>
             <tbody>
               {(o.wifi_ports || []).length === 0 ? (
-                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>No WiFi ports configured</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t('onuView.wifiPorts.noPorts')}</td></tr>
               ) : (o.wifi_ports || []).map(wp => (
                 <tr className="valign-center" key={wp.port}>
                   <td>{wp.port}</td>
@@ -762,7 +764,7 @@ export default function ONUView() {
                   <td>
                     <a href="#configureWifiPort" className="btn btn-link configure-wifi"
                       onClick={() => setModal({ type: 'wifiPort' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> Configure
+                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.wifiPorts.configure')}
                     </a>
                   </td>
                 </tr>
@@ -780,22 +782,22 @@ export default function ONUView() {
           padding: '10px 14px', background: 'var(--card-bg)', border: '1px solid var(--border)',
           borderRadius: 6,
         }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>Actions:</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>{t('onuView.actions')}</span>
           <button className="btn btn-warning btn-sm" onClick={() => runAction('Reboot')}>
-            <IconReload size={13} style={{ marginRight: 3 }} /> Reboot
+            <IconReload size={13} style={{ marginRight: 3 }} /> {t('onuView.reboot')}
           </button>
           <button className="btn btn-warning btn-sm"
             style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
             onClick={() => runAction('Resync config')}>
-            Resync config
+            {t('onuView.resyncConfig')}
           </button>
           <button className="btn btn-warning btn-sm"
             style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
             onClick={() => runAction('Reset ONU')}>
-            Reset ONU
+            {t('onuView.resetOnu')}
           </button>
           <button className="btn btn-primary btn-sm" onClick={() => runAction('Save Config')}>
-            Save Config
+            {t('onuView.saveConfig')}
           </button>
           <button className="btn btn-info btn-sm" onClick={async () => {
             setRefreshing(true);
@@ -803,7 +805,7 @@ export default function ONUView() {
             catch { setReadResult({ title: 'Running config', data: { error: 'Failed to fetch running config' } }); }
             setRefreshing(false);
           }} disabled={refreshing}>
-            Running config
+            {t('onuView.runningConfig')}
           </button>
           <button className="btn btn-info btn-sm" onClick={async () => {
             setRefreshing(true);
@@ -811,22 +813,22 @@ export default function ONUView() {
             catch { setReadResult({ title: 'SW Info', data: { error: 'Failed to fetch SW info' } }); }
             setRefreshing(false);
           }} disabled={refreshing}>
-            SW info
+            {t('onuView.swInfo')}
           </button>
           <button className="btn btn-success btn-sm" onClick={() => runAction('Enable ONU')}>
-            Enable
+            {t('onuView.enable')}
           </button>
           <button className="btn btn-warning btn-sm" onClick={() => runAction('Disable ONU')}>
-            Disable
+            {t('onuView.disable')}
           </button>
           <button className="btn btn-success btn-sm" onClick={() => runAction('Start ONU')}>
-            Start
+            {t('onuView.start')}
           </button>
           <button className="btn btn-warning btn-sm" onClick={() => runAction('Stop ONU')}>
-            Stop
+            {t('onuView.stop')}
           </button>
           <button className="btn btn-danger btn-sm" onClick={() => runAction('Delete')}>
-            <IconTrash size={13} style={{ marginRight: 3 }} /> Delete
+            <IconTrash size={13} style={{ marginRight: 3 }} /> {t('onuView.delete')}
           </button>
         </div>
       </div>

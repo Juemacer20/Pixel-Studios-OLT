@@ -53,7 +53,7 @@ async function getSignalHistory(req, res, next) {
 
 async function reboot(req, res, next) {
   try {
-    const result = await ontService.rebootONT(req.params.id, req.user?.id);
+    const result = await ontService.rebootONT(req.params.id, req.user?.id, req.ip);
     res.json({ data: result });
   } catch (err) { next(err); }
 }
@@ -103,7 +103,7 @@ async function wanConfig(req, res, next) {
 function ontAction(action) {
   return async (req, res, next) => {
     try {
-      const result = await ontService.executeOntAction(req.params.id, action, req.body, req.user?.id);
+      const result = await ontService.executeOntAction(req.params.id, action, req.body, req.user?.id, req.ip);
       res.json({ data: result });
     } catch (err) { next(err); }
   };
@@ -111,21 +111,21 @@ function ontAction(action) {
 
 async function updateExternalId(req, res, next) {
   try {
-    const ont = await ontService.updateExternalId(req.params.id, req.body.externalId, req.user?.id);
+    const ont = await ontService.updateExternalId(req.params.id, req.body.externalId, req.user?.id, req.ip);
     res.json({ data: ont });
   } catch (err) { next(err); }
 }
 
 async function updateLocationDetails(req, res, next) {
   try {
-    const ont = await ontService.updateLocationDetails(req.params.id, req.body, req.user?.id);
+    const ont = await ontService.updateLocationDetails(req.params.id, req.body, req.user?.id, req.ip);
     res.json({ data: ont });
   } catch (err) { next(err); }
 }
 
 async function authorize(req, res, next) {
   try {
-    const result = await ontService.authorizeONT(req.body, req.user?.id);
+    const result = await ontService.authorizeONT(req.body, req.user?.id, req.ip);
     res.status(201).json({ data: result });
   } catch (err) { next(err); }
 }
@@ -136,7 +136,7 @@ async function batchOperation(req, res, next) {
     if (!Array.isArray(ontIds) || !ontIds.length) return res.status(400).json({ error: 'ontIds required' });
     if (!action) return res.status(400).json({ error: 'action required' });
     const { enqueueBatch } = require('../jobs/batchOperation');
-    const result = await enqueueBatch({ ontIds, action, params, userId: req.user?.id });
+    const result = await enqueueBatch({ ontIds, action, params, userId: req.user?.id, ip: req.ip });
     res.json({ data: result });
   } catch (err) { next(err); }
 }
