@@ -57,8 +57,42 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/enrich-fase2-gratis | FASE 2 BACKEND COMPLETO + sección TV en ONUView (4 badges CATV/RF + IPTV/multicast, a pedido del usuario). OLT Itelsa-SantaAna en dev (ONLINE, 439 ONTs) | ✅ backend + UI TV hechos, validados y desplegados a dev | 2026-06-14 |
-| OpenCode | main | OC-1 ✅ OC-2 ✅ OC-3 ✅ OC-4 ✅ OC-5 ✅ — SmartOLT parity completada | ✅ completado | 2026-06-16 |
+| Claude Code | main | Análisis gap SmartOLT completo (2026-06-16) → ver §5.4. Correcciones: CC-3 ✅ CC-5 ✅ bugs dashboard ✅ | ✅ análisis completo, tareas en §5.4 | 2026-06-16 |
+| OpenCode | main | OC-1 ✅ OC-2 ✅ OC-3 ✅ OC-4 ✅ OC-5 ✅ — ver §5.4 para nuevas tareas | pendiente §5.4 | 2026-06-16 |
+
+---
+
+## 5.4 🆕 BATCH 2 — Análisis detallado función por función (2026-06-16)
+
+> Análisis función por función, vista por vista, del código de ambas plataformas.
+> Documento completo: `docs/ANALISIS_GAP_SMARTOLT.md`.
+> CC-3 ✅ CC-5 ✅ y bugs dashboard ya corregidos en esta sesión.
+
+### 🔴 Para CLAUDE CODE (backend + full-stack)
+
+| # | Prioridad | Tarea | Archivos | Notas |
+|---|---|---|---|---|
+| CC-6 | 🔴 CRÍTICO | **ONTs: server-side filtering + pagination** — El endpoint `GET /onts` actualmente devuelve hasta 500 registros. ITELSA tiene 12K+ ONTs: todos los filtros y batch ops trabajan sobre datos incompletos. Agregar params: `?search=&olt_id=&status=&zone=&board=&port=&vlan=&signal=&page=&limit=25` al endpoint. Frontend: cambiar `ontAPI.list({ limit: 500 })` a `ontAPI.list(activeFilters)` con todos los filtros activos como params de query — el filtrado pasa al backend. | `backend/src/routes/onts.js`, `frontend/src/pages/ONTs/index.jsx` | Esto requiere cambiar la arquitectura del filtrado: backend filtra, frontend solo renderiza el resultado paginado. Prioridad máxima. |
+| CC-7 | 🟠 ALTO | **Fix OC-2 backend gap** — `ontService.js → authorizeONT()` recibe `externalId`, `configMethod`, `voipEnabled`, `iptvEnabled`, `iptvVlan`, `catvEnabled` desde el controller pero NO los incluye en el `prisma.oNT.upsert({ data: { ... } })`. Se descartan silenciosamente. Agregar esos campos al upsert. Verificar también que `svlanId`, `cvlanId`, `tagTransform`, `downloadSpeedId`, `uploadSpeedId` persisten correctamente. | `backend/src/services/ontService.js` | Bug documentado en §7.1. Usar el checklist de §7.4 antes de commitear. |
+| CC-8 | 🟠 ALTO | **Settings: endpoints GET/PUT para General y Polling** — Las tabs General y Polling de Settings muestran formularios pero el botón Save solo hace `setSaved(true)` (stub visual, no llama a ningún API). Crear: `GET /settings/general` + `PUT /settings/general` (campos: company, timezone, language, logo_url) y `GET /settings/polling` + `PUT /settings/polling` (campos: interval, snmp_timeout, snmp_retries, snmp_version, snmp_community). Guardar en tabla `SystemConfig` (clave→valor) o `GeneralSettings` si ya existe. Conectar frontend. | `backend/src/routes/settings.js`, `frontend/src/pages/Settings/index.jsx` | Tabla `SystemConfig` puede ya existir — revisar schema.prisma antes de crear migración. |
+| CC-9 | 🟡 MEDIO | **ONT Drawer — tab Eventos** — `const events = []` hardcodeado en ONTs/index.jsx, siempre vacío. Crear `GET /onts/:id/events` (puede ser auditLog filtrado por `target = ont.id` o `details.sn = ont.serial_number`). Frontend: useQuery con `enabled: tab === 5 && !!ont?.id`, mapear a lista de eventos con tipo/mensaje/timestamp. | `backend/src/routes/onts.js`, `frontend/src/pages/ONTs/index.jsx` | Puede reutilizar el mismo `buildActivityFeed` del dashboard con un where filter. |
+
+### 🔴 Para OPENCODE (frontend — sin tocar backend salvo lo acordado)
+
+| # | Prioridad | Tarea | Archivos | Notas |
+|---|---|---|---|---|
+| OC-6 | 🟠 ALTO | **ONT Drawer — tab Servicios: datos reales** — Tab 2 del drawer lateral en ONTs/index.jsx tiene datos hardcodeados (VoIP/IPTV/CATV siempre mock, VLANs 100/200/300 fijas). Reemplazar con datos reales del objeto `ont`: `ont.voip_mode` (enabled/disabled), `ont.has_iptv` + `ont.iptv_vlan`, `ont.has_catv`, `ont.vlan`, `ont.svlan`, `ont.cvlan`. La UI puede mantenerse igual, solo cambiar los valores. | `frontend/src/pages/ONTs/index.jsx` (función `ONTDrawer`, `tab === 2`) | Verificar primero qué campos devuelve la API en el objeto ont. Si faltan campos, pedirle a Claude que los agregue al select de la query. |
+| OC-7 | 🟠 ALTO | **ONT Drawer — tab WAN/IP: datos reales** — Tab 3 tiene datos hardcodeados (WAN mode DHCP fijo, IP 192.168.1.100, gateway 192.168.1.1, DNS 8.8.8.8). Reemplazar con datos reales: `ont.wan_mode`, `ont.ip_address`. Para gateway/DNS, si no existen en el schema, mostrar "—" en lugar de datos inventados. Nunca mostrar IPs falsas al operador. | `frontend/src/pages/ONTs/index.jsx` (función `ONTDrawer`, `tab === 3`) | Lo más importante es NO mostrar datos inventados. Mejor "—" que 192.168.1.1 hardcodeado. |
+| OC-8 | 🟡 MEDIO | **ChangeOnuTypeModal — lista hardcodeada** — En `ONUView/index.jsx`, `ChangeOnuTypeModal` tiene `ONU_TYPES = ['HG8245H', ...]` y `PROFILES = ['Generic_1', ...]` hardcodeados. Reemplazar con `useQuery` a `onuTypeAPI.list()` y `speedProfileAPI.list()`. Los imports de esas APIs ya existen. | `frontend/src/pages/ONUView/index.jsx` | Verificar que `onuTypeAPI` y `speedProfileAPI` están importados en ese archivo. |
+| OC-9 | 🟡 MEDIO | **Diagnostics — reemplazar Tailwind con CSS vars** — `pages/Diagnostics/index.jsx` usa clases Tailwind (`className="text-red-400"`, `className="bg-gray-800"`) mientras el resto de la app usa CSS custom vars (`style={{ color: 'var(--red)' }}`). Convertir todas las clases Tailwind a inline styles con CSS vars. Agregar columna "ONU" (interfaz GPON, campo `ont.description`) que SmartOLT muestra. | `frontend/src/pages/Diagnostics/index.jsx` | Ver cómo OnuModals, ONUView y ONTs formatean los estilos para mantener consistencia. |
+| OC-10 | 🟡 MEDIO | **Reports/Import — verificar o implementar** — SmartOLT tiene `/reports/import` (importación masiva CSV). Verificar si existe en el frontend. Si no, agregar tab "Import" en Reports con el mismo `ImportLocationModal` que ya existe en ONTs (input file CSV + botón Import). Backend: `POST /reports/import` puede ya existir. | `frontend/src/pages/Reports/index.jsx` | El modal `ImportLocationModal` ya está implementado en `ONTs/index.jsx`, reutilizar. |
+
+### Notas de coordinación §5.4
+
+- **CC-6 (server-side ONTs)** afecta la interfaz del query en `frontend/src/pages/ONTs/index.jsx`. **OC-6 y OC-7** también tocan ese archivo. Coordinar: CC-6 primero → OC-6/OC-7 después del merge.
+- **CC-8 (Settings API)** y los tabs de Settings van por rutas separadas del archivo — sin conflicto directo.
+- **OC-8 (ONUView)** y las tareas CC de ONUView — son en archivos diferentes, sin conflicto.
+- **Orden recomendado**: CC-7 (fix OC-2 gap, aislado) → CC-6 (server-side, coordinado) → OC-6/OC-7 después de CC-6 → el resto en paralelo.
 
 ---
 
