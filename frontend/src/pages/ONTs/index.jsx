@@ -380,9 +380,15 @@ function ONTDrawer({ ont, onClose }) {
     staleTime: 60000,
   });
 
+  const { data: ontEvents = [], isLoading: eventsLoading } = useQuery({
+    queryKey: ['ont-events', ont?.id],
+    queryFn: () => ontAPI.auditLog(ont.id).then(r => r.data?.data || r.data || []),
+    enabled: !!ont?.id && (tab === 0 || tab === 5),
+    staleTime: 30000,
+  });
+
   if (!ont) return null;
 
-  const events = [];
   const EVENT_COLOR  = { info: 'var(--cyan)', warning: 'var(--orange)', error: 'var(--red)' };
   const EVENT_BADGE  = { info: 'badge-blue',  warning: 'badge-orange',  error: 'badge-red' };
 
@@ -485,21 +491,28 @@ function ONTDrawer({ ont, onClose }) {
                   Últimos Eventos
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {events.slice(0, 5).map(ev => (
-                    <div key={ev.id} style={{
-                      display: 'flex', alignItems: 'flex-start', gap: 8,
-                      padding: '7px 8px', background: 'var(--content-bg)',
-                      borderRadius: 5, border: '1px solid var(--border)',
-                    }}>
-                      <span className={`badge ${EVENT_BADGE[ev.type]}`} style={{ fontSize: 9, padding: '1px 6px', flexShrink: 0, marginTop: 1 }}>
-                        {ev.type.toUpperCase()}
-                      </span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ev.message}</div>
-                        <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{formatRelative(ev.ts)}</div>
+                  {ontEvents.length === 0 && tab === 0 && (
+                    <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Sin eventos registrados.</div>
+                  )}
+                  {ontEvents.slice(0, 5).map(ev => {
+                    const evType = ev.action?.includes('ERROR') || ev.action?.includes('FAIL') ? 'error'
+                      : ev.action?.includes('WARN') ? 'warning' : 'info';
+                    return (
+                      <div key={ev.id} style={{
+                        display: 'flex', alignItems: 'flex-start', gap: 8,
+                        padding: '7px 8px', background: 'var(--content-bg)',
+                        borderRadius: 5, border: '1px solid var(--border)',
+                      }}>
+                        <span className={`badge ${EVENT_BADGE[evType]}`} style={{ fontSize: 9, padding: '1px 6px', flexShrink: 0, marginTop: 1 }}>
+                          {(ev.action || 'EVENT').replace(/_/g, ' ')}
+                        </span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ev.details?.serial || ev.user_id || '—'}</div>
+                          <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{formatRelative(ev.created_at)}</div>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -645,23 +658,34 @@ function ONTDrawer({ ont, onClose }) {
               <div style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
                 Log de Eventos
               </div>
+              {eventsLoading && <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>Cargando…</div>}
+              {!eventsLoading && ontEvents.length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '12px 0' }}>Sin eventos registrados.</div>
+              )}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {events.map(ev => (
-                  <div key={ev.id} style={{
-                    padding: '10px 12px', borderRadius: 6,
-                    background: 'var(--content-bg)',
-                    border: `1px solid ${EVENT_COLOR[ev.type]}33`,
-                    borderLeft: `3px solid ${EVENT_COLOR[ev.type]}`,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span className={`badge ${EVENT_BADGE[ev.type]}`} style={{ fontSize: 9, padding: '1px 6px' }}>
-                        {ev.type.toUpperCase()}
-                      </span>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatRelative(ev.ts)}</span>
+                {ontEvents.map(ev => {
+                  const evType = ev.action?.includes('ERROR') || ev.action?.includes('FAIL') ? 'error'
+                    : ev.action?.includes('WARN') ? 'warning' : 'info';
+                  return (
+                    <div key={ev.id} style={{
+                      padding: '10px 12px', borderRadius: 6,
+                      background: 'var(--content-bg)',
+                      border: `1px solid ${EVENT_COLOR[evType]}33`,
+                      borderLeft: `3px solid ${EVENT_COLOR[evType]}`,
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span className={`badge ${EVENT_BADGE[evType]}`} style={{ fontSize: 9, padding: '1px 6px' }}>
+                          {(ev.action || 'EVENT').replace(/_/g, ' ')}
+                        </span>
+                        <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{formatRelative(ev.created_at)}</span>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>
+                        {ev.details?.serial && <span className="mono" style={{ marginRight: 6 }}>{ev.details.serial}</span>}
+                        {ev.user_id && <span style={{ color: 'var(--text-secondary)' }}>— {ev.user_id}</span>}
+                      </div>
                     </div>
-                    <div style={{ fontSize: 12, color: 'var(--text-primary)' }}>{ev.message}</div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
