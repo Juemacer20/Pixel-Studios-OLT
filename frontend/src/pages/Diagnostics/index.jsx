@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import api, { oltAPI } from '../../services/api';
 
@@ -7,6 +8,13 @@ function signalColor(val) {
   if (val > -25) return 'text-green-400';
   if (val > -27) return 'text-yellow-400';
   return 'text-red-400';
+}
+
+function signalLevel(val) {
+  if (val == null) return null;
+  if (val > -25) return 'good';
+  if (val > -27) return 'warning';
+  return 'critical';
 }
 
 function fmtDbm(val) {
@@ -44,8 +52,10 @@ function exportCSV(onts) {
 }
 
 export default function Diagnostics() {
-  const [status, setStatus] = useState('');
-  const [oltId, setOltId] = useState('');
+  const [searchParams] = useSearchParams();
+  const [status,       setStatus]       = useState('');
+  const [oltId,        setOltId]        = useState('');
+  const [filterSignal, setFilterSignal] = useState(searchParams.get('signal') || '');
 
   const { data: oltsData } = useQuery({
     queryKey: ['olts-list'],
@@ -58,7 +68,14 @@ export default function Diagnostics() {
     queryFn: () => api.get('/diagnostics', { params: { status: status || undefined, olt_id: oltId || undefined, limit: 2000 } }).then(r => r.data?.data ?? r.data),
   });
 
-  const onts = useMemo(() => Array.isArray(data) ? data : [], [data]);
+  const onts = useMemo(() => {
+    let list = Array.isArray(data) ? data : [];
+    if (filterSignal === 'good')     list = list.filter(o => signalLevel(o.rx_power) === 'good');
+    if (filterSignal === 'warning')  list = list.filter(o => signalLevel(o.rx_power) === 'warning');
+    if (filterSignal === 'critical') list = list.filter(o => signalLevel(o.rx_power) === 'critical');
+    if (filterSignal === 'low')      list = list.filter(o => ['warning', 'critical'].includes(signalLevel(o.rx_power)));
+    return list;
+  }, [data, filterSignal]);
 
   return (
     <div className="p-4 min-h-screen">
@@ -79,6 +96,17 @@ export default function Diagnostics() {
         >
           <option value="">All OLTs</option>
           {olts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+        </select>
+
+        <select
+          value={filterSignal} onChange={e => setFilterSignal(e.target.value)}
+          className="bg-[#1a2035] border border-[#2a3a5c] text-gray-200 rounded px-3 py-1.5 text-sm"
+        >
+          <option value="">All signals</option>
+          <option value="good">Good (&gt; -25 dBm)</option>
+          <option value="warning">Warning (-25 to -27)</option>
+          <option value="critical">Critical (&lt; -27)</option>
+          <option value="low">Low (Warning + Critical)</option>
         </select>
 
         <button onClick={() => refetch()}
