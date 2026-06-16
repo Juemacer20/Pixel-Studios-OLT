@@ -1,6 +1,7 @@
 const express = require('express');
 const { verifyToken } = require('../middleware/auth');
 const prisma = require('../config/database');
+const { buildActivityFeed, buildPonOutage } = require('./dashboard.helpers');
 const router = express.Router();
 
 router.use(verifyToken);
@@ -72,44 +73,12 @@ router.get('/network-health', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// PON outage: PONs (board/port) con suscriptores caídos > 7 días, agrupados por OLT.
 router.get('/pon-outage', async (req, res, next) => {
   try {
     const olts = await prisma.oLT.findMany({ select: { id: true, name: true } });
-    const oltName = Object.fromEntries(olts.map(o => [o.id, o.name]));
-    const sevenDays = Date.now() - 7 * 24 * 3600 * 1000;
-    // Todas las ONUs con su PON (frame/slot/port de "0/12/0:9") para detectar PON entera caída
+    const oltNames = Object.fromEntries(olts.map(o => [o.id, o.name]));
     const all = await prisma.oNT.findMany({ select: { olt_id: true, description: true, status: true, last_seen: true } });
-    const ports = {}; // key olt|slot/port -> { total, off, since }
-    const parsePort = (d) => {
-      const m = (d || '').match(/(\d+)\/(\d+)\/(\d+)/); // frame/slot/port
-      return m ? `${m[2]}/${m[3]}` : null;
-    };
-    for (const o of all) {
-      const port = parsePort(o.description); if (!port) continue;
-      const k = `${o.olt_id}|${port}`;
-      if (!ports[k]) ports[k] = { olt_id: o.olt_id, port, total: 0, off: 0, since: null };
-      ports[k].total++;
-      if ((o.status || '').toUpperCase() !== 'ONLINE') {
-        ports[k].off++;
-        if (o.last_seen && (!ports[k].since || o.last_seen < ports[k].since)) ports[k].since = o.last_seen;
-      }
-    }
-    // PON outage = puerto donde TODAS (o >=90%) las ONUs están caídas, con >=2 suscriptores
-    const byOlt = {};
-    for (const p of Object.values(ports)) {
-      if (p.total < 2 || p.off < p.total * 0.9) continue; // PON entera caída
-      const name = oltName[p.olt_id] || p.olt_id;
-      if (!byOlt[name]) byOlt[name] = { olt: name, pons: 0, subscribers: 0, since: null, longDownPons: 0, longDownSubs: 0 };
-      byOlt[name].pons++; byOlt[name].subscribers += p.off;
-      if (p.since && (!byOlt[name].since || p.since < byOlt[name].since)) byOlt[name].since = p.since;
-      if (p.since && new Date(p.since).getTime() < sevenDays) { byOlt[name].longDownPons++; byOlt[name].longDownSubs += p.off; }
-    }
-    const rows = Object.values(byOlt).sort((a, b) => b.subscribers - a.subscribers);
-    // "Power outages - monitor grid" = PONs caídas ahora; "Stale" = caídas > 7 días
-    const active = { pons: rows.reduce((s, r) => s + r.pons, 0), subs: rows.reduce((s, r) => s + r.subscribers, 0) };
-    const stale  = { pons: rows.reduce((s, r) => s + r.longDownPons, 0), subs: rows.reduce((s, r) => s + r.longDownSubs, 0) };
-    res.json({ data: { rows, active, stale, totalPons: stale.pons, totalSubs: stale.subs } });
+    res.json({ data: buildPonOutage(all, oltNames) });
   } catch (err) { next(err); }
 });
 
@@ -199,11 +168,11 @@ router.get('/signal-degradation', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/v1/dashboard/activity-feed — últimas acciones del audit log.
 router.get('/activity-feed', async (req, res, next) => {
   try {
-    const items = await prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take: 20 });
-    res.json({ data: items });
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const rows = await prisma.auditLog.findMany({ orderBy: { created_at: 'desc' }, take: limit });
+    res.json({ data: buildActivityFeed(rows) });
   } catch (err) { next(err); }
 });
 
