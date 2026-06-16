@@ -2,6 +2,7 @@
 const express = require('express');
 const { verifyToken, checkRole } = require('../middleware/auth');
 const prisma = require('../config/database');
+const { buildApiLogsSummary } = require('./settings.helpers');
 const router = express.Router();
 router.use(verifyToken);
 const wrap = (fn) => async (req, res, next) => { try { await fn(req, res, next); } catch (e) { next(e); } };
@@ -44,6 +45,16 @@ router.put('/billing/:oltId', checkRole('admin'), wrap(async (req, res) => {
     create: { olt_id: req.params.oltId, ...data },
   });
   res.json({ data: sub });
+}));
+
+// GET /settings/api-logs — audit log activity summary used by the API Logs tab.
+router.get('/api-logs', wrap(async (req, res) => {
+  const oneHourAgo = new Date(Date.now() - 3600 * 1000);
+  const [allRows, lastHourRows] = await Promise.all([
+    prisma.auditLog.findMany({ select: { action: true } }),
+    prisma.auditLog.findMany({ where: { created_at: { gte: oneHourAgo } }, select: { action: true } }),
+  ]);
+  res.json({ data: buildApiLogsSummary(allRows, lastHourRows) });
 }));
 
 module.exports = router;
