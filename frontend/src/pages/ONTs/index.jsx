@@ -458,10 +458,11 @@ function ONTDrawer({ ont, onClose }) {
                 <InfoRow label="Interfaz"      value={ont.description}   mono />
                 <InfoRow label="Cliente"       value={ont.client?.name} />
                 <InfoRow label="Estado"        value={<StatusBadge status={ont.status} />} />
-                {ont.model      && <InfoRow label="Modelo"   value={ont.model} />}
-                {ont.firmware   && <InfoRow label="Firmware" value={ont.firmware} mono />}
-                {ont.vlan       && <InfoRow label="VLAN"     value={ont.vlan} mono />}
-                {ont.ip_address && <InfoRow label="IP"       value={ont.ip_address} mono />}
+                {ont.model        && <InfoRow label="Modelo"       value={ont.model} />}
+                {ont.firmware     && <InfoRow label="Firmware"     value={ont.firmware} mono />}
+                {ont.vlan         && <InfoRow label="VLAN"         value={ont.vlan} mono />}
+                {ont.ip_address   && <InfoRow label="IP"           value={ont.ip_address} mono />}
+                {ont.authorizedBy && <InfoRow label="Autorizado por" value={ont.authorizedBy} />}
               </div>
 
               {/* Métricas ópticas */}
@@ -528,9 +529,10 @@ function ONTDrawer({ ont, onClose }) {
                 Perfiles de Servicio
               </div>
               {[
-                { key: 'datos', label: 'Datos',  icon: '🌐', color: 'var(--cyan)',   active: true,  vlan: 100, speed: '100 Mbps ↓ / 50 Mbps ↑' },
-                { key: 'voip',  label: 'VoIP',   icon: '📞', color: 'var(--green)',  active: false, vlan: 200, speed: '5 Mbps' },
-                { key: 'iptv',  label: 'IPTV',   icon: '📺', color: 'var(--purple)', active: false, vlan: 300, speed: '30 Mbps' },
+                { key: 'datos', label: 'Datos',  icon: '🌐', color: 'var(--cyan)',  active: true,  vlan: ont.vlan || '—' },
+                { key: 'voip',  label: 'VoIP',   icon: '📞', color: 'var(--green)', active: ont.voip_mode === 'enabled', vlan: ont.voip_vlan || '—' },
+                { key: 'iptv',  label: 'IPTV',   icon: '📺', color: 'var(--cyan)',  active: !!ont.has_iptv, vlan: ont.iptv_vlan || '—' },
+                { key: 'catv',  label: 'CATV',   icon: '📡', color: 'var(--orange)', active: !!ont.has_catv, vlan: '—' },
               ].map(svc => (
                 <div key={svc.key} style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -542,11 +544,10 @@ function ONTDrawer({ ont, onClose }) {
                     <span style={{ fontSize: 18 }}>{svc.icon}</span>
                     <div>
                       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)' }}>{svc.label}</div>
-                      <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{svc.speed}</div>
                     </div>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>VLAN {svc.vlan}</span>
+                    {svc.vlan !== '—' && <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>VLAN {svc.vlan}</span>}
                     <span className={`badge ${svc.active ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 9, padding: '1px 7px' }}>
                       {svc.active ? 'Activo' : 'Inactivo'}
                     </span>
@@ -569,10 +570,11 @@ function ONTDrawer({ ont, onClose }) {
                   </thead>
                   <tbody>
                     {[
-                      { id: 100, name: 'Datos Internet', type: 'Tagged',   active: true  },
-                      { id: 200, name: 'VoIP',           type: 'Tagged',   active: false },
-                      { id: 300, name: 'IPTV',           type: 'Tagged',   active: false },
-                    ].map(v => (
+                      ont.vlan  && { id: ont.vlan,  name: 'Main VLAN',     type: 'Tagged', active: true },
+                      ont.svlan && { id: ont.svlan, name: 'S-VLAN',        type: 'Tagged', active: true },
+                      ont.cvlan && { id: ont.cvlan, name: 'C-VLAN / User', type: 'Tagged', active: true },
+                      ont.iptv_vlan && { id: ont.iptv_vlan, name: 'IPTV VLAN', type: 'Tagged', active: !!ont.has_iptv },
+                    ].filter(Boolean).map(v => (
                       <tr key={v.id}>
                         <td className="mono">{v.id}</td>
                         <td>{v.name}</td>
@@ -584,6 +586,9 @@ function ONTDrawer({ ont, onClose }) {
                         </td>
                       </tr>
                     ))}
+                    {!ont.vlan && !ont.svlan && !ont.cvlan && !ont.iptv_vlan && (
+                      <tr><td colSpan={4} style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 12 }}>Sin VLANs configuradas</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -595,7 +600,7 @@ function ONTDrawer({ ont, onClose }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
                 {['DHCP', 'Static', 'PPPoE'].map(m => (
-                  <span key={m} className={`badge ${m === 'DHCP' ? 'badge-blue' : 'badge-gray'}`} style={{ fontSize: 11 }}>
+                  <span key={m} className={`badge ${ont.wan_mode?.toLowerCase() === m.toLowerCase() ? 'badge-blue' : 'badge-gray'}`} style={{ fontSize: 11 }}>
                     {m}
                   </span>
                 ))}
@@ -604,21 +609,23 @@ function ONTDrawer({ ont, onClose }) {
                 <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                   Configuración WAN
                 </div>
-                <InfoRow label="Modo"          value={<span className="badge badge-blue" style={{ fontSize: 10 }}>DHCP</span>} />
-                <InfoRow label="Dirección IP"  value={ont.ip_address || '192.168.1.100'} mono />
-                <InfoRow label="Gateway"       value="192.168.1.1"                       mono />
-                <InfoRow label="DNS Primario"  value="8.8.8.8"                           mono />
-                <InfoRow label="DNS Secundario" value="8.8.4.4"                          mono />
-                <InfoRow label="MAC Binding"   value={ont.mac}                   mono />
+                <InfoRow label="Modo"          value={<span className="badge badge-blue" style={{ fontSize: 10 }}>{ont.wan_mode || '—'}</span>} />
+                <InfoRow label="Dirección IP"  value={ont.ip_address} mono />
+                <InfoRow label="Gateway"       value={ont.gateway || '—'} mono />
+                <InfoRow label="DNS Primario"  value={ont.dns_primary || '—'} mono />
+                <InfoRow label="DNS Secundario" value={ont.dns_secondary || '—'} mono />
+                <InfoRow label="MAC Binding"   value={ont.mac} mono />
               </div>
-              <div style={{
-                padding: '10px 14px', background: 'rgba(63,185,80,0.06)',
-                border: '1px solid rgba(63,185,80,0.25)', borderRadius: 6,
-                fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6,
-              }}>
-                <span className="status-dot status-online" />
-                Conexión WAN activa · Modo DHCP
-              </div>
+              {ont.ip_address && (
+                <div style={{
+                  padding: '10px 14px', background: 'rgba(63,185,80,0.06)',
+                  border: '1px solid rgba(63,185,80,0.25)', borderRadius: 6,
+                  fontSize: 12, color: 'var(--green)', display: 'flex', alignItems: 'center', gap: 6,
+                }}>
+                  <span className="status-dot status-online" />
+                  Conexión WAN {ont.wan_mode ? `· Modo ${ont.wan_mode}` : ''}
+                </div>
+              )}
             </div>
           )}
 

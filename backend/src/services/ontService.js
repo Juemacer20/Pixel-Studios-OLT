@@ -77,10 +77,27 @@ async function getAllONTs(filters = {}) {
 }
 
 async function getONTById(id) {
-  return prisma.oNT.findUnique({
-    where: { id },
-    include: { client: true, olt: true, ponPort: true, speedProfile: true, napBox: true },
-  });
+  const [ont, authLog] = await Promise.all([
+    prisma.oNT.findUnique({
+      where: { id },
+      include: { client: true, olt: true, ponPort: true, speedProfile: true, napBox: true },
+    }),
+    prisma.auditLog.findFirst({
+      where: { action: 'AUTHORIZE_ONT', target: id },
+      orderBy: { created_at: 'desc' },
+      select: { user_id: true },
+    }),
+  ]);
+  if (!ont) return null;
+  let authorizedBy = null;
+  if (authLog?.user_id) {
+    const user = await prisma.user.findUnique({
+      where: { id: authLog.user_id },
+      select: { name: true, email: true },
+    });
+    authorizedBy = user?.name || user?.email || null;
+  }
+  return { ...ont, authorizedBy };
 }
 
 async function createONT(data) {

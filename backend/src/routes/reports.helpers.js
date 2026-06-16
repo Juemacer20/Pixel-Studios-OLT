@@ -95,7 +95,7 @@ function resolveValue(ont, key) {
     case 'svlan':             return ont.vlan ?? null;
     case 'cvlan':             return ont.wan_vlan ?? null;
     case 'tag_transform':     return ont.tag_transform ?? null;
-    case 'authorized_by':     return ont._authorizedBy ?? null;
+    case 'authorized_by':     return ont.authorizedBy ?? null;
     case 'odb_port':          return ont.odb_port ?? null;
     default: return ont[key] ?? null;
   }
