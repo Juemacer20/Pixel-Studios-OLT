@@ -3,6 +3,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardAPI, settingsAPI } from '../../services/api';
 import { IconSettings } from '@tabler/icons-react';
 import toast from 'react-hot-toast';
+import SmartModal from '../shared/SmartModal';
+import SmartButton from '../shared/SmartButton';
+
+const SIGNAL_FIELDS = [
+  { key: 'variationThreshold',  label: 'Signal variation threshold (dB)',      step: 0.1, parse: parseFloat },
+  { key: 'largeVariationDelta', label: 'Large signal variation threshold (dB)', step: 0.1, parse: parseFloat },
+  { key: 'multiOnuThreshold',   label: 'ONUs required for Unstable',            step: 1,   parse: parseInt },
+  { key: 'trendWindowHours',    label: 'Repeated variation window (hours)',      step: 1,   parse: parseInt },
+  { key: 'trendMinEvents',      label: 'Variations required for Critical',       step: 1,   parse: parseInt },
+];
 
 function SignalVariationModal({ open, onClose }) {
   const qc = useQueryClient();
@@ -17,65 +27,47 @@ function SignalVariationModal({ open, onClose }) {
 
   const saveMut = useMutation({
     mutationFn: (d) => settingsAPI.saveSignalThresholds(d),
-    onSuccess: () => { toast.success('Saved'); qc.invalidateQueries({ queryKey: ['signal-thresholds'] }); onClose(); },
+    onSuccess: () => {
+      toast.success('Saved');
+      qc.invalidateQueries({ queryKey: ['signal-thresholds'] });
+      onClose();
+    },
     onError: (e) => toast.error(e?.response?.data?.error || 'Failed'),
   });
 
-  if (!open) return null;
   return (
-    <>
-      <div className="modal-backdrop" onClick={onClose} />
-      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
-        <div className="modal-dialog">
-          <div className="modal-content">
-            <div className="modal-header">
-              <button className="close" onClick={onClose}>&times;</button>
-              <h3>Signal variation alert settings</h3>
-            </div>
-            <div className="modal-body">
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div className="form-group">
-                  <label>Signal variation threshold (dB)</label>
-                  <input type="number" step={0.1} className="form-control input-sm" style={{ width: 120 }}
-                    value={values.variationThreshold ?? ''}
-                    onChange={e => setForm({ ...values, variationThreshold: parseFloat(e.target.value) || 0 })} />
-                </div>
-                <div className="form-group">
-                  <label>Large signal variation threshold (dB)</label>
-                  <input type="number" step={0.1} className="form-control input-sm" style={{ width: 120 }}
-                    value={values.largeVariationDelta ?? ''}
-                    onChange={e => setForm({ ...values, largeVariationDelta: parseFloat(e.target.value) || 0 })} />
-                </div>
-                <div className="form-group">
-                  <label>ONUs required for Unstable</label>
-                  <input type="number" className="form-control input-sm" style={{ width: 120 }}
-                    value={values.multiOnuThreshold ?? ''}
-                    onChange={e => setForm({ ...values, multiOnuThreshold: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div className="form-group">
-                  <label>Repeated variation window (hours)</label>
-                  <input type="number" className="form-control input-sm" style={{ width: 120 }}
-                    value={values.trendWindowHours ?? ''}
-                    onChange={e => setForm({ ...values, trendWindowHours: parseInt(e.target.value) || 0 })} />
-                </div>
-                <div className="form-group">
-                  <label>Variations required for Critical</label>
-                  <input type="number" className="form-control input-sm" style={{ width: 120 }}
-                    value={values.trendMinEvents ?? ''}
-                    onChange={e => setForm({ ...values, trendMinEvents: parseInt(e.target.value) || 0 })} />
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-link" onClick={onClose}>Cancel</button>
-              <button className="btn btn-primary" onClick={() => saveMut.mutate(values)} disabled={saveMut.isPending}>
-                {saveMut.isPending ? 'Saving…' : 'Save'}
-              </button>
-            </div>
+    <SmartModal
+      open={open}
+      onClose={onClose}
+      title="Signal variation alert settings"
+      size="sm"
+      footer={
+        <>
+          <SmartButton variant="link" onClick={onClose}>Cancel</SmartButton>
+          <SmartButton variant="primary" onClick={() => saveMut.mutate(values)} loading={saveMut.isPending}>
+            Save
+          </SmartButton>
+        </>
+      }
+    >
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {SIGNAL_FIELDS.map(f => (
+          <div key={f.key}>
+            <label style={{ display: 'block', fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
+              {f.label}
+            </label>
+            <input
+              type="number"
+              step={f.step}
+              className="input-base"
+              style={{ width: 120 }}
+              value={values[f.key] ?? ''}
+              onChange={e => setForm({ ...values, [f.key]: f.parse(e.target.value) || 0 })}
+            />
           </div>
-        </div>
+        ))}
       </div>
-    </>
+    </SmartModal>
   );
 }
 
@@ -109,6 +101,8 @@ export default function SignalDegradationTable() {
                   <th style={{ textAlign: 'right' }}>Avg Δ (dB)</th>
                   <th style={{ textAlign: 'right' }}>Max Δ (dB)</th>
                   <th style={{ textAlign: 'center' }}>Degraded</th>
+                  <th style={{ textAlign: 'center' }}>Events</th>
+                  <th>Last scan</th>
                 </tr>
               </thead>
               <tbody>
@@ -120,6 +114,8 @@ export default function SignalDegradationTable() {
                     <td style={{ textAlign: 'right' }} className="mono">{r.avgDelta.toFixed(2)}</td>
                     <td style={{ textAlign: 'right' }} className="mono">{r.maxDelta.toFixed(2)}</td>
                     <td style={{ textAlign: 'center' }}><span className="badge badge-orange">{r.degraded}</span></td>
+                    <td style={{ textAlign: 'center' }}>{r.events}</td>
+                    <td style={{ fontSize: 11, color: 'var(--text-muted)' }}>{r.lastScan ? new Date(r.lastScan).toLocaleString() : '—'}</td>
                   </tr>
                 ))}
               </tbody>
