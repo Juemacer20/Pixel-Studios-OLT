@@ -1,3 +1,4 @@
+// @deprecated — usar SignalBadge de './SignalBadge'. Borrar en Fase 8.
 import React from 'react';
 
 /**

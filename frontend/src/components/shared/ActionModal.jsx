@@ -1,3 +1,4 @@
+// @deprecated — usar SmartModal de './SmartModal'. Borrar en Fase 8.
 import React, { useEffect, useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 

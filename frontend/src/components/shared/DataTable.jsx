@@ -1,3 +1,4 @@
+// @deprecated — usar SmartTable de './SmartTable'. Borrar en Fase 8.
 import React, { useState, useMemo } from 'react';
 import { IconChevronUp, IconChevronDown, IconSearch } from '@tabler/icons-react';
 
