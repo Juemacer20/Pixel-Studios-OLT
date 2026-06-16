@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -15,8 +15,10 @@ import {
 import { ontAPI, oltAPI, reportsAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
 import StatusBadge from '../../components/shared/StatusBadge';
-import SignalValue from '../../components/shared/SignalValue';
+import SignalBadge from '../../components/shared/SignalBadge';
 import toast from 'react-hot-toast';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
 
 
 /* ─── Helpers ────────────────────────────────────────────────────────────── */
@@ -160,6 +162,9 @@ function ImportLocationModal({ open, onClose, onImport }) {
 
 /* ─── Mini Signal Chart (drawer tab 0) ──────────────────────────────────── */
 function MiniSignalChart({ ontId, height = 160 }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+
   const { data: raw = [], isLoading } = useQuery({
     queryKey: ['signal-history', ontId, '24h'],
     queryFn: () =>
@@ -177,6 +182,102 @@ function MiniSignalChart({ ontId, height = 160 }) {
       tx: h.tx_power != null ? parseFloat(h.tx_power.toFixed(2)) : null,
     })), [raw]);
 
+  useEffect(() => {
+    if (!canvasRef.current || isLoading || chartData.length === 0) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
+
+    if (chartRef.current) {
+      chartRef.current.destroy();
+    }
+
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        datasets: [
+          {
+            label: 'RX',
+            data: chartData.map(d => ({ x: d.ts, y: d.rx })),
+            borderColor: '#79c0ff',
+            backgroundColor: 'rgba(121,192,255,0.1)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3,
+          },
+          {
+            label: 'TX',
+            data: chartData.map(d => ({ x: d.ts, y: d.tx })),
+            borderColor: '#3fb950',
+            backgroundColor: 'rgba(63,185,80,0.1)',
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: true,
+            tension: 0.3,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            backgroundColor: '#1c2128',
+            titleColor: 'var(--text-secondary)',
+            bodyColor: '#fff',
+            borderColor: '#30363d',
+            borderWidth: 1,
+            padding: 8,
+            titleFont: { size: 11 },
+            bodyFont: { size: 11 },
+            callbacks: {
+              title: items => {
+                if (!items.length) return '';
+                return new Date(items[0].parsed.x).toLocaleString('es-AR', {
+                  hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit',
+                });
+              },
+              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} dBm`,
+            },
+          },
+        },
+        scales: {
+          x: {
+            type: 'linear',
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 9 },
+              maxTicksLimit: 6,
+              callback: v => new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
+            },
+            grid: { display: false },
+          },
+          y: {
+            min: -32,
+            max: -2,
+            ticks: {
+              color: '#94a3b8',
+              font: { size: 9 },
+            },
+            grid: {
+              color: 'rgba(255,255,255,0.06)',
+            },
+          },
+        },
+      },
+    });
+
+    return () => {
+      if (chartRef.current) {
+        chartRef.current.destroy();
+        chartRef.current = null;
+      }
+    };
+  }, [chartData, isLoading]);
+
   return (
     <div style={{ background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -187,28 +288,9 @@ function MiniSignalChart({ ontId, height = 160 }) {
           <span className="spinner" />
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={height}>
-          <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
-            <defs>
-              <linearGradient id="rxGradMini" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#79c0ff" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#79c0ff" stopOpacity={0} />
-              </linearGradient>
-              <linearGradient id="txGradMini" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#3fb950" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#3fb950" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="ts" type="number" domain={['auto','auto']} scale="time"
-              tickFormatter={v => new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}
-              tick={{ fontSize: 9, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
-            <YAxis domain={[-32, -2]} tick={{ fontSize: 9, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
-            <Tooltip content={<ChartTooltip />} />
-            <Area type="monotone" dataKey="rx" stroke="#79c0ff" fill="url(#rxGradMini)" strokeWidth={1.5} dot={false} />
-            <Area type="monotone" dataKey="tx" stroke="#3fb950" fill="url(#txGradMini)" strokeWidth={1.5} dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div style={{ height, position: 'relative' }}>
+          <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
+        </div>
       )}
       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
         {[['#79c0ff', 'RX'], ['#3fb950', 'TX']].map(([c, l]) => (
@@ -466,9 +548,9 @@ function ONTDrawer({ ont, onClose }) {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 8 }}>
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>RX / TX power</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <SignalValue value={ont.rx_power} size="md" />
+                    <SignalBadge value={ont.rx_power} />
                     <span style={{ color: 'var(--text-muted)' }}>/</span>
-                    <SignalValue value={ont.tx_power} size="md" />
+                    <SignalBadge value={ont.tx_power} />
                   </div>
                 </div>
                 <InfoRow label="OLT RX power"  value={ont.olt_rx_power != null ? `${ont.olt_rx_power} dBm` : null} mono />
@@ -2090,7 +2172,7 @@ export default function ONTs() {
                   </td>
                   <td style={{ textAlign: 'center' }}><StatusBadge status={ont.status} /></td>
                   <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
-                    <button className="sol-viewbtn" onClick={() => navigate(`/onts/view/${ont.id}`)}>
+                    <button className="sol-viewbtn" onClick={() => navigate(`/onu/view/${ont.id}`)}>
                       <IconEye size={11} /> View
                     </button>
                   </td>
@@ -2108,7 +2190,7 @@ export default function ONTs() {
                   <td><span className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.model || '—'}</span></td>
                   <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.zone || '—'}</span></td>
                   <td><span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{ont.odb || '—'}</span></td>
-                  <td style={{ textAlign: 'right' }}><SignalValue value={ont.rx_power} size="sm" /></td>
+                  <td style={{ textAlign: 'right' }}><SignalBadge value={ont.rx_power} /></td>
                   <td style={{ textAlign: 'center' }}>
                     {ont.wan_mode ? (
                       <span style={{
