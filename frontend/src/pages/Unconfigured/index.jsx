@@ -3,10 +3,147 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
   IconRefresh, IconX, IconCheck, IconPlugConnected, IconWand, IconHistory, IconPlayerPlay,
+  IconSettings, IconToggleLeft, IconToggleRight, IconTrash, IconPlus,
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI, autoActionAPI } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
 import toast from 'react-hot-toast';
+
+/* ── AutoActionsConfigModal ─────────────────────────────────────────────── */
+function AutoActionsConfigModal({ open, onClose }) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ name: '', description: '', snPattern: '', ponType: '', isActive: true });
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  const { data: presetsRaw, isLoading } = useQuery({
+    queryKey: ['auto-action-presets'],
+    queryFn: () => autoActionAPI.list().then(r => r.data?.data ?? r.data ?? []),
+    enabled: open,
+  });
+  const presets = Array.isArray(presetsRaw) ? presetsRaw : [];
+
+  const createMut = useMutation({
+    mutationFn: () => autoActionAPI.create({ ...form }),
+    onSuccess: () => { toast.success('Preset created'); qc.invalidateQueries({ queryKey: ['auto-action-presets'] }); setShowForm(false); setForm({ name: '', description: '', snPattern: '', ponType: '', isActive: true }); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Failed to create preset'),
+  });
+
+  const toggleMut = useMutation({
+    mutationFn: (id) => autoActionAPI.toggle(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['auto-action-presets'] }),
+    onError: () => toast.error('Toggle failed'),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id) => autoActionAPI.delete(id),
+    onSuccess: () => { toast.success('Preset deleted'); qc.invalidateQueries({ queryKey: ['auto-action-presets'] }); },
+    onError: () => toast.error('Delete failed'),
+  });
+
+  if (!open) return null;
+  return (
+    <>
+      <div className="drawer-overlay" onClick={onClose} />
+      <div style={{
+        position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+        zIndex: 401, width: 560, maxWidth: '96vw', maxHeight: '85vh', overflowY: 'auto',
+        background: 'var(--panel-bg)', border: '1px solid var(--border)',
+        borderRadius: 8, boxShadow: '0 8px 40px rgba(0,0,0,0.5)',
+      }}>
+        {/* header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--panel-bg)', zIndex: 1 }}>
+          <span style={{ fontSize: 14, fontWeight: 600 }}><IconSettings size={15} style={{ verticalAlign: -2, marginRight: 6 }} />Configure auto-actions</span>
+          <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
+        </div>
+
+        <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <p style={{ fontSize: 12.5, color: 'var(--text-secondary)', margin: 0 }}>
+            Auto-action presets define rules that automatically authorize new ONUs when they appear on a PON port. Each preset specifies conditions (OLT, SN pattern, PON type) and authorization settings. Active presets run every time <strong>Run auto-authorize</strong> is executed.
+          </p>
+
+          {/* Preset list */}
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>Loading…</div>
+          ) : presets.length === 0 && !showForm ? (
+            <div style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)', fontSize: 13 }}>No presets. Create one below.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {presets.map(p => (
+                <div key={p.id} style={{
+                  display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                  background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6,
+                  opacity: p.isActive ? 1 : 0.6,
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</div>
+                    {p.description && <div style={{ fontSize: 11.5, color: 'var(--text-muted)', marginTop: 2 }}>{p.description}</div>}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                      {p.snPattern && <span className="badge" style={{ fontSize: 10, background: 'rgba(43,127,212,.15)', color: '#7fb6ec' }}>SN: {p.snPattern}</span>}
+                      {p.ponType && <span className="badge" style={{ fontSize: 10, background: 'rgba(92,184,92,.12)', color: '#5cb85c' }}>{p.ponType}</span>}
+                      <span className="badge" style={{ fontSize: 10, background: p.isActive ? 'rgba(92,184,92,.12)' : 'rgba(150,150,150,.12)', color: p.isActive ? '#5cb85c' : 'var(--text-muted)' }}>
+                        {p.isActive ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+                  <button className="btn-icon" title={p.isActive ? 'Deactivate' : 'Activate'} onClick={() => toggleMut.mutate(p.id)} disabled={toggleMut.isPending}>
+                    {p.isActive ? <IconToggleRight size={20} style={{ color: '#5cb85c' }} /> : <IconToggleLeft size={20} style={{ color: 'var(--text-muted)' }} />}
+                  </button>
+                  <button className="btn-icon" title="Delete" onClick={() => { if (window.confirm(`Delete preset "${p.name}"?`)) deleteMut.mutate(p.id); }} disabled={deleteMut.isPending}>
+                    <IconTrash size={14} style={{ color: 'var(--red)' }} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Create form */}
+          {showForm ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: 14, background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>New preset</div>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                Name <span style={{ color: 'var(--red)' }}>*</span>
+                <input className="input-base" style={{ marginTop: 3 }} value={form.name} onChange={e => set('name', e.target.value)} placeholder="e.g. Default GPON" />
+              </label>
+              <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                Description
+                <input className="input-base" style={{ marginTop: 3 }} value={form.description} onChange={e => set('description', e.target.value)} placeholder="Optional notes" />
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  SN pattern (regex)
+                  <input className="input-base" style={{ marginTop: 3 }} value={form.snPattern} onChange={e => set('snPattern', e.target.value)} placeholder="e.g. ^HWTC" />
+                </label>
+                <label style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                  PON type
+                  <select className="input-base" style={{ marginTop: 3 }} value={form.ponType} onChange={e => set('ponType', e.target.value)}>
+                    <option value="">Any</option>
+                    <option value="GPON">GPON</option>
+                    <option value="EPON">EPON</option>
+                  </select>
+                </label>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <input type="checkbox" id="isActive" checked={form.isActive} onChange={e => set('isActive', e.target.checked)} />
+                <label htmlFor="isActive" style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>Active immediately</label>
+              </div>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn" onClick={() => setShowForm(false)}>Cancel</button>
+                <button className="btn btn-success" disabled={!form.name.trim() || createMut.isPending} onClick={() => createMut.mutate()}>
+                  <IconCheck size={13} /> {createMut.isPending ? 'Creating…' : 'Create preset'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn" style={{ alignSelf: 'flex-start' }} onClick={() => setShowForm(true)}>
+              <IconPlus size={13} /> Add preset
+            </button>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
 
 const panelGreen = {
   border: '1px solid #3d8b3d',
@@ -103,6 +240,7 @@ export default function Unconfigured() {
   const navigate = useNavigate();
   const [selectedOLT, setSelectedOLT] = useState('');
   const [modalONT, setModalONT] = useState(null);
+  const [showAutoActions, setShowAutoActions] = useState(false);
 
   const runNowMut = useMutation({
     mutationFn: () => autoActionAPI.runNow(),
@@ -173,7 +311,7 @@ export default function Unconfigured() {
             {olts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
           </select>
           <button className="btn" onClick={() => refetch()} disabled={isFetching}><IconRefresh size={13} /> Refresh</button>
-          <button className="btn" onClick={() => saveMut.mutate(null)} style={{ opacity: 0.7 }}><IconHistory size={13} /> Configure actions</button>
+          <button className="btn" onClick={() => setShowAutoActions(true)}><IconSettings size={13} /> Configure actions</button>
           <button className="btn" onClick={() => navigate('/reports/tasks')}><IconHistory size={13} /> Task history</button>
           <button className="btn" onClick={() => navigate('/auth-presets')}><IconWand size={13} /> Authorization Presets</button>
           <button className="btn btn-success" onClick={() => runNowMut.mutate()} disabled={runNowMut.isPending}>
@@ -278,6 +416,11 @@ export default function Unconfigured() {
           onSuccess={handleAuthorizeSuccess}
         />
       )}
+
+      <AutoActionsConfigModal
+        open={showAutoActions}
+        onClose={() => setShowAutoActions(false)}
+      />
     </div>
   );
 }
