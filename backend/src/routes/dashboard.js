@@ -77,7 +77,7 @@ router.get('/pon-outage', async (req, res, next) => {
   try {
     const olts = await prisma.oLT.findMany({ select: { id: true, name: true } });
     const oltNames = Object.fromEntries(olts.map(o => [o.id, o.name]));
-    const all = await prisma.oNT.findMany({ select: { olt_id: true, description: true, status: true, last_seen: true } });
+    const all = await prisma.oNT.findMany({ select: { olt_id: true, board: true, port: true, status: true, last_seen: true } });
     res.json({ data: buildPonOutage(all, oltNames) });
   } catch (err) { next(err); }
 });

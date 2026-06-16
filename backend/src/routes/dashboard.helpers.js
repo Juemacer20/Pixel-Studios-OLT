@@ -19,23 +19,19 @@ function buildActivityFeed(rows) {
     const details = row.details || {};
     const fn = ACTION_MESSAGES[row.action];
     const message = fn ? fn(details) : row.action;
-    return { id: row.id, action: row.action, message, user: row.user, target: row.target, created_at: row.created_at };
+    return { id: row.id, action: row.action, message, user: row.user_id, target: row.target, created_at: row.created_at };
   });
 }
 
 function buildPonOutage(onts, oltNames) {
   const sevenDays = Date.now() - 7 * 24 * 3600 * 1000;
-  const parsePort = (d) => {
-    const m = (d || '').match(/(\d+)\/(\d+)\/(\d+)/);
-    return m ? `${m[2]}/${m[3]}` : null;
-  };
 
   const ports = {};
   for (const o of onts) {
-    const port = parsePort(o.description);
-    if (!port) continue;
-    const k = `${o.olt_id}|${port}`;
-    if (!ports[k]) ports[k] = { olt_id: o.olt_id, port, total: 0, off: 0, since: null };
+    if (o.board == null || o.port == null) continue;
+    const portLabel = `${o.board}/${o.port}`;
+    const k = `${o.olt_id}|${portLabel}`;
+    if (!ports[k]) ports[k] = { olt_id: o.olt_id, port: portLabel, total: 0, off: 0, since: null };
     ports[k].total++;
     if ((o.status || '').toUpperCase() !== 'ONLINE') {
       ports[k].off++;
