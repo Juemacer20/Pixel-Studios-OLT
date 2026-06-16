@@ -1,5 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate, useParams } from 'react-router-dom';
+import { SaveConfigProvider } from './context/SaveConfigContext';
 
 function RedirectOltView() {
   const { id } = useParams();
@@ -65,6 +66,7 @@ function AppLayout() {
   useWebSocket();
 
   return (
+    <SaveConfigProvider>
     <div className="flex flex-col h-screen overflow-hidden" style={{ background: 'transparent' }}>
       <TopNav />
       <UpdateBanner />
@@ -152,6 +154,7 @@ function AppLayout() {
         </main>
       </div>
     </div>
+    </SaveConfigProvider>
   );
 }
 
