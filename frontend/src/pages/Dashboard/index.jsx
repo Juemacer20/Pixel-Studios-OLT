@@ -9,6 +9,7 @@ import {
   IconWand, IconCircleCheck, IconX, IconAlertTriangle, IconRefresh,
   IconClock, IconServer2,
 } from '@tabler/icons-react';
+import StatBox from '../../components/shared/StatBox';
 import { dashboardAPI, oltAPI } from '../../services/api';
 import { useAlerts } from '../../hooks/useAlerts';
 import { useAlertStore } from '../../store/alertStore';
@@ -44,16 +45,6 @@ function buildNetSeries(base) {
   }));
 }
 
-// ── stat box ─────────────────────────────────────────────────────────────────
-function StatBox({ to, cls, Icon, num, label, foot }) {
-  return (
-    <NavLink to={to} className={`sol-statbox ${cls}`}>
-      <Icon className="ico" size={30} />
-      <div><div className="num">{num}</div><div className="lbl">{label}</div></div>
-      {foot && <div className="foot">{foot.map((f, i) => <span key={i}>{f}</span>)}</div>}
-    </NavLink>
-  );
-}
 
 const NET_TABS = ['Hourly', 'Daily', 'Weekly', 'Monthly', 'Yearly'];
 
@@ -128,14 +119,14 @@ export default function Dashboard() {
 
       {/* ── Stat boxes ── */}
       <div className="sol-stats">
-        <StatBox to="/onu/unconfigured" cls="sol-s-blue" Icon={IconWand} num={fmt(waiting)} label="Waiting authorization"
-          foot={[`D: ${fmt(wb.d)}`, `Resync: ${fmt(wb.resync)}`, `New: ${fmt(wb.new)}`]} />
-        <StatBox to="/onts?status=online" cls="sol-s-green" Icon={IconCircleCheck} num={fmt(online)} label="Online"
-          foot={[`Total authorized: ${fmt(total)}`]} />
-        <StatBox to="/onts?status=offline" cls="sol-s-slate" Icon={IconX} num={fmt(offline)} label="Total offline"
-          foot={[`PwrFail: ${fmt(ob.pwrfail)}`, `LoS: ${fmt(ob.los)}`, `N/A: ${fmt(ob.na)}`]} />
-        <StatBox to="/diagnostics" cls="sol-s-orange" Icon={IconAlertTriangle} num={fmt(low)} label="Low signals"
-          foot={[`Warning: ${fmt(lb.warning)}`, `Critical: ${fmt(lb.critical)}`]} />
+        <StatBox to="/onu/unconfigured" color="blue"   icon={<IconWand size={30} />}          value={fmt(waiting)} label="Waiting authorization"
+          footer={[`D: ${fmt(wb.d)}`, `Resync: ${fmt(wb.resync)}`, `New: ${fmt(wb.new)}`]} />
+        <StatBox to="/onu/configured"   color="green"  icon={<IconCircleCheck size={30} />}   value={fmt(online)}  label="Online"
+          footer={[`Total authorized: ${fmt(total)}`]} />
+        <StatBox to="/onu/configured"   color="slate"  icon={<IconX size={30} />}             value={fmt(offline)} label="Total offline"
+          footer={[`PwrFail: ${fmt(ob.pwrfail)}`, `LoS: ${fmt(ob.los)}`, `N/A: ${fmt(ob.na)}`]} />
+        <StatBox to="/diagnostics"      color="orange" icon={<IconAlertTriangle size={30} />} value={fmt(low)}     label="Low signals"
+          footer={[`Warning: ${fmt(lb.warning)}`, `Critical: ${fmt(lb.critical)}`]} />
       </div>
 
       {/* Information valid at HH:MM */}
@@ -264,6 +255,7 @@ export default function Dashboard() {
                     boxShadow: (o.status || '').toUpperCase() === 'ONLINE' ? '0 0 7px rgba(35,168,90,.8)' : 'none' }} />
                   <span style={{ flex: 1, color: '#dbe6f1' }}>{o.name || o.host}</span>
                   <span style={{ color: 'var(--text-muted)', fontSize: 11.5 }}>{uptimeStr(o)}</span>
+                  <span className="badge" style={{background: 'rgba(43,127,212,.18)', color: '#7fb6ec', fontSize: 10}}>{o.onu_count || o._count?.onts || 0} ONUs</span>
                   {o.temperature != null && <span style={{ color: 'var(--text-muted)', fontSize: 11.5, minWidth: 38, textAlign: 'right' }}>{Math.round(o.temperature)}°C</span>}
                 </div>
               ))}
