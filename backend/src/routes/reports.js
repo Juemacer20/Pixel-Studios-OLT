@@ -2,6 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const { verifyToken, checkRole } = require('../middleware/auth');
 const prisma = require('../config/database');
+const { EXPORT_FIELDS, buildExportRow } = require('./reports.helpers');
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
@@ -150,11 +151,28 @@ router.get('/authorizations', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// GET /api/v1/reports/export-data
-// Returns ONTs for client-side CSV export
+// GET /api/v1/reports/export-fields — available field definitions
+router.get('/export-fields', (req, res) => {
+  res.json({ data: EXPORT_FIELDS });
+});
+
+// GET /api/v1/reports/export-data?fields=serial_number,olt_name,...
+// Returns rows shaped to the requested fields (defaults to 11 basic columns).
+const DEFAULT_FIELDS = [
+  'serial_number', 'description', 'mac', 'olt_name', 'status',
+  'rx_power', 'tx_power', 'olt_rx_power', 'distance', 'temperature', 'last_seen',
+];
+
 router.get('/export-data', async (req, res, next) => {
   try {
-    const { olt_id, status, search } = req.query;
+    const { olt_id, status, search, fields } = req.query;
+
+    const validKeys = new Set(EXPORT_FIELDS.map(f => f.key));
+    const requestedKeys = fields
+      ? fields.split(',').map(k => k.trim()).filter(k => validKeys.has(k))
+      : DEFAULT_FIELDS;
+    const fieldKeys = requestedKeys.length > 0 ? requestedKeys : DEFAULT_FIELDS;
+
     const where = {};
     if (olt_id)  where.olt_id = olt_id;
     if (status && status !== 'Any') where.status = status.toUpperCase();
@@ -168,12 +186,20 @@ router.get('/export-data', async (req, res, next) => {
 
     const onts = await prisma.oNT.findMany({
       where,
-      include: { olt: { select: { name: true } } },
+      include: {
+        olt:          { select: { name: true } },
+        speedProfile: { select: { name: true } },
+      },
       orderBy: { serial_number: 'asc' },
       take: 5000,
     });
 
-    res.json({ data: onts });
+    const rows = onts.map(o => buildExportRow(
+      { ...o, speed_profile: o.speedProfile },
+      fieldKeys,
+    ));
+
+    res.json({ data: rows, fields: fieldKeys, total: rows.length });
   } catch (err) { next(err); }
 });
 

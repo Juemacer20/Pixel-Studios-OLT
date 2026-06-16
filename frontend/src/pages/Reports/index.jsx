@@ -2,7 +2,7 @@
 // Reports sub-pages: Tasks, Authorizations, Export
 // All three are exported as named exports and loaded lazily in App.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer,
@@ -10,7 +10,7 @@ import {
 import {
   IconDownload, IconRefresh, IconCalendar, IconX, IconSearch,
   IconClipboardList, IconShieldCheck, IconChevronLeft, IconChevronRight,
-  IconFileExport, IconHistory,
+  IconFileExport, IconHistory, IconAdjustments, IconCheck,
 } from '@tabler/icons-react';
 import { reportsAPI, oltAPI } from '../../services/api';
 
@@ -300,13 +300,114 @@ export function ReportsAuthorizations() {
 const ONT_STATUSES = ['Any', 'ONLINE', 'OFFLINE', 'LOS', 'DYING_GASP', 'PENDING', 'DEACTIVATED'];
 
 const RECENT_EXPORTS_KEY = 'pso_recent_exports';
+const DEFAULT_FIELD_KEYS = [
+  'serial_number', 'description', 'mac', 'olt_name', 'status',
+  'rx_power', 'tx_power', 'olt_rx_power', 'distance', 'temperature', 'last_seen',
+];
 
 function getRecentExports() {
   try { return JSON.parse(localStorage.getItem(RECENT_EXPORTS_KEY) || '[]'); } catch { return []; }
 }
 function saveRecentExport(entry) {
-  const list = [entry, ...getRecentExports()].slice(0, 5);
+  const list = [entry, ...getRecentExports()].slice(0, 10);
   localStorage.setItem(RECENT_EXPORTS_KEY, JSON.stringify(list));
+}
+
+// ── Field Selector Modal ──────────────────────────────────────────────────────
+function FieldSelectorModal({ open, fields, selected, onApply, onClose }) {
+  const [draft, setDraft] = useState(selected);
+
+  useEffect(() => { if (open) setDraft(selected); }, [open, selected]);
+
+  const grouped = useMemo(() => {
+    const g = {};
+    for (const f of fields) {
+      if (!g[f.category]) g[f.category] = [];
+      g[f.category].push(f);
+    }
+    return g;
+  }, [fields]);
+
+  const toggle = (key) => setDraft(d =>
+    d.includes(key) ? d.filter(k => k !== key) : [...d, key]
+  );
+
+  const toggleCategory = (cat) => {
+    const catKeys = (grouped[cat] || []).map(f => f.key);
+    const allSelected = catKeys.every(k => draft.includes(k));
+    setDraft(d => allSelected
+      ? d.filter(k => !catKeys.includes(k))
+      : [...new Set([...d, ...catKeys])]
+    );
+  };
+
+  if (!open) return null;
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.55)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 10, width: 680, maxHeight: '85vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', borderBottom: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <IconAdjustments size={16} style={{ color: 'var(--cyan)' }} />
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Select Export Fields</span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 4 }}>{draft.length} of {fields.length} selected</span>
+          </div>
+          <button className="btn-icon" onClick={onClose}><IconX size={14} /></button>
+        </div>
+
+        {/* Field groups */}
+        <div style={{ overflowY: 'auto', padding: '12px 18px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {Object.entries(grouped).map(([cat, catFields]) => {
+            const catKeys = catFields.map(f => f.key);
+            const allSel = catKeys.every(k => draft.includes(k));
+            const someSel = catKeys.some(k => draft.includes(k));
+            return (
+              <div key={cat}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, color: 'var(--cyan)' }}>{cat}</span>
+                  <button
+                    className="btn"
+                    style={{ fontSize: 10, padding: '2px 8px' }}
+                    onClick={() => toggleCategory(cat)}
+                  >
+                    {allSel ? 'Clear all' : someSel ? 'Select all' : 'Select all'}
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4 }}>
+                  {catFields.map(f => (
+                    <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, cursor: 'pointer', padding: '3px 6px', borderRadius: 4, background: draft.includes(f.key) ? 'rgba(6,182,212,0.08)' : 'transparent' }}>
+                      <input
+                        type="checkbox"
+                        checked={draft.includes(f.key)}
+                        onChange={() => toggle(f.key)}
+                        style={{ accentColor: 'var(--cyan)', width: 13, height: 13 }}
+                      />
+                      <span style={{ color: draft.includes(f.key) ? 'var(--text-primary)' : 'var(--text-muted)' }}>{f.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '12px 18px', borderTop: '1px solid var(--border)' }}>
+          <button className="btn" onClick={onClose}>Cancel</button>
+          <button
+            onClick={() => { onApply(draft); onClose(); }}
+            disabled={draft.length === 0}
+            style={{ background: 'var(--cyan)', color: '#000', border: 'none', borderRadius: 6, padding: '7px 18px', fontSize: 12, fontWeight: 600, cursor: draft.length === 0 ? 'not-allowed' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <IconCheck size={13} /> Apply ({draft.length} fields)
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export function ReportsExport() {
@@ -316,6 +417,15 @@ export function ReportsExport() {
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [recentExports, setRecentExports] = useState(getRecentExports);
+  const [allFields, setAllFields] = useState([]);
+  const [selectedFields, setSelectedFields] = useState(DEFAULT_FIELD_KEYS);
+  const [showFieldSelector, setShowFieldSelector] = useState(false);
+
+  useEffect(() => {
+    reportsAPI.exportFields()
+      .then(r => setAllFields(r.data?.data || []))
+      .catch(() => {});
+  }, []);
 
   const doExport = async () => {
     setLoading(true);
@@ -324,22 +434,10 @@ export function ReportsExport() {
       if (oltId)            params.olt_id = oltId;
       if (status !== 'Any') params.status = status;
       if (search)           params.search = search;
-      const { data } = await reportsAPI.exportData(params);
-      const onts = data.data || [];
+      params.fields = selectedFields.join(',');
 
-      const rows = onts.map(o => ({
-        Serial:      o.serial_number || '',
-        MAC:         o.mac           || '',
-        Description: o.description   || '',
-        OLT:         o.olt?.name     || '',
-        Status:      o.status        || '',
-        'Rx Power':  o.rx_power      != null ? o.rx_power  : '',
-        'Tx Power':  o.tx_power      != null ? o.tx_power  : '',
-        'OLT Rx':    o.olt_rx_power  != null ? o.olt_rx_power : '',
-        'Distance':  o.distance      != null ? o.distance  : '',
-        'Temperature': o.temperature != null ? o.temperature : '',
-        'Last Seen': o.last_seen     ? fmt(o.last_seen) : '',
-      }));
+      const { data } = await reportsAPI.exportData(params);
+      const rows = data.data || [];
 
       const filename = `onts-export-${new Date().toISOString().slice(0,10)}.csv`;
       downloadCSV(rows, filename);
@@ -348,6 +446,7 @@ export function ReportsExport() {
         id:       Date.now(),
         date:     new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }),
         filters:  [oltId && `OLT:${olts.find(o => o.id === oltId)?.name || oltId}`, status !== 'Any' && `Status:${status}`, search && `Search:${search}`].filter(Boolean).join(', ') || 'All ONTs',
+        fields:   selectedFields.length,
         count:    rows.length,
         filename,
         rows,
@@ -373,6 +472,14 @@ export function ReportsExport() {
           <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Export ONTs to CSV with optional filters</span>
         </div>
       </div>
+
+      <FieldSelectorModal
+        open={showFieldSelector}
+        fields={allFields}
+        selected={selectedFields}
+        onApply={setSelectedFields}
+        onClose={() => setShowFieldSelector(false)}
+      />
 
       {/* Export panel */}
       <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -401,8 +508,8 @@ export function ReportsExport() {
           )}
         </div>
 
-        {/* Export button */}
-        <div>
+        {/* Export button + field selector */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <button
             onClick={doExport}
             disabled={loading}
@@ -424,8 +531,16 @@ export function ReportsExport() {
             <IconDownload size={15} />
             {loading ? 'Exporting…' : 'Export ONUs'}
           </button>
-          <span style={{ marginLeft: 12, fontSize: 11, color: 'var(--text-muted)' }}>
-            Columns: Serial, MAC, Description, OLT, Status, Rx Power, Tx Power, OLT Rx, Distance, Temperature, Last Seen
+          <button
+            className="btn"
+            onClick={() => setShowFieldSelector(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <IconAdjustments size={13} />
+            Fields ({selectedFields.length}{allFields.length > 0 ? `/${allFields.length}` : ''})
+          </button>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+            {selectedFields.length} column{selectedFields.length !== 1 ? 's' : ''} selected
           </span>
         </div>
       </div>
@@ -448,7 +563,8 @@ export function ReportsExport() {
                 <tr>
                   <th>Date</th>
                   <th>Filters</th>
-                  <th>Count</th>
+                  <th>Fields</th>
+                  <th>ONTs</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -457,7 +573,8 @@ export function ReportsExport() {
                   <tr key={entry.id}>
                     <td className="mono" style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{entry.date}</td>
                     <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{entry.filters || 'All ONTs'}</td>
-                    <td style={{ fontSize: 12 }}>{entry.count} ONTs</td>
+                    <td style={{ fontSize: 12, color: 'var(--text-muted)' }}>{entry.fields ?? '—'}</td>
+                    <td style={{ fontSize: 12 }}>{entry.count}</td>
                     <td>
                       <button
                         className="btn"

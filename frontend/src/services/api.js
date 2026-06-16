@@ -236,6 +236,7 @@ export const reportsAPI = {
   tasks:          (params) => api.get('/reports/tasks', { params }),
   authorizations: (params) => api.get('/reports/authorizations', { params }),
   exportData:     (params) => api.get('/reports/export-data', { params }),
+  exportFields:   ()       => api.get('/reports/export-fields'),
   importCSV:      (formData) => api.post('/reports/import', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
 };
 
