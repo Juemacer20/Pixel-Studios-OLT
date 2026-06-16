@@ -57,8 +57,8 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | feat/cc-dashboard-autoactions | CC-6 ✅ CC-7 ✅ CC-8 ✅ CC-9 ✅ — OC-6/OC-7 pueden avanzar | ✅ todos los CC-6..CC-9 completados | 2026-06-16 |
-| OpenCode | main | OC-1 ✅ OC-2 ✅ OC-3 ✅ OC-4 ✅ OC-5 ✅ OC-8 ✅ OC-9 ✅ OC-10 ✅ — OC-6/OC-7 esperan CC-6 (ya mergeado, puede continuar) | ✅ completado (pendiente OC-6/OC-7) | 2026-06-16 |
+| Claude Code | feat/cc-dashboard-autoactions | Relevamiento fresco 2026-06-16 → BATCH 3 definido (CC-10..CC-15). Empezar por CC-11 (IP logging) y CC-13 (export fields). | 🟡 pendiente BATCH 3 | 2026-06-16 |
+| OpenCode | main | BATCH 3 definido (OC-11..OC-18). Empezar por OC-11 (SVLAN names) y OC-12 (ODB coords). CC-10 (ODB port schema) debe mergearse antes de OC tocar locationDetails. | 🟡 pendiente BATCH 3 | 2026-06-16 |
 
 ---
 
@@ -255,6 +255,50 @@ grep -A 70 "model ONT " backend/prisma/schema.prisma | grep -E "board|port|descr
 
 **Regla:** Si `schema.prisma` tiene `board Int?` y `port Int?`, usar `o.board` y `o.port`.
 Si usás `description` para extraer coordenadas o posiciones → es un bug garantizado.
+
+---
+
+---
+
+## 5.5 🆕 BATCH 3 — Gaps del relevamiento fresco 2026-06-16
+
+> Relevamiento autenticado nuevo (login fresco, 21 páginas + ONUView 34 modales).
+> Documento de referencia: `/mnt/claude-storage/relevamiento-smartolt/nuevo/ANALISIS_PARIDAD_2026-06-16.md`
+> Plataforma ~92% completa. Estos son los gaps reales restantes.
+
+### 🔴 Para CLAUDE CODE (backend + full-stack)
+
+| # | Prioridad | Tarea | Archivos | Notas |
+|---|---|---|---|---|
+| CC-10 | 🔴 CRÍTICO | **ODB port — schema + backend** — SmartOLT registra en qué puerto físico del splitter (1/2/3…/16) está conectado cada cliente. Agregar campo `odb_port Int?` a `ONT` en schema.prisma + migración. Agregar a: `authorizeONT()` (persist), `updateLocationDetails()` (persist), `getAllONTs()` select, `GET /onts/:id` include. Frontend avisa cuando CC-10 esté mergeado. | `backend/prisma/schema.prisma`, `backend/src/services/ontService.js` | Preguntar a Juan si ITELSA usa este dato. Si no lo usan, bajar a 🟡. |
+| CC-11 | 🟠 ALTO | **IP address en auditLog** — SmartOLT logea la IP del operador en cada acción (info feed muestra "IP address" columna). El modelo AuditLog tiene `ip_address String?` en schema. Verificar si el middleware de auth extrae `req.ip` y lo pasa al `auditLog.create()`. Si no, agregar `ip_address: req.ip` en todos los `prisma.auditLog.create()` del backend. | `backend/src/middleware/auth.js`, `backend/src/routes/onts.js`, `backend/src/services/ontService.js` | Hacer grep de `auditLog.create` y agregar `ip_address` en todos. |
+| CC-12 | 🟠 ALTO | **"Authorized by" en ONUView** — Panel izquierdo de ONUView muestra quién autorizó la ONU. La info está en `auditLog` donde `action = 'AUTHORIZE_ONT'` y `target = ont.id`. Agregar endpoint `GET /onts/:id/authorized-by` que retorna `{ user_id, created_at }` del auditLog de autorización, o incluirlo directamente en el `GET /onts/:id`. Frontend: mostrar en panel izquierdo como "Authorized by: juancervini / 2026-06-10". | `backend/src/routes/onts.js`, `backend/src/controllers/ontController.js`, `frontend/src/pages/ONUView/index.jsx` | Verificar que el AUTHORIZE_ONT se guarda con el user_id correcto (CC-7 ya lo hace). |
+| CC-13 | 🟠 ALTO | **Export fields faltantes** — Agregar a `reports.helpers.js` los campos que SmartOLT tiene pero Pixel Studios no exporta: `client_name` (resolve desde `ont.client.name`), `client_address` (desde `ont.client.address`), `client_phone` (desde `ont.client.phone`), `svlan` (alias de `vlan`), `cvlan`, `tag_transform`, `odb_port`, `authorized_by` (query auditLog action=AUTHORIZE_ONT). Solo editar `EXPORT_FIELDS` array y `resolveValue()`. | `backend/src/routes/reports.helpers.js` | No tocar el test de reports — solo agregar al array. Verificar que `resolveValue()` resuelve client.name desde la relación. |
+| CC-14 | 🟡 MEDIO | **TR069 Stat modal** — SmartOLT tiene botón "TR069 Stat" en ONUView que muestra diagnóstico TR-069 de la ONU. Crear endpoint `GET /onts/:id/tr069-stat` que llama al adapter Huawei para obtener el estado TR-069 (si el adapter lo soporta). Frontend: modal simple que muestra la respuesta raw en un `<pre>`. | `backend/src/routes/onts.js`, `backend/src/services/huawei/ma5800.js`, `frontend/src/pages/ONUView/index.jsx` | El adapter puede no soportarlo — retornar `{ supported: false }` y el modal muestra "Not supported for this OLT type". |
+| CC-15 | 🟡 MEDIO | **Batch "Offline duplicate + Missing from OLT"** — Dos checkboxes en la barra de batch de ONTs: (1) "Offline duplicate" filtra ONUs con SN duplicado donde un gemelo está Online; (2) "Missing from OLT" filtra ONUs en DB que el OLT reportó como no existentes en el último scan. Backend: agregar params `duplicate=1` y `missing_from_olt=1` a `getAllONTs()`. Frontend: checkboxes especiales en el panel batch. | `backend/src/services/ontService.js`, `frontend/src/pages/ONTs/index.jsx` | Para "Missing from OLT" se necesita que el scan marque un campo — verificar si el enrichment job guarda ese estado. |
+
+### 🔴 Para OPENCODE (frontend — sin tocar backend salvo lo acordado)
+
+| # | Prioridad | Tarea | Archivos | Notas |
+|---|---|---|---|---|
+| OC-11 | 🟠 ALTO | **SVLAN names en wizard** — El wizard de autorización muestra el SVLAN-ID como número solo (ej: "10") pero SmartOLT lo muestra con nombre (ej: "10 - INTERNET"). La API `GET /vlans` o similar devuelve los VLANs con nombre. Buscar el endpoint que carga VLANs (puede ser `GET /onts?distinct=vlan` o un endpoint dedicado). Cambiar el select de SVLAN-ID en `AuthorizeONU/index.jsx` para mostrar `{vlan.id} - {vlan.name}`. | `frontend/src/pages/AuthorizeONU/index.jsx` | Verificar si hay un `vlanAPI` o si hay que fetchear desde los filtros de ONTs. Si no hay nombre en DB, mostrar solo el número (no cambiar el backend). |
+| OC-12 | 🟠 ALTO | **ODB coordinates en tabla + form** — SmartOLT muestra lat/lng del splitter en la tabla de ODBs. Agregar columna "Coordinates" a la tabla en `ODBs/index.jsx` (mostrar "lat, lng" o "—"). Agregar campos Latitude/Longitude al formulario de crear/editar ODB en el `ActionModal`. El schema ya tiene los campos si `napBoxId` o similar existe — verificar. | `frontend/src/pages/ODBs/index.jsx` | Verificar en `prisma/schema.prisma` si el modelo `ODB` o `NapBox` tiene `latitude`/`longitude`. Si no existen, marcar como bloqueado por schema (pedir a Claude CC-10 los agregue). |
+| OC-13 | 🟡 MEDIO | **Allow custom profiles en ONU Types** — Agregar columna "Custom" (checkbox readonly) a la tabla de ONU Types en `OnuTypes/index.jsx`. El campo `allowCustomProfiles` ya existe en el form de edición pero no en la tabla. | `frontend/src/pages/OnuTypes/index.jsx` | Solo agregar `<th>Custom</th>` y `<td><YesNo v={t.allowCustomProfiles}/></td>`. |
+| OC-14 | 🟡 MEDIO | **Speed profiles: For/Default/ONUs count** — Agregar campos a SpeedProfiles: (1) "For" select (Internet/VoIP/IPTV/Any) en el form; (2) "Default" checkbox; (3) columna "ONUs" (count de ONTs que usan ese perfil) en la tabla. El backend `GET /speed-profiles` puede necesitar que CC agregue el count — preguntar a Claude. | `frontend/src/pages/SpeedProfiles/index.jsx` | "For" y "Default" son campos nuevos en el schema — bloquear hasta que CC los agregue. "ONUs count" puede venir del endpoint si lo soporta. |
+| OC-15 | 🟡 MEDIO | **applyPresetModal: campo ONU name** — En `Unconfigured/index.jsx`, el modal "Authorize ONU with Preset" (`applyPresetModal`) debe incluir un input text para el nombre del cliente (campo `preset_onu_name`). SmartOLT lo tiene como campo requerido al aplicar preset rápido. | `frontend/src/pages/Unconfigured/index.jsx` | Ver cómo está implementado el modal actualmente. Agregar input "ONU name" y pasarlo al mutationFn. |
+| OC-16 | 🟡 MEDIO | **Wizard: "Use custom profile" y "Use GPS"** — En `AuthorizeONU/index.jsx`: (1) Agregar checkbox "Use custom profile" antes del select de ONU type (cuando está checked, se habilita un select de template genérico); (2) Agregar checkbox "Use GPS" antes de los inputs lat/lng (cuando está unchecked, ocultar lat/lng). Ambos son quality-of-life. | `frontend/src/pages/AuthorizeONU/index.jsx` | "Use custom profile" puede ser simplemente un toggle que muestra/oculta un select de templates. Los templates pueden ser hardcodeados o fetcheados. |
+| OC-17 | 🟡 MEDIO | **ONU ID range override en GPONChannelModal** — SmartOLT `updateGponType` tiene campo adicional "ONU ID range override" (radio: auto/custom). Agregar esa opción en `OnuModals.jsx → GPONChannelModal`. | `frontend/src/pages/ONUView/OnuModals.jsx` | Verificar si el adapter Huawei acepta ese parámetro. Si no, mostrar el campo pero no enviarlo si el backend no lo soporta. |
+| OC-18 | 🟡 MEDIO | **VPN tunnels: columna "Connected subnets"** — En `TR069/index.jsx`, la tabla VPN tunnels tiene Name/Subnet/Status pero le falta "Connected subnets" (subredes locales ruteadas por el tunnel). Agregar columna al `<Section>` de VPN y al formulario de creación. Backend: verificar si el campo existe en `VpnTunnel` model. | `frontend/src/pages/TR069/index.jsx` | Si el campo no existe en el schema, marcar como bloqueado por schema — pedir a Claude que lo agregue. |
+
+### Notas de coordinación §5.5
+
+- **CC-10 (ODB port schema) bloquea a OC** si OC quiere mostrar/editar el campo en el wizard o locationDetails. CC-10 es schema-only, puede ejecutarse independiente.
+- **CC-11 (IP logging) es backend-only** — no bloquea a OC en nada.
+- **CC-12 (Authorized by) toca ONUView/index.jsx** — no tocar ese archivo simultáneamente. CC primero, OC después.
+- **CC-13 (export fields) es backend-only** — no bloquea a OC.
+- **OC-11 a OC-18 son TODOS independientes entre sí** — OC puede hacer en cualquier orden.
+- **Orden recomendado para CC**: CC-11 → CC-13 (ambos rápidos y sin conflictos) → CC-12 → CC-10 → CC-14 → CC-15.
+- **Orden recomendado para OC**: OC-11 → OC-12 → OC-13 → OC-15 → OC-16 → OC-17 → OC-18 → OC-14 (OC-14 espera info del schema).
 
 ---
 
