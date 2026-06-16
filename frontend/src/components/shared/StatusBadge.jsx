@@ -1,15 +1,18 @@
 import React from 'react';
 
 const STATUS_CONFIG = {
-  online:       { dotClass: 'status-online',   badgeClass: 'badge-green',  label: 'Online' },
-  offline:      { dotClass: 'status-offline',  badgeClass: 'badge-gray',   label: 'Offline' },
-  los:          { dotClass: 'status-los',       badgeClass: 'badge-red',    label: 'LOS' },
-  pending:      { dotClass: 'status-pending',  badgeClass: 'badge-orange', label: 'Pendiente' },
-  ztp:          { dotClass: 'status-pending',  badgeClass: 'badge-orange', label: 'ZTP' },
-  error:        { dotClass: 'status-los',       badgeClass: 'badge-red',    label: 'Error' },
-  warning:      { dotClass: 'status-pending',  badgeClass: 'badge-orange', label: 'Warning' },
-  degraded:     { dotClass: 'status-pending',  badgeClass: 'badge-orange', label: 'Degradado' },
-  maintenance:  { dotClass: 'status-offline',  badgeClass: 'badge-purple', label: 'Mantenimiento' },
+  online:      { dotClass: 'status-online',    badgeClass: 'badge-green',  label: 'Online' },
+  offline:     { dotClass: 'status-offline',   badgeClass: 'badge-gray',   label: 'Offline' },
+  los:         { dotClass: 'status-los',        badgeClass: 'badge-red',    label: 'LOS' },
+  power_fail:  { dotClass: 'status-pwrfail',   badgeClass: 'badge-orange', label: 'PwrFail' },
+  pwrfail:     { dotClass: 'status-pwrfail',   badgeClass: 'badge-orange', label: 'PwrFail' },
+  disabled:    { dotClass: 'status-disabled',  badgeClass: 'badge-gray',   label: 'Disabled' },
+  pending:     { dotClass: 'status-pending',   badgeClass: 'badge-orange', label: 'Pending' },
+  ztp:         { dotClass: 'status-pending',   badgeClass: 'badge-orange', label: 'ZTP' },
+  error:       { dotClass: 'status-los',        badgeClass: 'badge-red',    label: 'Error' },
+  warning:     { dotClass: 'status-pending',   badgeClass: 'badge-orange', label: 'Warning' },
+  degraded:    { dotClass: 'status-pending',   badgeClass: 'badge-orange', label: 'Degraded' },
+  maintenance: { dotClass: 'status-offline',   badgeClass: 'badge-purple', label: 'Maintenance' },
 };
 
 /**

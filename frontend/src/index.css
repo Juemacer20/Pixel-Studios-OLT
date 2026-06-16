@@ -102,7 +102,9 @@ html, body {
 .status-online  { background: #3fb950; box-shadow: 0 0 6px #3fb950; animation: pulse-green 2s infinite; }
 .status-offline { background: #484f58; }
 .status-los     { background: #f85149; box-shadow: 0 0 6px #f85149; animation: pulse-red 2s infinite; }
-.status-pending { background: #d29922; box-shadow: 0 0 6px #d29922; animation: pulse-orange 2s infinite; }
+.status-pending  { background: #d29922; box-shadow: 0 0 6px #d29922; animation: pulse-orange 2s infinite; }
+.status-pwrfail  { background: #FF9500; box-shadow: 0 0 6px #FF9500; animation: pulse-orange 2s infinite; }
+.status-disabled { background: #8e8e93; }
 
 @keyframes pulse-red {
   0%, 100% { opacity: 1; box-shadow: 0 0 6px #f85149; }
@@ -128,6 +130,25 @@ html, body {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
 }
+@keyframes pulse-opacity {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.2; }
+}
+
+/* KPI Stat Box */
+.sol-statbox {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background 0.15s;
+  min-width: 180px;
+  flex: 1;
+  text-decoration: none;
+}
+.sol-statbox .ico { color: rgba(255,255,255,0.9); flex-shrink: 0; }
 
 /* Cards / panels (SmartOLT Bootstrap-3 — border-radius 4px) */
 .card {
@@ -173,6 +194,22 @@ html, body {
   color: #fff;
 }
 .btn-danger:hover { filter: brightness(0.93); }
+
+.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #fff;
+}
+.btn-warning:hover { filter: brightness(0.93); }
+
+.btn-link {
+  background: transparent;
+  border-color: transparent;
+  color: var(--link);
+  padding-left: 0;
+  padding-right: 0;
+}
+.btn-link:hover { text-decoration: underline; background: transparent; }
 
 .btn-success {
   background: var(--success);
