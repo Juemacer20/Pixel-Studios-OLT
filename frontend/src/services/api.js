@@ -197,6 +197,10 @@ export const apiKeyAPI = {
 };
 
 export const settingsAPI = {
+  general: () => api.get('/settings/general'),
+  saveGeneral: (data) => api.put('/settings/general', data),
+  polling: () => api.get('/settings/polling'),
+  savePolling: (data) => api.put('/settings/polling', data),
   signalThresholds: () => api.get('/settings/signal-thresholds'),
   saveSignalThresholds: (data) => api.put('/settings/signal-thresholds', data),
   billing: () => api.get('/settings/billing'),

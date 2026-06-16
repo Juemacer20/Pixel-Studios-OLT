@@ -47,6 +47,58 @@ router.put('/billing/:oltId', checkRole('admin'), wrap(async (req, res) => {
   res.json({ data: sub });
 }));
 
+// ── General / Polling settings — persisted in system_configs ─────────────────
+const GENERAL_KEYS = { company: 'Pixel Studios', timezone: 'America/Argentina/Buenos_Aires', language: 'es', logo_url: '' };
+const POLLING_KEYS = { polling_interval: '5', snmp_timeout: '3', snmp_retries: '2', snmp_version: '2c', snmp_community: 'public' };
+
+async function readConfigs(defaults) {
+  const keys = Object.keys(defaults);
+  const rows = await prisma.systemConfig.findMany({ where: { key: { in: keys } } });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value]));
+  return Object.fromEntries(keys.map((k) => [k, map[k] ?? defaults[k] ?? '']));
+}
+
+async function writeConfigs(data) {
+  await Promise.all(
+    Object.entries(data).map(([key, value]) =>
+      prisma.systemConfig.upsert({
+        where: { key },
+        update: { value: String(value) },
+        create: { key, value: String(value) },
+      }),
+    ),
+  );
+}
+
+router.get('/general', wrap(async (req, res) => {
+  res.json({ data: await readConfigs(GENERAL_KEYS) });
+}));
+
+router.put('/general', checkRole('admin'), wrap(async (req, res) => {
+  const allowed = new Set(Object.keys(GENERAL_KEYS));
+  const data = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.has(k)));
+  await writeConfigs(data);
+  res.json({ data: await readConfigs(GENERAL_KEYS) });
+}));
+
+router.get('/polling', wrap(async (req, res) => {
+  const raw = await readConfigs(POLLING_KEYS);
+  res.json({ data: { interval: Number(raw.polling_interval), snmp_timeout: Number(raw.snmp_timeout), snmp_retries: Number(raw.snmp_retries), snmp_version: raw.snmp_version, snmp_community: raw.snmp_community } });
+}));
+
+router.put('/polling', checkRole('admin'), wrap(async (req, res) => {
+  const { interval, snmp_timeout, snmp_retries, snmp_version, snmp_community } = req.body;
+  const data = {};
+  if (interval       != null) data.polling_interval = String(interval);
+  if (snmp_timeout   != null) data.snmp_timeout      = String(snmp_timeout);
+  if (snmp_retries   != null) data.snmp_retries      = String(snmp_retries);
+  if (snmp_version   != null) data.snmp_version      = String(snmp_version);
+  if (snmp_community != null) data.snmp_community    = String(snmp_community);
+  await writeConfigs(data);
+  const raw = await readConfigs(POLLING_KEYS);
+  res.json({ data: { interval: Number(raw.polling_interval), snmp_timeout: Number(raw.snmp_timeout), snmp_retries: Number(raw.snmp_retries), snmp_version: raw.snmp_version, snmp_community: raw.snmp_community } });
+}));
+
 // GET /settings/api-logs — audit log activity summary used by the API Logs tab.
 router.get('/api-logs', wrap(async (req, res) => {
   const oneHourAgo = new Date(Date.now() - 3600 * 1000);

@@ -181,14 +181,26 @@ function SaveButton({ onSave, saved }) {
 }
 
 // ── Tab panels ───────────────────────────────────────────────────────────────
-function GeneralTab({ data, onChange }) {
+function GeneralTab() {
   const { t } = useTranslation();
-  const [saved, setSaved] = useState(false);
+  const qc = useQueryClient();
+  const { data: remote } = useQuery({
+    queryKey: ['settings-general'],
+    queryFn: () => settingsAPI.general().then((r) => r.data?.data ?? r.data),
+  });
+  const [form, setForm] = useState(null);
+  const f = form ?? remote ?? INITIAL.general;
 
-  const save = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
+  const saveMut = useMutation({
+    mutationFn: () => settingsAPI.saveGeneral(f),
+    onSuccess: (r) => {
+      toast.success('Settings saved');
+      qc.invalidateQueries({ queryKey: ['settings-general'] });
+      setForm(null);
+      i18n.changeLanguage(f.language);
+    },
+    onError: () => toast.error('Save failed'),
+  });
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -197,12 +209,12 @@ function GeneralTab({ data, onChange }) {
           {t('settings.general.companyInfo')}
         </div>
         <FieldRow label={t('settings.general.companyName')}>
-          <input className="input-base" value={data.company} style={{ maxWidth: 320 }}
-            onChange={e => onChange({ ...data, company: e.target.value })} />
+          <input className="input-base" value={f.company} style={{ maxWidth: 320 }}
+            onChange={e => setForm({ ...f, company: e.target.value })} />
         </FieldRow>
         <FieldRow label={t('settings.general.timezone')}>
-          <select className="select-base" style={{ maxWidth: 320 }} value={data.timezone}
-            onChange={e => onChange({ ...data, timezone: e.target.value })}>
+          <select className="select-base" style={{ maxWidth: 320 }} value={f.timezone}
+            onChange={e => setForm({ ...f, timezone: e.target.value })}>
             <option value="America/Argentina/Buenos_Aires">America/Argentina/Buenos_Aires (UTC-3)</option>
             <option value="America/New_York">America/New_York (UTC-5)</option>
             <option value="Europe/Madrid">Europe/Madrid (UTC+1)</option>
@@ -210,27 +222,38 @@ function GeneralTab({ data, onChange }) {
           </select>
         </FieldRow>
         <FieldRow label={t('settings.general.language')}>
-          <select className="select-base" style={{ maxWidth: 180 }} value={data.language}
-            onChange={e => { onChange({ ...data, language: e.target.value }); i18n.changeLanguage(e.target.value); }}>
+          <select className="select-base" style={{ maxWidth: 180 }} value={f.language}
+            onChange={e => setForm({ ...f, language: e.target.value })}>
             <option value="es">Español</option>
             <option value="en">English</option>
           </select>
         </FieldRow>
         <FieldRow label={t('settings.general.logoUrl')} hint={t('settings.general.logoHint')}>
-          <input className="input-base" value={data.logo_url} style={{ maxWidth: 380 }}
-            placeholder="https://..." onChange={e => onChange({ ...data, logo_url: e.target.value })} />
+          <input className="input-base" value={f.logo_url} style={{ maxWidth: 380 }}
+            placeholder="https://..." onChange={e => setForm({ ...f, logo_url: e.target.value })} />
         </FieldRow>
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <SaveButton onSave={save} saved={saved} />
+          <SaveButton onSave={() => saveMut.mutate()} saved={saveMut.isSuccess} />
         </div>
       </div>
     </div>
   );
 }
 
-function PollingTab({ data, onChange }) {
-  const [saved, setSaved] = useState(false);
-  const save = () => { setSaved(true); setTimeout(() => setSaved(false), 2500); };
+function PollingTab() {
+  const qc = useQueryClient();
+  const { data: remote } = useQuery({
+    queryKey: ['settings-polling'],
+    queryFn: () => settingsAPI.polling().then((r) => r.data?.data ?? r.data),
+  });
+  const [form, setForm] = useState(null);
+  const f = form ?? remote ?? INITIAL.polling;
+
+  const saveMut = useMutation({
+    mutationFn: () => settingsAPI.savePolling(f),
+    onSuccess: () => { toast.success('Polling settings saved'); qc.invalidateQueries({ queryKey: ['settings-polling'] }); setForm(null); },
+    onError: () => toast.error('Save failed'),
+  });
 
   return (
     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -238,31 +261,31 @@ function PollingTab({ data, onChange }) {
         SNMP polling configuration
       </div>
       <FieldRow label="Polling interval" hint="How often devices are polled.">
-        <NumberInput value={data.interval} min={1} max={60} unit="minutes"
-          onChange={v => onChange({ ...data, interval: v })} />
+        <NumberInput value={f.interval} min={1} max={60} unit="minutes"
+          onChange={v => setForm({ ...f, interval: v })} />
       </FieldRow>
       <FieldRow label="SNMP Timeout">
-        <NumberInput value={data.snmp_timeout} min={1} max={30} unit="seconds"
-          onChange={v => onChange({ ...data, snmp_timeout: v })} />
+        <NumberInput value={f.snmp_timeout} min={1} max={30} unit="seconds"
+          onChange={v => setForm({ ...f, snmp_timeout: v })} />
       </FieldRow>
       <FieldRow label="SNMP retries">
-        <NumberInput value={data.snmp_retries} min={0} max={10}
-          onChange={v => onChange({ ...data, snmp_retries: v })} />
+        <NumberInput value={f.snmp_retries} min={0} max={10}
+          onChange={v => setForm({ ...f, snmp_retries: v })} />
       </FieldRow>
       <FieldRow label="SNMP version">
-        <select className="select-base" style={{ width: 120 }} value={data.snmp_version}
-          onChange={e => onChange({ ...data, snmp_version: e.target.value })}>
+        <select className="select-base" style={{ width: 120 }} value={f.snmp_version}
+          onChange={e => setForm({ ...f, snmp_version: e.target.value })}>
           <option value="1">v1</option>
           <option value="2c">v2c</option>
           <option value="3">v3</option>
         </select>
       </FieldRow>
       <FieldRow label="Community string">
-        <input className="input-base" value={data.snmp_community} style={{ maxWidth: 220 }}
-          onChange={e => onChange({ ...data, snmp_community: e.target.value })} />
+        <input className="input-base" value={f.snmp_community} style={{ maxWidth: 220 }}
+          onChange={e => setForm({ ...f, snmp_community: e.target.value })} />
       </FieldRow>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <SaveButton onSave={save} saved={saved} />
+        <SaveButton onSave={() => saveMut.mutate()} saved={saveMut.isSuccess} />
       </div>
     </div>
   );
@@ -577,8 +600,8 @@ export default function Settings() {
       </div>
 
       <div>
-        {tab === 0 && <GeneralTab       data={cfg.general}       onChange={update('general')} />}
-        {tab === 1 && <PollingTab       data={cfg.polling}       onChange={update('polling')} />}
+        {tab === 0 && <GeneralTab />}
+        {tab === 1 && <PollingTab />}
         {tab === 2 && <ThresholdsTab    data={cfg.thresholds}    onChange={update('thresholds')} />}
         {tab === 3 && <NotificationsTab data={cfg.notifications} onChange={update('notifications')} />}
         {tab === 4 && <BackupTab        data={cfg.backup}        onChange={update('backup')} />}

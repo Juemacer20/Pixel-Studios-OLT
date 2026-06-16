@@ -647,3 +647,12 @@ model VsolConfigBackup {
 
   @@map("vsol_config_backups")
 }
+
+// Key-value store for application-level settings (General + Polling tabs).
+model SystemConfig {
+  key        String   @id
+  value      String
+  updated_at DateTime @updatedAt
+
+  @@map("system_configs")
+}
