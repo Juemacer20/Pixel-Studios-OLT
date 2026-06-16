@@ -57,8 +57,8 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
-| Claude Code | main | Análisis gap SmartOLT completo (2026-06-16) → ver §5.4. Correcciones: CC-3 ✅ CC-5 ✅ bugs dashboard ✅ | ✅ análisis completo, tareas en §5.4 | 2026-06-16 |
-| OpenCode | main | OC-1 ✅ OC-2 ✅ OC-3 ✅ OC-4 ✅ OC-5 ✅ — ver §5.4 para nuevas tareas | pendiente §5.4 | 2026-06-16 |
+| Claude Code | feat/cc-dashboard-autoactions | CC-6 ✅ CC-7 ✅ CC-8 ✅ CC-9 ✅ — OC-6/OC-7 pueden avanzar | ✅ todos los CC-6..CC-9 completados | 2026-06-16 |
+| OpenCode | main | OC-1 ✅ OC-2 ✅ OC-3 ✅ OC-4 ✅ OC-5 ✅ OC-8 ✅ OC-9 ✅ OC-10 ✅ — OC-6/OC-7 esperan CC-6 (ya mergeado, puede continuar) | ✅ completado (pendiente OC-6/OC-7) | 2026-06-16 |
 
 ---
 
