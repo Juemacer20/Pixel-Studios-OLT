@@ -251,12 +251,13 @@ async function updateExternalId(id, externalId, userId, ip = null) {
 
 async function updateLocationDetails(id, body, userId, ip = null) {
   const data = {};
-  for (const k of ['zone', 'odb', 'description', 'contact', 'latitude', 'longitude']) {
+  for (const k of ['zone', 'odb', 'odb_port', 'description', 'contact', 'latitude', 'longitude']) {
     if (body[k] !== undefined) data[k] = body[k];
   }
   if (body.name !== undefined) data.description = body.name;
   if (data.latitude != null) data.latitude = parseFloat(data.latitude);
   if (data.longitude != null) data.longitude = parseFloat(data.longitude);
+  if (data.odb_port != null) data.odb_port = parseInt(data.odb_port);
   const ont = await prisma.oNT.update({ where: { id }, data });
   await prisma.auditLog.create({
     data: { user_id: userId, action: 'ONT_UPDATE_LOCATION', action_type: 'ONT_ACTION', target: id, target_type: 'ONT', details: data, ip_address: ip ?? null },
@@ -290,7 +291,7 @@ async function authorizeONT(data, userId, ip = null) {
     olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
     vlan: data.svlanId ? parseInt(data.svlanId) : null,
     board: loc.board, port: loc.port, onu_id: loc.onu_id,
-    zone: data.zone || null, odb: data.odb || null, last_seen: new Date(),
+    zone: data.zone || null, odb: data.odb || null, odb_port: data.odbPort != null ? parseInt(data.odbPort) : null, last_seen: new Date(),
     ...(data.externalId != null ? { external_id: data.externalId } : {}),
     ...(data.configMethod ? { configuration_method: data.configMethod } : {}),
     ...(data.iptvEnabled != null ? { has_iptv: Boolean(data.iptvEnabled) } : {}),

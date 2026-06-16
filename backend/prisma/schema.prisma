@@ -150,6 +150,7 @@ model ONT {
   contact              String?
   zone                 String?
   odb                  String?
+  odb_port             Int?
   enriched_at          DateTime?
   last_down_cause      String?
   line_profile         String?
