@@ -223,23 +223,23 @@ async function authorizeONT(data, userId) {
 
   const loc = result.location || {};
   // Upsert ONT (an unconfigured stub may already exist for this serial).
+  const authFields = {
+    olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
+    vlan: data.svlanId ? parseInt(data.svlanId) : null,
+    board: loc.board, port: loc.port, onu_id: loc.onu_id,
+    zone: data.zone || null, odb: data.odb || null, last_seen: new Date(),
+    ...(data.externalId != null ? { external_id: data.externalId } : {}),
+    ...(data.configMethod ? { configuration_method: data.configMethod } : {}),
+    ...(data.iptvEnabled != null ? { has_iptv: Boolean(data.iptvEnabled) } : {}),
+    ...(data.iptvVlan ? { iptv_vlan: parseInt(data.iptvVlan) } : {}),
+    ...(data.catvEnabled != null ? { has_catv: Boolean(data.catvEnabled) } : {}),
+    ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
+    ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
+  };
   const ont = await prisma.oNT.upsert({
     where: { serial_number: data.serialNumber },
-    update: {
-      olt_id: data.oltId, description: data.name, model: data.onuTypeId, status: 'ONLINE',
-      vlan: data.svlanId, board: loc.board, port: loc.port, onu_id: loc.onu_id,
-      zone: data.zone, odb: data.odb, last_seen: new Date(),
-      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
-      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
-    },
-    create: {
-      olt_id: data.oltId, serial_number: data.serialNumber, description: data.name,
-      model: data.onuTypeId, status: 'ONLINE', vlan: data.svlanId,
-      board: loc.board, port: loc.port, onu_id: loc.onu_id, zone: data.zone, odb: data.odb,
-      last_seen: new Date(),
-      ...(data.lat ? { latitude: parseFloat(data.lat) } : {}),
-      ...(data.lng ? { longitude: parseFloat(data.lng) } : {}),
-    },
+    update: authFields,
+    create: { serial_number: data.serialNumber, ...authFields },
   });
 
   if (data.name || data.address || data.contact) {
