@@ -189,6 +189,7 @@ router.get('/export-data', async (req, res, next) => {
       include: {
         olt:          { select: { name: true } },
         speedProfile: { select: { name: true } },
+        client:       { select: { name: true, address: true, phone: true } },
       },
       orderBy: { serial_number: 'asc' },
       take: 5000,

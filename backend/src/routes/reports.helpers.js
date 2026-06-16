@@ -6,6 +6,11 @@ const EXPORT_FIELDS = [
   { key: 'model',            label: 'Model',            category: 'Identity' },
   { key: 'contact',          label: 'Contact',          category: 'Identity' },
   { key: 'external_id',      label: 'External ID',      category: 'Identity' },
+  { key: 'authorized_by',    label: 'Authorized By',    category: 'Identity' },
+  // Client
+  { key: 'client_name',      label: 'Client Name',      category: 'Client' },
+  { key: 'client_address',   label: 'Client Address',   category: 'Client' },
+  { key: 'client_phone',     label: 'Client Phone',     category: 'Client' },
   // OLT / PON location
   { key: 'olt_name',         label: 'OLT',              category: 'OLT / PON' },
   { key: 'board',            label: 'Board',            category: 'OLT / PON' },
@@ -16,6 +21,7 @@ const EXPORT_FIELDS = [
   // Geographic / logical location
   { key: 'zone',             label: 'Zone',             category: 'Location' },
   { key: 'odb',              label: 'ODB',              category: 'Location' },
+  { key: 'odb_port',         label: 'ODB Port',         category: 'Location' },
   { key: 'latitude',         label: 'Latitude',         category: 'Location' },
   { key: 'longitude',        label: 'Longitude',        category: 'Location' },
   // Status / timeline
@@ -35,6 +41,9 @@ const EXPORT_FIELDS = [
   { key: 'bias_current',     label: 'Bias Current (mA)',category: 'Signal' },
   // Network / WAN
   { key: 'ip_address',       label: 'IP Address',       category: 'Network' },
+  { key: 'svlan',            label: 'SVLAN',            category: 'Network' },
+  { key: 'cvlan',            label: 'CVLAN',            category: 'Network' },
+  { key: 'tag_transform',    label: 'Tag Transform',    category: 'Network' },
   { key: 'vlan',             label: 'VLAN',             category: 'Network' },
   { key: 'wan_mode',         label: 'WAN Mode',         category: 'Network' },
   { key: 'wan_ip_source',    label: 'WAN IP Source',    category: 'Network' },
@@ -80,6 +89,14 @@ function resolveValue(ont, key) {
   switch (key) {
     case 'olt_name':          return ont.olt?.name ?? null;
     case 'speed_profile_name': return ont.speed_profile?.name ?? null;
+    case 'client_name':       return ont.client?.name ?? null;
+    case 'client_address':    return ont.client?.address ?? null;
+    case 'client_phone':      return ont.client?.phone ?? null;
+    case 'svlan':             return ont.vlan ?? null;
+    case 'cvlan':             return ont.wan_vlan ?? null;
+    case 'tag_transform':     return ont.tag_transform ?? null;
+    case 'authorized_by':     return ont._authorizedBy ?? null;
+    case 'odb_port':          return ont.odb_port ?? null;
     default: return ont[key] ?? null;
   }
 }
