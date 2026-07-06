@@ -3,15 +3,15 @@ import { useQuery } from '@tanstack/react-query';
 import api, { oltAPI } from '../../services/api';
 
 function signalColor(val) {
-  if (val == null) return 'text-gray-500';
-  if (val > -25) return 'text-green-400';
-  if (val > -27) return 'text-yellow-400';
-  return 'text-red-400';
+  if (val == null) return 'var(--text-muted)';
+  if (val > -25) return 'var(--green)';
+  if (val > -27) return 'var(--orange)';
+  return 'var(--red)';
 }
 
 function fmtDbm(val) {
-  if (val == null) return <span className="text-gray-600">—</span>;
-  return <span className={`font-mono ${signalColor(val)}`}>{val.toFixed(2)}</span>;
+  if (val == null) return <span style={{ color: 'var(--text-muted)' }}>—</span>;
+  return <span style={{ fontFamily: 'monospace', color: signalColor(val) }}>{val.toFixed(2)}</span>;
 }
 
 function relTime(date) {
@@ -60,85 +60,94 @@ export default function Diagnostics() {
 
   const onts = useMemo(() => Array.isArray(data) ? data : [], [data]);
 
+  const selectStyle = {
+    background: '#1a2035', border: '1px solid var(--border)', color: 'var(--text-primary)',
+    borderRadius: 4, padding: '6px 12px', fontSize: 13,
+  };
+  const cellStyle = { padding: '6px 12px' };
+  const monoCell = { ...cellStyle, fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: 11 };
+
   return (
-    <div className="p-4 min-h-screen">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <select
-          value={status} onChange={e => setStatus(e.target.value)}
-          className="bg-[#1a2035] border border-[#2a3a5c] text-gray-200 rounded px-3 py-1.5 text-sm"
-        >
+    <div style={{ padding: 16, minHeight: '100vh' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+        <select value={status} onChange={e => setStatus(e.target.value)} style={selectStyle}>
           <option value="">All status</option>
           <option value="online">Online</option>
           <option value="offline">Offline / LOS</option>
         </select>
 
-        <select
-          value={oltId} onChange={e => setOltId(e.target.value)}
-          className="bg-[#1a2035] border border-[#2a3a5c] text-gray-200 rounded px-3 py-1.5 text-sm"
-        >
+        <select value={oltId} onChange={e => setOltId(e.target.value)} style={selectStyle}>
           <option value="">All OLTs</option>
           {olts.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
         </select>
 
-        <button onClick={() => refetch()}
-          className="bg-[#1a2035] border border-[#2a3a5c] text-gray-300 hover:text-white px-3 py-1.5 rounded text-sm">
+        <button onClick={() => refetch()} style={{ ...selectStyle, cursor: 'pointer' }}>
           ↻ Refresh
         </button>
 
-        <button onClick={() => exportCSV(onts)}
-          className="bg-[#0e3a5c] border border-[#00D4FF44] text-[#00D4FF] hover:bg-[#0e4a7c] px-3 py-1.5 rounded text-sm ml-auto">
+        <button onClick={() => exportCSV(onts)} style={{
+          background: '#0e3a5c', border: '1px solid rgba(0,212,255,0.27)', color: 'var(--cyan)',
+          borderRadius: 4, padding: '6px 12px', fontSize: 13, cursor: 'pointer', marginLeft: 'auto',
+        }}>
           ↓ Export CSV
         </button>
 
-        <span className="text-gray-400 text-sm">{onts.length} ONTs</span>
+        <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>{onts.length} ONTs</span>
       </div>
 
-      {/* Table */}
       {isLoading ? (
-        <div className="text-gray-400 text-center py-16">Cargando diagnósticos…</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '64px 0' }}>Cargando diagnósticos…</div>
       ) : onts.length === 0 ? (
-        <div className="text-gray-500 text-center py-16">Sin datos de señal todavía</div>
+        <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '64px 0' }}>Sin datos de señal todavía</div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-[#1e3a5c]">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-[#0d1b35] text-gray-400 uppercase text-xs">
+        <div style={{ overflowX: 'auto', borderRadius: 8, border: '1px solid var(--border)' }}>
+          <table style={{ width: '100%', fontSize: 13, textAlign: 'left' }}>
+            <thead style={{ background: '#0d1b35', color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: 11 }}>
               <tr>
-                <th className="px-3 py-2">Estado</th>
-                <th className="px-3 py-2">Rx OLT (dBm)</th>
-                <th className="px-3 py-2">Rx ONU (dBm)</th>
-                <th className="px-3 py-2">Dist (m)</th>
-                <th className="px-3 py-2">Nombre / Interfaz</th>
-                <th className="px-3 py-2">SN</th>
-                <th className="px-3 py-2">Zona</th>
-                <th className="px-3 py-2">ODB</th>
-                <th className="px-3 py-2">OLT</th>
-                <th className="px-3 py-2">Último cambio</th>
+                <th style={{ padding: '8px 12px' }}>Estado</th>
+                <th style={{ padding: '8px 12px' }}>Rx OLT (dBm)</th>
+                <th style={{ padding: '8px 12px' }}>Rx ONU (dBm)</th>
+                <th style={{ padding: '8px 12px' }}>Dist (m)</th>
+                <th style={{ padding: '8px 12px' }}>ONU</th>
+                <th style={{ padding: '8px 12px' }}>Cliente</th>
+                <th style={{ padding: '8px 12px' }}>SN</th>
+                <th style={{ padding: '8px 12px' }}>Zona</th>
+                <th style={{ padding: '8px 12px' }}>ODB</th>
+                <th style={{ padding: '8px 12px' }}>OLT</th>
+                <th style={{ padding: '8px 12px' }}>Último cambio</th>
               </tr>
             </thead>
             <tbody>
               {onts.map((ont, i) => (
-                <tr key={ont.id}
-                  className={`border-t border-[#1e3a5c] ${i % 2 === 0 ? 'bg-[#0d1b2e]' : 'bg-[#0a1626]'} hover:bg-[#1a2a4a]`}>
-                  <td className="px-3 py-1.5">
-                    <span className={`inline-block w-2 h-2 rounded-full mr-1.5 ${ont.status === 'ONLINE' ? 'bg-green-400' : 'bg-red-500'}`} />
-                    <span className={ont.status === 'ONLINE' ? 'text-green-400' : 'text-red-400'}>
+                <tr key={ont.id} style={{
+                  borderTop: '1px solid var(--border)',
+                  background: i % 2 === 0 ? '#0d1b2e' : '#0a1626',
+                }}>
+                  <td style={cellStyle}>
+                    <span style={{
+                      display: 'inline-block', width: 8, height: 8, borderRadius: '50%',
+                      marginRight: 6, background: ont.status === 'ONLINE' ? 'var(--green)' : 'var(--red)',
+                    }} />
+                    <span style={{ color: ont.status === 'ONLINE' ? 'var(--green)' : 'var(--red)' }}>
                       {ont.status}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5">{fmtDbm(ont.olt_rx_power)}</td>
-                  <td className="px-3 py-1.5">{fmtDbm(ont.rx_power)}</td>
-                  <td className="px-3 py-1.5 font-mono text-gray-400">
-                    {ont.distance != null ? ont.distance : <span className="text-gray-600">—</span>}
+                  <td style={cellStyle}>{fmtDbm(ont.olt_rx_power)}</td>
+                  <td style={cellStyle}>{fmtDbm(ont.rx_power)}</td>
+                  <td style={{ ...monoCell, color: 'var(--text-muted)' }}>
+                    {ont.distance != null ? ont.distance : <span style={{ color: 'var(--text-muted)' }}>—</span>}
                   </td>
-                  <td className="px-3 py-1.5 max-w-xs truncate text-gray-200">
-                    {ont.description || <span className="text-gray-600 italic">sin nombre</span>}
+                  <td style={{ ...cellStyle, maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-secondary)', fontFamily: 'monospace', fontSize: 11 }}>
+                    {ont.description?.startsWith('gpon') ? ont.description : `${ont.board ?? '?'}/${ont.port ?? '?'}/${ont.onu_id ?? ont.onuId ?? '?'}`}
                   </td>
-                  <td className="px-3 py-1.5 font-mono text-gray-400 text-xs">{ont.serial_number}</td>
-                  <td className="px-3 py-1.5 text-gray-400 text-xs">{ont.zone || '—'}</td>
-                  <td className="px-3 py-1.5 text-gray-400 text-xs">{ont.odb || '—'}</td>
-                  <td className="px-3 py-1.5 text-gray-400">{ont.olt?.name}</td>
-                  <td className="px-3 py-1.5 text-gray-500 text-xs">{relTime(ont.last_seen)}</td>
+                  <td style={{ ...cellStyle, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text-primary)' }}>
+                    {ont.description && !ont.description?.startsWith('gpon') ? ont.description : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>sin nombre</span>}
+                  </td>
+                  <td style={monoCell}>{ont.serial_number}</td>
+                  <td style={{ ...cellStyle, color: 'var(--text-muted)', fontSize: 11 }}>{ont.zone || '—'}</td>
+                  <td style={{ ...cellStyle, color: 'var(--text-muted)', fontSize: 11 }}>{ont.odb || '—'}</td>
+                  <td style={{ ...cellStyle, color: 'var(--text-muted)' }}>{ont.olt?.name}</td>
+                  <td style={{ ...cellStyle, color: 'var(--text-muted)', fontSize: 11 }}>{relTime(ont.last_seen)}</td>
                 </tr>
               ))}
             </tbody>

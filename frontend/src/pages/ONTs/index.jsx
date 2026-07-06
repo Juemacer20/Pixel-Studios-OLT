@@ -10,7 +10,7 @@ import {
   IconArrowsExchange, IconSettings, IconKey, IconMapPin, IconLock,
   IconServer, IconCopy, IconGitFork, IconTags, IconVectorTriangle,
   IconFileCode, IconIdBadge, IconCircleCheck, IconAlertTriangle,
-  IconX, IconReload, IconPower,
+  IconX, IconReload, IconPower, IconEyeOff,
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI, reportsAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
@@ -763,6 +763,8 @@ export default function ONTs() {
   const [filterLastStatusChange, setFilterLastStatusChange] = useState('');
   const [filterShouldRebuild, setFilterShouldRebuild] = useState('');
   const [filterResyncFailed, setFilterResyncFailed] = useState('');
+  const [filterDuplicate, setFilterDuplicate] = useState(false);
+  const [filterMissingFromOlt, setFilterMissingFromOlt] = useState(false);
   const [batchForm, setBatchForm] = useState({});
 
   useEffect(() => {
@@ -793,6 +795,8 @@ export default function ONTs() {
       if (filterWanMode)       params.wan_mode      = filterWanMode;
       if (filterConfigMethod)  params.config_method = filterConfigMethod;
       if (filterResyncFailed === 'failed') params.resync_failed = 'failed';
+      if (filterDuplicate)                  params.duplicate = '1';
+      if (filterMissingFromOlt)             params.missing_from_olt = '1';
       if (filterSignal)        params.signal        = filterSignal;
       // Status: map internal 'ztp' key → PENDING for backend
       if (filterStatus === 'ztp')      params.status = 'PENDING';
@@ -1019,6 +1023,8 @@ export default function ONTs() {
     setFilterDownloadSpeed(''); setFilterUploadSpeed(''); setFilterLastStatusChange('');
     setFilterShouldRebuild('');
     setFilterResyncFailed('');
+    setFilterDuplicate(false);
+    setFilterMissingFromOlt(false);
     setPage(1);
   };
 
@@ -1211,6 +1217,24 @@ export default function ONTs() {
               <li className={`status-filter ${filterResyncFailed === 'failed' ? 'active' : ''}`} value="failed"
                 onClick={() => { setFilterResyncFailed(filterResyncFailed === 'failed' ? '' : 'failed'); setPage(1); }}>
                 <span><IconAlertTriangle size={14} className="text-warning" /></span>
+              </li>
+            </ul>
+          </div>
+          <div className="form-group pon-type-filter margin-right" title="Offline duplicate ONUs">
+            <label className="control-label">Dup </label>
+            <ul className="pagination">
+              <li className={`status-filter ${filterDuplicate ? 'active' : ''}`}
+                onClick={() => { setFilterDuplicate(v => !v); setPage(1); }}>
+                <span><IconCopy size={14} className={filterDuplicate ? 'text-warning' : ''} /></span>
+              </li>
+            </ul>
+          </div>
+          <div className="form-group pon-type-filter margin-right" title="Missing from OLT">
+            <label className="control-label">Miss </label>
+            <ul className="pagination">
+              <li className={`status-filter ${filterMissingFromOlt ? 'active' : ''}`}
+                onClick={() => { setFilterMissingFromOlt(v => !v); setPage(1); }}>
+                <span><IconEyeOff size={14} className={filterMissingFromOlt ? 'text-warning' : ''} /></span>
               </li>
             </ul>
           </div>

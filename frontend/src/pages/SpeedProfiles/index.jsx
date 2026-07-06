@@ -8,10 +8,18 @@ import {
 
 /* ─── Mock data ─────────────────────────────────────────────────────────── */
 
+const TYPE_OPTIONS = [
+  { value: 'INTERNET', label: 'Internet' },
+  { value: 'IPTV',     label: 'IPTV'     },
+  { value: 'MGMT',     label: 'Management' },
+  { value: 'ANY',      label: 'Any'      },
+];
+
 const BURST_OPTIONS = [
-  { value: 1, label: '1× (sin burst)' },
-  { value: 2, label: '2× burst'       },
-  { value: 4, label: '4× burst'       },
+  { value: 0, label: 'Sin burst' },
+  { value: 1, label: '1× burst'  },
+  { value: 2, label: '2× burst'  },
+  { value: 4, label: '4× burst'  },
 ];
 
 /* ─── SpeedBar ───────────────────────────────────────────────────────────── */
@@ -30,10 +38,12 @@ function SpeedBar({ value, max, color }) {
 /* ─── Profile Modal ──────────────────────────────────────────────────────── */
 function ProfileModal({ profile, onClose, onSave }) {
   const [form, setForm] = useState({
-    name:     profile?.name     || '',
-    download: profile?.download || 10,
-    upload:   profile?.upload   || 5,
-    burst:    profile?.burst    || 2,
+    name:         profile?.name          || '',
+    download_mbps: profile?.download_mbps || profile?.download || 10,
+    upload_mbps:   profile?.upload_mbps   || profile?.upload   || 5,
+    burst_down:   profile?.burst_down    || profile?.burst     || 2,
+    type:         profile?.type          || 'INTERNET',
+    isDefault:    profile?.isDefault     || false,
   });
   const [saving, setSaving] = useState(false);
 
@@ -50,7 +60,7 @@ function ProfileModal({ profile, onClose, onSave }) {
     }
   };
 
-  const valid = form.name.trim() && form.download > 0 && form.upload > 0;
+  const valid = form.name.trim() && form.download_mbps > 0 && form.upload_mbps > 0;
 
   return (
     <>
@@ -97,8 +107,8 @@ function ProfileModal({ profile, onClose, onSave }) {
                 type="number"
                 min="1"
                 max="10000"
-                value={form.download}
-                onChange={e => set('download', +e.target.value)}
+                value={form.download_mbps}
+                onChange={e => set('download_mbps', +e.target.value)}
               />
             </div>
             <div>
@@ -110,9 +120,34 @@ function ProfileModal({ profile, onClose, onSave }) {
                 type="number"
                 min="1"
                 max="10000"
-                value={form.upload}
-                onChange={e => set('upload', +e.target.value)}
+                value={form.upload_mbps}
+                onChange={e => set('upload_mbps', +e.target.value)}
               />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                For
+              </label>
+              <select className="select-base" style={{ width: '100%' }} value={form.type} onChange={e => set('type', e.target.value)}>
+                {TYPE_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                Default
+              </label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, height: 36 }}>
+                <input type="checkbox" id="isDefault" checked={form.isDefault}
+                  onChange={e => set('isDefault', e.target.checked)} />
+                <label htmlFor="isDefault" style={{ fontSize: 12, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  {form.isDefault ? 'Default profile' : 'Set as default'}
+                </label>
+              </div>
             </div>
           </div>
 
@@ -120,7 +155,7 @@ function ProfileModal({ profile, onClose, onSave }) {
             <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
               Multiplicador Burst
             </label>
-            <select className="select-base" style={{ width: '100%' }} value={form.burst} onChange={e => set('burst', +e.target.value)}>
+            <select className="select-base" style={{ width: '100%' }} value={form.burst_down} onChange={e => set('burst_down', +e.target.value)}>
               {BURST_OPTIONS.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
@@ -139,19 +174,19 @@ function ProfileModal({ profile, onClose, onSave }) {
               <div>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 2 }}>↓ Descarga</div>
                 <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--green)' }}>
-                  {form.download} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
+                  {form.download_mbps} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 2 }}>↑ Subida</div>
                 <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--cyan)' }}>
-                  {form.upload} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
+                  {form.upload_mbps} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
                 </div>
               </div>
               <div>
                 <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 2 }}>Burst pico</div>
                 <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'monospace', color: 'var(--orange)' }}>
-                  {form.download * form.burst} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
+                  {form.download_mbps * form.burst_down} <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Mbps</span>
                 </div>
               </div>
             </div>
@@ -192,7 +227,7 @@ export default function SpeedProfiles() {
   });
 
   const profiles = data || [];
-  const maxSpeed = profiles.reduce((m, p) => Math.max(m, p.download || 0), 1);
+  const maxSpeed = profiles.reduce((m, p) => Math.max(m, p.download_mbps || p.download || 0), 1);
 
   /* ── Mutations ── */
   const createMut = useMutation({
@@ -311,10 +346,10 @@ export default function SpeedProfiles() {
                     </div>
                   </td>
                   <td>
-                    <SpeedBar value={p.download} max={maxSpeed} color="var(--green)" />
+                    <SpeedBar value={p.download_mbps || p.download} max={maxSpeed} color="var(--green)" />
                   </td>
                   <td>
-                    <SpeedBar value={p.upload} max={maxSpeed} color="var(--cyan)" />
+                    <SpeedBar value={p.upload_mbps || p.upload} max={maxSpeed} color="var(--cyan)" />
                   </td>
                   <td>
                     <span className="badge" style={{ fontSize: 10, background: 'rgba(43,127,212,0.12)', color: 'var(--accent)', border: '1px solid rgba(43,127,212,0.3)' }}>
@@ -326,12 +361,12 @@ export default function SpeedProfiles() {
                   </td>
                   <td>
                     <span className="badge" style={{
-                      background: p.burst > 2 ? 'rgba(188,140,255,0.12)' : 'rgba(210,153,34,0.12)',
-                      color: p.burst > 2 ? 'var(--purple)' : 'var(--orange)',
-                      border: `1px solid ${p.burst > 2 ? 'rgba(188,140,255,0.3)' : 'rgba(210,153,34,0.3)'}`,
+                      background: (p.burst_down || p.burst) > 2 ? 'rgba(188,140,255,0.12)' : 'rgba(210,153,34,0.12)',
+                      color: (p.burst_down || p.burst) > 2 ? 'var(--purple)' : 'var(--orange)',
+                      border: `1px solid ${(p.burst_down || p.burst) > 2 ? 'rgba(188,140,255,0.3)' : 'rgba(210,153,34,0.3)'}`,
                       fontSize: 11,
                     }}>
-                      {p.burst}×
+                      {p.burst_down || p.burst}×
                     </span>
                   </td>
                   <td>

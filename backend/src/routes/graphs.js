@@ -297,21 +297,23 @@ router.get('/traffic/:ontId', async (req, res, next) => {
 
     if (!ont) return res.status(404).json({ error: 'ONT not found' });
 
-    // Derive traffic from OLT port-level data
+    // Return OLT aggregate traffic (uplink interfaces).
+    // Per-ONU traffic data is not available from SNMP — only OLT-level uplink data is collected.
     const oltTraffic = await prisma.oltTrafficHistory.findMany({
-      where: {
-        olt_id: ont.olt_id,
-        timestamp: { gte: since },
-      },
+      where: { olt_id: ont.olt_id, is_uplink: true, timestamp: { gte: since } },
       orderBy: { timestamp: 'asc' },
       take: 5000,
     });
 
-    const history = oltTraffic.map(t => ({
-      timestamp: t.timestamp,
-      rx_mbps: t.rx_mbps ? t.rx_mbps / (ont.onu_id || 1) : null,
-      tx_mbps: t.tx_mbps ? t.tx_mbps / (ont.onu_id || 1) : null,
-    }));
+    // Aggregate all uplink interfaces by timestamp for total OLT throughput
+    const byTs = {};
+    for (const t of oltTraffic) {
+      const key = t.timestamp.getTime();
+      if (!byTs[key]) byTs[key] = { timestamp: t.timestamp, rx_mbps: 0, tx_mbps: 0 };
+      byTs[key].rx_mbps += t.rx_mbps || 0;
+      byTs[key].tx_mbps += t.tx_mbps || 0;
+    }
+    const history = Object.values(byTs).sort((a, b) => a.timestamp - b.timestamp);
 
     res.json({ data: { ontId, history } });
   } catch (err) { next(err); }

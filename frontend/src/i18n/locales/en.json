@@ -167,6 +167,10 @@
     "start": "Start",
     "stop": "Stop",
     "delete": "Delete",
+    "voipService": "VoIP service",
+    "updateIptv": "Update IPTV",
+    "eponChannel": "EPON channel",
+    "webUserPass": "Web user/pass",
     "general": {
       "onuType": "ONU type",
       "serial": "Serial",

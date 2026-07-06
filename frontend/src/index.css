@@ -813,18 +813,18 @@ html, body {
 
 #batch-actions-container { margin-top: 12px; }
 
-.modal { display: none; }
-
 /* ─── Bootstrap 3 grid (partial, for ONU view) ─────────────────────────── */
 .container-fluid { margin-right: auto; margin-left: auto; padding-left: 0; padding-right: 0; }
 .row { margin-left: -15px; margin-right: -15px; }
-.col-xs-12, .col-xs-6, .col-sm-6, .col-sm-12 { position: relative; min-height: 1px; padding-left: 15px; padding-right: 15px; }
+.col-xs-12, .col-xs-6, .col-sm-4, .col-sm-6, .col-sm-12 { position: relative; min-height: 1px; padding-left: 15px; padding-right: 15px; }
 .col-xs-12, .col-xs-6 { float: left; }
 .col-xs-12 { width: 100%; }
 .col-xs-6  { width: 50%; }
 @media (min-width: 768px) {
+  .col-sm-4  { float: left; width: 33.333%; }
   .col-sm-6  { float: left; width: 50%; }
   .col-sm-12 { float: left; width: 100%; }
+  .col-sm-offset-4 { margin-left: 33.333%; }
 }
 
 /* ─── DL horizontal ───────────────────────────────────────────────────── */
@@ -880,7 +880,9 @@ html, body {
 
 /* ─── Modals (Bootstrap 3) ─────────────────────────────────────────────── */
 .modal-backdrop { position: fixed; inset: 0; z-index: 490; background: rgba(0,0,0,0.6); }
+.modal { display: none; }
 .modal.show { display: block; }
+.onu-ui-modal { position: relative; z-index: 500; }
 .onu-ui-modal .modal-dialog { width: 500px; max-width: 95vw; margin: 60px auto; }
 .onu-ui-modal .modal-content {
   background: var(--card-bg); border: 1px solid var(--border-light);

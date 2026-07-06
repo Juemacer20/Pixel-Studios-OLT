@@ -74,7 +74,7 @@ export default function OnuTypes() {
               <th>PON type</th><th style={{ textAlign: 'center' }}>Channels</th><th>ONU type</th>
               <th style={{ textAlign: 'center' }}>Eth ports</th><th style={{ textAlign: 'center' }}>WiFi</th>
               <th style={{ textAlign: 'center' }}>VoIP</th><th style={{ textAlign: 'center' }}>CATV</th>
-              <th style={{ textAlign: 'center' }}>Capability</th><th style={{ textAlign: 'center', width: 90 }}>Action</th>
+              <th style={{ textAlign: 'center' }}>Custom</th><th style={{ textAlign: 'center' }}>Capability</th><th style={{ textAlign: 'center', width: 90 }}>Action</th>
             </tr></thead>
             <tbody>
               {filtered.map((t) => (
@@ -86,6 +86,7 @@ export default function OnuTypes() {
                   <td style={{ textAlign: 'center' }}><YesNo v={t.wifiBands} /></td>
                   <td style={{ textAlign: 'center' }}>{t.voipPorts ?? 0}</td>
                   <td style={{ textAlign: 'center' }}><YesNo v={t.hasCATV} /></td>
+                  <td style={{ textAlign: 'center' }}><YesNo v={t.allowCustomProfiles} /></td>
                   <td style={{ textAlign: 'center' }}><span className="badge">{t.capability || 'HGU'}</span></td>
                   <td style={{ textAlign: 'center' }}>
                     <button className="btn-icon" style={{ padding: 4 }} onClick={() => setEditing(t)}><IconEdit size={12} /></button>

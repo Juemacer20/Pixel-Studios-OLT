@@ -42,6 +42,25 @@ async function getAllONTs(filters = {}) {
   if (filters.resync_failed === 'failed')     where.last_down_cause = { not: null };
   if (filters.tr069 === 'enabled')            where.tr069_enabled = true;
   if (filters.tr069 === 'disabled')           where.tr069_enabled = { not: true };
+  if (filters.missing_from_olt === '1')       where.last_seen = null;
+
+  // ── Duplicate filter ──────────────────────────────────────────────────────
+  let duplicateIds = null;
+  if (filters.duplicate === '1') {
+    const duplicates = await prisma.$queryRaw`
+      SELECT a.id FROM "ONTs" a
+      WHERE EXISTS (
+        SELECT 1 FROM "ONTs" b
+        WHERE b.serial_number = a.serial_number
+          AND b.status = 'ONLINE'
+          AND b.id != a.id
+      )
+      ORDER BY a.serial_number
+    `;
+    duplicateIds = duplicates.map(r => r.id);
+    if (duplicateIds.length === 0) duplicateIds = ['__none__'];
+    where.id = { in: duplicateIds };
+  }
 
   // ── Signal quality filter ─────────────────────────────────────────────────
   if (filters.signal === 'critical')          where.rx_power = { lt: -27 };
@@ -120,8 +139,12 @@ async function getONTSignal(id) {
     await adapter.connect();
     const signal = await adapter.getONTSignal(ont.serial_number);
     await adapter.disconnect();
-    if (signal.rx_power !== null || signal.tx_power !== null) {
-      await prisma.oNT.update({ where: { id }, data: { rx_power: signal.rx_power, tx_power: signal.tx_power, last_seen: new Date() } });
+    const updateData = {};
+    if (signal.rx_power !== null) updateData.rx_power = signal.rx_power;
+    if (signal.tx_power !== null) updateData.tx_power = signal.tx_power;
+    if (Object.keys(updateData).length > 0) {
+      updateData.last_seen = new Date();
+      await prisma.oNT.update({ where: { id }, data: updateData });
     }
     return { id, serial_number: ont.serial_number, ...signal };
   } catch (err) {

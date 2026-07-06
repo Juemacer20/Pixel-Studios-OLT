@@ -23,6 +23,9 @@ export default function AuthorizeONU() {
     onuTypeId: '', svlanId: '', cvlanId: '', tagTransform: 'translate',
     downloadSpeed: '', uploadSpeed: '',
     zone: '', odb: '', name: '', address: '', contact: '', lat: '', lng: '', mode: 'Bridge',
+    externalId: '', configMethod: 'OMCI',
+    voipEnabled: false, iptvEnabled: false, iptvVlan: '', catvEnabled: false,
+    useCustomProfile: false, customProfileId: '', useGps: true,
   });
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -31,6 +34,14 @@ export default function AuthorizeONU() {
   const { data: profiles } = useQuery({ queryKey: ['speed-profiles'], queryFn: () => speedProfileAPI.list().then(arr) });
   const { data: zones } = useQuery({ queryKey: ['zones'], queryFn: () => zoneAPI.list().then(arr) });
   const { data: odbs } = useQuery({ queryKey: ['odbs'], queryFn: () => odbAPI.list().then(arr) });
+  const { data: oltVlans } = useQuery({
+    queryKey: ['olt-vlans', form.oltId],
+    queryFn: () => oltAPI.config(form.oltId, 'vlan').then(r => {
+      const raw = r?.data?.data ?? r?.data ?? [];
+      return Array.isArray(raw) ? raw : [];
+    }),
+    enabled: !!form.oltId,
+  });
 
   const authorizeMut = useMutation({
     mutationFn: () => ontAPI.authorize(form),
@@ -90,6 +101,18 @@ export default function AuthorizeONU() {
         </>)}
 
         {step === 1 && (<>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-secondary)', cursor: 'pointer', marginBottom: 4 }}>
+            <input type="checkbox" checked={form.useCustomProfile} onChange={(e) => set('useCustomProfile', e.target.checked)} />
+            <span>Use custom profile</span>
+          </label>
+          {form.useCustomProfile && (
+            <Field label="Custom template">
+              <select className="input-base" value={form.customProfileId} onChange={(e) => set('customProfileId', e.target.value)}>
+                <option value="">Select template…</option>
+                {(profiles || []).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </Field>
+          )}
           <Field label="ONU type">
             <select className="input-base" value={form.onuTypeId} onChange={(e) => set('onuTypeId', e.target.value)}>
               <option value="">Select type…</option>
@@ -97,7 +120,16 @@ export default function AuthorizeONU() {
             </select>
           </Field>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="S-VLAN"><input className="input-base" type="number" value={form.svlanId} onChange={(e) => set('svlanId', e.target.value === '' ? '' : Number(e.target.value))} /></Field>
+            <Field label="S-VLAN">
+              <select className="input-base" value={form.svlanId} onChange={(e) => set('svlanId', e.target.value === '' ? '' : Number(e.target.value))}>
+                <option value="">Select VLAN…</option>
+                {(oltVlans || []).map((v) => (
+                  <option key={v.vlanId ?? v.id ?? v} value={v.vlanId ?? v.id ?? v}>
+                    {v.vlanId ?? v.id ?? v}{v.name ? ` — ${v.name}` : ''}
+                  </option>
+                ))}
+              </select>
+            </Field>
             <Field label="C-VLAN / User VLAN"><input className="input-base" type="number" value={form.cvlanId} onChange={(e) => set('cvlanId', e.target.value === '' ? '' : Number(e.target.value))} /></Field>
           </div>
           <Field label="Tag-transform">
@@ -108,6 +140,14 @@ export default function AuthorizeONU() {
           <Field label="Mode">
             <select className="input-base" value={form.mode} onChange={(e) => set('mode', e.target.value)}>
               <option>Bridge</option><option>Router</option>
+            </select>
+          </Field>
+          <Field label="External ID">
+            <input className="input-base" value={form.externalId} onChange={(e) => set('externalId', e.target.value)} placeholder="Optional external identifier" />
+          </Field>
+          <Field label="Config method">
+            <select className="input-base" value={form.configMethod} onChange={(e) => set('configMethod', e.target.value)}>
+              <option>OMCI</option><option>TR069</option>
             </select>
           </Field>
         </>)}
@@ -145,10 +185,16 @@ export default function AuthorizeONU() {
           </div>
           <Field label="Address"><input className="input-base" value={form.address} onChange={(e) => set('address', e.target.value)} /></Field>
           <Field label="Contact"><input className="input-base" value={form.contact} onChange={(e) => set('contact', e.target.value)} /></Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <Field label="Latitude"><input className="input-base" type="number" value={form.lat} onChange={(e) => set('lat', e.target.value)} /></Field>
-            <Field label="Longitude"><input className="input-base" type="number" value={form.lng} onChange={(e) => set('lng', e.target.value)} /></Field>
-          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+            <input type="checkbox" checked={form.useGps} onChange={(e) => set('useGps', e.target.checked)} />
+            <span>Use GPS</span>
+          </label>
+          {form.useGps && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <Field label="Latitude"><input className="input-base" type="number" value={form.lat} onChange={(e) => set('lat', e.target.value)} /></Field>
+              <Field label="Longitude"><input className="input-base" type="number" value={form.lng} onChange={(e) => set('lng', e.target.value)} /></Field>
+            </div>
+          )}
         </>)}
 
         {step === 4 && (
@@ -161,12 +207,32 @@ export default function AuthorizeONU() {
               'S-VLAN': form.svlanId, 'C-VLAN': form.cvlanId, 'Tag-transform': form.tagTransform, Mode: form.mode,
               'Download (Kbps)': form.downloadSpeed, 'Upload (Kbps)': form.uploadSpeed,
               Name: form.name, Zone: form.zone, ODB: form.odb, Address: form.address, Contact: form.contact,
+              'External ID': form.externalId, 'Config method': form.configMethod,
             }).map(([k, v]) => (
               <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid rgba(120,160,200,.07)' }}>
                 <span style={{ color: 'var(--text-muted)' }}>{k}</span>
                 <span style={{ color: 'var(--text-primary)' }}>{v || '—'}</span>
               </div>
             ))}
+
+            <h3 style={{ marginTop: 16 }}>Services</h3>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.voipEnabled} onChange={(e) => set('voipEnabled', e.target.checked)} />
+              <span>VoIP enable</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.iptvEnabled} onChange={(e) => set('iptvEnabled', e.target.checked)} />
+              <span>IPTV enable</span>
+            </label>
+            {form.iptvEnabled && (
+              <Field label="IPTV VLAN">
+                <input className="input-base" type="number" value={form.iptvVlan} onChange={(e) => set('iptvVlan', e.target.value === '' ? '' : Number(e.target.value))} />
+              </Field>
+            )}
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, marginBottom: 8, cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.catvEnabled} onChange={(e) => set('catvEnabled', e.target.checked)} />
+              <span>CATV enable</span>
+            </label>
           </div>
         )}
       </div>

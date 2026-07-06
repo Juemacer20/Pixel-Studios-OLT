@@ -138,4 +138,13 @@ router.get('/:id/audit-log', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// TR-069 device info
+router.get('/:id/tr069-stat', async (req, res, next) => {
+  try {
+    const device = await prisma.tR069Device.findUnique({ where: { ont_id: req.params.id } });
+    if (!device) return res.json({ data: { supported: false } });
+    res.json({ data: device });
+  } catch (err) { next(err); }
+});
+
 module.exports = router;

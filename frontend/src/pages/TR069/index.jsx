@@ -43,12 +43,17 @@ function VpnAndProfiles() {
 
   return (
     <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-      <Section title="VPN tunnels" items={Array.isArray(tunnels) ? tunnels : []} cols={['Name', 'Subnet', 'Status']}
-        onAdd={() => setModal('vpn')} render={(t) => (
+      <Section title="VPN tunnels" items={Array.isArray(tunnels) ? tunnels : []} cols={['Name', 'Subnet', 'Connected subnets', 'Status']}
+        onAdd={() => setModal('vpn')} render={(t) => {
+          let connected = t.connected || '—';
+          try { const p = JSON.parse(connected); if (Array.isArray(p)) connected = p.join(', '); } catch {}
+          return (
           <tr key={t.id}><td>{t.name}</td><td className="mono" style={{ fontSize: 11 }}>{t.subnet || '—'}</td>
+            <td className="mono" style={{ fontSize: 11 }}>{connected}</td>
             <td><span className="badge badge-green">{t.status}</span></td>
             <td><button className="btn-icon" onClick={() => vpnDel.mutate(t.id)}><IconTrash size={13} /></button></td></tr>
-        )} />
+          );
+        }} />
       <Section title="TR-069 profiles" items={Array.isArray(profiles) ? profiles : []} cols={['Name', 'ACS URL', 'Status']}
         onAdd={() => setModal('profile')} render={(p) => (
           <tr key={p.id}><td>{p.name}</td><td className="mono" style={{ fontSize: 11 }}>{p.acsUrl || '—'}</td>

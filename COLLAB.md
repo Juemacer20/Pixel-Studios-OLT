@@ -58,7 +58,7 @@ Cada IA en su propia rama; integración por PR / merge coordinado:
 | IA | Rama | Archivos/área en curso | Estado | Fecha |
 |---|---|---|---|---|
 | Claude Code | feat/cc-dashboard-autoactions | ✅ CC-10 (odb_port schema+migration) ✅ CC-11 (ip_address en auditLog) ✅ CC-12 (authorized_by en drawer) ✅ CC-13 (export fields). **CC-14 y CC-15 → transferidos a OpenCode (ver §5.5).** | 🟢 BATCH 3 hecho (CC-14/15 a OC) | 2026-06-16 |
-| OpenCode | main | BATCH 3 OC-11..OC-18 completados (OC-14 blocked). Pendiente: CC-14 + CC-15 transferidos. | 🟡 pendiente CC-14/15 | 2026-06-16 |
+| OpenCode | main | ✅ OC-14 completado. ✅ CC-14 (TR069 Stat) backend+frontend hecho. ✅ CC-15 (batch filters) backend+frontend hecho. BATCH 3 completo. | 🟢 BATCH 3 terminado | 2026-06-16 |
 
 ---
 
@@ -274,8 +274,8 @@ Si usás `description` para extraer coordenadas o posiciones → es un bug garan
 | ~~CC-11~~ | ~~🟠 ALTO~~ | ~~**IP address en auditLog**~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~CC-12~~ | ~~🟠 ALTO~~ | ~~**"Authorized by" en ONT drawer**~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~CC-13~~ | ~~🟠 ALTO~~ | ~~**Export fields faltantes**~~ | ~~✅~~ | ~~2026-06-16~~ |
-| CC-14 → OC | 🟡 MEDIO | **TR069 Stat modal — TRANSFERIDO A OPENCODE** — Backend: crear `GET /onts/:id/tr069-stat` que retorna el `TR069Device` vinculado al ONT (query `prisma.tR069Device.findUnique({ where: { ont_id: id } })`). Si no existe → `{ supported: false }`. Agregar ruta en `backend/src/routes/onts.js`. Frontend (`frontend/src/pages/ONUView/index.jsx`): agregar botón "TR069 Stat" en la barra de acciones → modal con los campos del TR069Device (ip, sw_version, hw_version, last_inform, connection_request_url, parameters JSON). | `backend/src/routes/onts.js`, `frontend/src/pages/ONUView/index.jsx` | TR069Device ya existe en schema y DB. Datos accesibles via `prisma.tR069Device`. |
-| CC-15 → OC | 🟡 MEDIO | **Batch "Offline duplicate + Missing from OLT" — TRANSFERIDO A OPENCODE** — Backend: agregar parámetros a `getAllONTs()` en `ontService.js`: `duplicate=1` (filtra ONTs donde otro ONT con mismo SN tiene status=ONLINE) y `missing_from_olt=1` (filtra ONTs donde `last_seen` es null o anterior al último scan). Frontend (`frontend/src/pages/ONTs/index.jsx`): agregar dos checkboxes especiales en la barra de filtros. El endpoint ya acepta todos los filtros via query params. | `backend/src/services/ontService.js`, `frontend/src/pages/ONTs/index.jsx` | Para `missing_from_olt`, usar `last_seen IS NULL` como proxy. El campo ya existe en el schema. |
+| ~~CC-14 → OC~~ | ~~🟡 MEDIO~~ | ~~**TR069 Stat modal** — Backend: `GET /onts/:id/tr069-stat` creado en `routes/onts.js`. Frontend: `TR069StatModal` en OnuModals.jsx, botón en acciónes bar de ONUView, `ontAPI.tr069Stat()` en api.js. Muestra IP, SW/HW version, last_inform, parameters.~~ | ~~✅~~ | ~~2026-06-16~~ |
+| ~~CC-15 → OC~~ | ~~🟡 MEDIO~~ | ~~**Batch "Offline duplicate + Missing from OLT"** — Backend: `duplicate=1` (raw SQL subquery) y `missing_from_olt=1` (last_seen IS NULL) en `ontService.js`. Frontend: toggle buttons "Dup" y "Miss" en ONTs filter bar con IconCopy/IconEyeOff.~~ | ~~✅~~ | ~~2026-06-16~~ |
 
 ### 🔴 Para OPENCODE (frontend — sin tocar backend salvo lo acordado)
 
@@ -284,7 +284,7 @@ Si usás `description` para extraer coordenadas o posiciones → es un bug garan
 | ~~OC-11~~ | ~~🟠 ALTO~~ | ~~**SVLAN names en wizard** — Se cambió select de SVLAN-ID en AuthorizeONU para mostrar `{vlan.id} — {vlan.name}`. Se obtienen VLANs desde `oltAPI.config(oltId, 'vlan')`; si no hay name field disponible, muestra solo número.~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~OC-12~~ | ~~🟠 ALTO~~ | ~~**ODB coordinates en tabla + form** — Se agregó columna "Coordinates" a la tabla ODBs mostrando `lat, lng`. Schema NapBox ya tiene `latitude`/`longitude` Float?.~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~OC-13~~ | ~~🟡 MEDIO~~ | ~~**Allow custom profiles en ONU Types** — Se agregó columna "Custom" con componente `YesNo` para campo `allowCustomProfiles`.~~ | ~~✅~~ | ~~2026-06-16~~ |
-| OC-14 | 🟡 MEDIO | **Speed profiles: For/Default/ONUs count** — BLOQUEADO — necesita campos nuevos en schema.prisma (prisma schema changes). Esperar a que Claude agregue los campos. | `frontend/src/pages/SpeedProfiles/index.jsx` | ⛔️ Bloq. schema |
+| ~~OC-14~~ | ~~🟡 MEDIO~~ | ~~**Speed profiles: For/Default/ONUs count** — Se agregaron campos Type (For), Default y ONUs count. Schema ya tenía `type`, `isDefault`, `ont_count`. Se agregaron select "For", checkbox "Default" al form y se corrigieron field names al backend.~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~OC-15~~ | ~~🟡 MEDIO~~ | ~~**applyPresetModal: campo ONU name** — Ya existía el input "Client Name" en AuthorizeModal (`nameRef`) con placeholder "e.g. Juan Garcia". Se persiste como `ont.description`.~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~OC-16~~ | ~~🟡 MEDIO~~ | ~~**Wizard: "Use custom profile" y "Use GPS"** — Se agregaron checkboxes "Use custom profile" (toggle select de templates desde speedProfileAPI) y "Use GPS" (toggle lat/lng inputs) en AuthorizeONU.~~ | ~~✅~~ | ~~2026-06-16~~ |
 | ~~OC-17~~ | ~~🟡 MEDIO~~ | ~~**ONU ID range override en GPONChannelModal** — Se agregó radio group (Auto/Custom) con input condicional para ONU ID. Si backend no soporta `onuId`, el campo se muestra pero no se envía.~~ | ~~✅~~ | ~~2026-06-16~~ |
@@ -302,7 +302,16 @@ Si usás `description` para extraer coordenadas o posiciones → es un bug garan
 
 ---
 
-### 7.4 Checklist rápido antes de commitear
+### 7.4 Bugfixes aplicados 2026-06-16
+
+| Bug | Causa | Fix |
+|---|---|---|
+| Modales (VoIP/IPTV/EPON/WebPass) no muestran contenido | `.modal-backdrop` z-index:490 cubría `.onu-ui-modal` (sin z-index). Faltaban `.col-sm-4` y `.col-sm-offset-4` en CSS Bootstrap grid partial. | `index.css`: `.onu-ui-modal { position: relative; z-index: 500; }`, `.col-sm-4 { width: 33.333%; }`, `.col-sm-offset-4 { margin-left: 33.333%; }` |
+| Gráfico de consumo en ONT no muestra datos | Backend dividía tráfico OLT total por `onu_id` (índice numérico 0-127, no cantidad de ONUs). `olt_traffic_history` solo tiene interfaces uplink, no PON ports por ONU. | `graphs.js`: retorna tráfico agregado de uplinks (suma de rx_mbps/tx_mbps por timestamp). Muestra throughput total del OLT. |
+
+---
+
+### 7.5 Checklist rápido antes de commitear
 
 Antes de marcar una tarea como ✅ y commitear, pasá este checklist:
 

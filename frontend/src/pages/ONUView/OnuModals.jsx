@@ -1,8 +1,12 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { ontAPI, graphsAPI } from '../../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  Chart, LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip as ChartTooltip
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, ChartTooltip);
 
 function ModalBackdrop({ onClose }) {
   return <div className="modal-backdrop" onClick={onClose} />;
@@ -710,12 +714,21 @@ export function ReallocateIdModal({ open, ontId, onClose }) {
 /* ─── GPON Channel ─────────────────────────────── */
 export function GPONChannelModal({ open, ontId, onClose }) {
   const [profile, setProfile] = useState('');
+  const [onuIdOverride, setOnuIdOverride] = useState('auto');
+  const [customOnuId, setCustomOnuId] = useState('');
   const [busy, setBusy] = useState(false);
   if (!open) return null;
   const save = async () => {
     if (!profile) { toast.error('Select a profile'); return; }
     setBusy(true);
-    try { await ontAPI.gponChannel(ontId, { lineProfileId: parseInt(profile) }); toast.success('GPON channel updated'); onClose(); }
+    try {
+      const payload = { lineProfileId: parseInt(profile) };
+      if (onuIdOverride === 'custom' && customOnuId) {
+        payload.onuId = parseInt(customOnuId);
+      }
+      await ontAPI.gponChannel(ontId, payload);
+      toast.success('GPON channel updated'); onClose();
+    }
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
@@ -726,6 +739,23 @@ export function GPONChannelModal({ open, ontId, onClose }) {
         <label className="control-label col-sm-4">Line profile ID</label>
         <div className="col-sm-6">
           <input className="form-control" type="number" min={1} value={profile} onChange={e => setProfile(e.target.value)} placeholder="Profile ID" />
+        </div>
+      </div>
+      <div className="form-group">
+        <label className="control-label col-sm-4">ONU ID override</label>
+        <div className="col-sm-6" style={{ paddingTop: 6 }}>
+          <label style={{ marginRight: 14, fontSize: 12, cursor: 'pointer' }}>
+            <input type="radio" name="onuIdOverride" value="auto" checked={onuIdOverride === 'auto'}
+              onChange={() => setOnuIdOverride('auto')} style={{ marginRight: 4 }} /> Auto
+          </label>
+          <label style={{ fontSize: 12, cursor: 'pointer' }}>
+            <input type="radio" name="onuIdOverride" value="custom" checked={onuIdOverride === 'custom'}
+              onChange={() => setOnuIdOverride('custom')} style={{ marginRight: 4 }} /> Custom
+          </label>
+          {onuIdOverride === 'custom' && (
+            <input className="form-control" type="number" min={1} style={{ width: 100, marginTop: 6, display: 'inline-block' }}
+              value={customOnuId} onChange={e => setCustomOnuId(e.target.value)} placeholder="ID" />
+          )}
         </div>
       </div>
     </ModalFrame>
@@ -1053,8 +1083,18 @@ export function HistoryModal({ open, ontId, ontName, onClose }) {
 }
 
 /* ─── Live Signal Modal ──────────────────────────── */
+function rxColor(v) {
+  if (v == null) return 'var(--text-muted)';
+  return v >= -20 ? '#34C759' : v >= -24 ? '#5AC8FA' : v >= -27 ? '#FF9500' : '#FF3B30';
+}
+
+function fmtSec(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+}
+
 export function LiveSignalModal({ open, ontId, onClose }) {
-  const [live, setLive] = useState({ rx: '—', tx: '—', oltRx: '—', dist: '—', updated: null });
+  const [live, setLive] = useState({ rx: null, tx: null, oltRx: null, dist: null, updated: null });
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const histFetched = useRef(false);
@@ -1065,7 +1105,7 @@ export function LiveSignalModal({ open, ontId, onClose }) {
     histFetched.current = false;
 
     ontAPI.signalHistory(ontId, '1h').then(r => {
-      const h = (r.data?.data?.history || r.data?.history || r.data?.data || r.data || []);
+      const h = r.data?.data?.history || r.data?.history || r.data?.data || r.data || [];
       const arr = Array.isArray(h) ? h : [];
       setHistory(arr.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })));
       setLoading(false);
@@ -1090,48 +1130,192 @@ export function LiveSignalModal({ open, ontId, onClose }) {
     return () => clearInterval(iv);
   }, [open, ontId]);
 
-  const formatTime = (ts) => {
-    const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-  };
-
   if (!open) return null;
 
   return (
-    <ModalFrame title={<span><span style={{ color: '#1fb325', animation: 'pulse-green 1.5s infinite' }}>●</span> LIVE! — Signal monitoring</span>}
-      onClose={onClose}
-      footer={<SaveFooter onClose={onClose} onSave={null} saveLabel="Close" />}>
-      <div style={{ fontSize: 13, lineHeight: 1.8, marginBottom: 12, display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-        <span><strong>RX:</strong> {live.rx != null ? `${live.rx} dBm` : '—'}</span>
-        <span><strong>TX:</strong> {live.tx != null ? `${live.tx} dBm` : '—'}</span>
-        <span><strong>OLT Rx:</strong> {live.oltRx != null ? `${live.oltRx} dBm` : '—'}</span>
-        <span><strong>Distance:</strong> {live.dist != null ? `${live.dist} m` : '—'}</span>
-        {live.updated && <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>Updated {formatTime(live.updated)}</span>}
-      </div>
-      {loading ? (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading signal history...</p>
-      ) : history.length > 1 ? (
-        <div style={{ width: '100%', height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={history} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-              <XAxis dataKey="t" tickFormatter={formatTime} stroke="var(--text-muted)" fontSize={10} />
-              <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-                labelFormatter={formatTime}
-              />
-              <Line type="monotone" dataKey="rx" stroke="#5cb85c" name="RX" dot={false} strokeWidth={1.5} />
-              <Line type="monotone" dataKey="tx" stroke="#f0ad4e" name="TX" dot={false} strokeWidth={1.5} />
-            </LineChart>
-          </ResponsiveContainer>
+    <>
+      <ModalBackdrop onClose={onClose} />
+      <div className="modal show onu-ui-modal" style={{ display: 'block' }}>
+        <div className="modal-dialog">
+          <div className="modal-content" style={{ border: 0, boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+            <div className="modal-header" style={{ padding: '10px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border)' }}>
+              <span style={{ fontSize: 14, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#34C759', boxShadow: '0 0 6px #34C759' }} />
+                Live signal
+              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {live.updated && (
+                  <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    {fmtSec(live.updated)}
+                  </span>
+                )}
+                <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: 0 }}>&times;</button>
+              </div>
+            </div>
+            <div className="modal-body" style={{ padding: 14 }}>
+              {/* Current values */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+                <div style={{ background: 'rgba(52,199,89,0.08)', borderRadius: 6, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 2 }}>1490nm — Rx</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ fontSize: 28, fontWeight: 700, fontFamily: 'monospace', color: rxColor(live.rx) }}>
+                      {live.rx != null ? live.rx : '—'}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>dBm</span>
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(0,122,255,0.08)', borderRadius: 6, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-secondary)', marginBottom: 2 }}>1310nm — Tx</div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
+                    <span style={{ fontSize: 28, fontWeight: 700, fontFamily: 'monospace', color: 'var(--accent)' }}>
+                      {live.tx != null ? live.tx : '—'}
+                    </span>
+                    <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>dBm</span>
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'block' }}>OLT Rx</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace' }}>
+                    {live.oltRx != null ? `${live.oltRx} dBm` : '—'}
+                  </span>
+                </div>
+                <div>
+                  <span style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'block' }}>Distance</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, fontFamily: 'monospace' }}>
+                    {live.dist != null ? `${live.dist} m` : '—'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Chart */}
+              {loading ? (
+                <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--text-muted)' }}>Loading history…</div>
+              ) : history.length > 1 ? (
+                <div style={{ width: '100%', height: 140, backgroundColor: 'rgba(2,6,23,0.34)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 0, position: 'relative' }}>
+                  <Line
+                    data={{
+                      labels: history.map(p => fmtHHmm(p.t)),
+                      datasets: [
+                        { label: '1490nm (Rx)', data: history.map(p => p.rx), borderColor: '#34C759', backgroundColor: '#34C759', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+                        { label: '1310nm (Tx)', data: history.map(p => p.tx), borderColor: '#4285F4', backgroundColor: '#4285F4', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+                      ],
+                    }}
+                    options={{
+                      responsive: true, maintainAspectRatio: false,
+                      plugins: { legend: { display: false }, tooltip: { enabled: true, mode: 'index', intersect: false, backgroundColor: '#1a2332', borderColor: 'rgba(255,255,255,0.12)', borderWidth: 1, titleColor: '#98989D', titleFont: { size: 10 }, bodyFont: { size: 11 }, padding: 6, callbacks: { title: items => items[0] ? fmtHHmm(items[0].label) : '', label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y != null ? Number(ctx.parsed.y).toFixed(2) : '—'}` } } },
+                      interaction: { mode: 'nearest', axis: 'x', intersect: false },
+                      scales: { x: { grid: { display: false }, ticks: { color: '#98989D', font: { size: 9 }, maxTicksLimit: 6, maxRotation: 0 } }, y: { grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#98989D', font: { size: 9 }, maxTicksLimit: 4 } } },
+                    }}
+                  />
+                </div>
+              ) : (
+                <div style={{ height: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: 'var(--text-muted)' }}>Collecting data…</div>
+              )}
+
+              {/* Legend + refresh */}
+              <SmartOltLegend items={[
+                { color: '#34C759', label: '1490nm (Rx)', current: live.rx != null ? `${live.rx} dBm` : null },
+                { color: '#4285F4', label: '1310nm (Tx)', current: live.tx != null ? `${live.tx} dBm` : null },
+              ]} />
+            </div>
+          </div>
         </div>
-      ) : (
-        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Collecting signal data…</p>
-      )}
-      <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>Auto-refreshes every 2s</p>
-    </ModalFrame>
+      </div>
+    </>
   );
+}
+
+/* ─── Chart.js helpers ───────────────────────────── */
+function fmtHHmm(ts) {
+  const d = new Date(ts);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function fmtDDMM(ts) {
+  const d = new Date(ts);
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+const chartDefaults = (ctx) => {
+  const isNight = !document.documentElement.getAttribute('data-theme') ||
+    document.documentElement.getAttribute('data-theme') !== 'light';
+  return {
+    gridColor: isNight ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+    textColor: isNight ? '#98989D' : '#999',
+    bgColor: isNight ? 'rgba(2,6,23,0.34)' : '#f5f5f5',
+    borderColor: isNight ? 'rgba(255,255,255,0.08)' : '#cfd6da',
+  };
+};
+
+/* ─── SmartOLT Legend (React) ───────────────────── */
+function SmartOltLegend({ items }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: 4 }}>
+      <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
+        {items.map((item, i) => (
+          <li key={i} style={{ marginBottom: 3, fontSize: 11, color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ display: 'inline-block', width: 12, height: 12, backgroundColor: item.color, borderRadius: 1, flexShrink: 0 }} />
+            <span style={{ opacity: 0.9 }}>{item.label}</span>
+            {item.current != null && <span style={{ opacity: 0.6 }}>Current: {item.current}</span>}
+            {item.max != null && <span style={{ opacity: 0.6 }}>Max: {item.max}</span>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/* ─── Shared Chart.js config builder ────────────── */
+function buildChartData(labels, datasets) {
+  return { labels, datasets };
+}
+
+function buildChartOpts({ unit, beginAtZero = false, height }) {
+  const c = chartDefaults();
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        enabled: true,
+        mode: 'index',
+        intersect: false,
+        position: 'nearest',
+        backgroundColor: '#1a2332',
+        titleColor: '#98989D',
+        titleFont: { size: 10, family: "'SFMono-Regular', Consolas, monospace" },
+        bodyFont: { size: 11, family: "'SFMono-Regular', Consolas, monospace" },
+        borderColor: 'rgba(255,255,255,0.12)',
+        borderWidth: 1,
+        padding: { top: 6, bottom: 6, left: 10, right: 10 },
+        callbacks: {
+          title: items => items[0] ? fmtHHmm(items[0].parsed._x || items[0].label) : '',
+          label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y != null ? Number(ctx.parsed.y).toFixed(2) : '—'}`,
+        },
+      },
+    },
+    interaction: { mode: 'nearest', axis: 'x', intersect: false },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: {
+          color: c.textColor,
+          font: { size: 9 },
+          maxTicksLimit: 6,
+          maxRotation: 0,
+        },
+      },
+      y: {
+        beginAtZero,
+        grid: { color: c.gridColor },
+        ticks: {
+          color: c.textColor,
+          font: { size: 9 },
+          maxTicksLimit: 5,
+        },
+      },
+    },
+  };
 }
 
 /* ─── More Graphs Modal ──────────────────────────── */
@@ -1140,77 +1324,29 @@ export function MoreGraphsModal({ open, ontId, onClose }) {
   if (!open) return null;
 
   return (
-    <ModalFrame title="Signal & Traffic graphs" onClose={onClose}
+    <ModalFrame title="Signal & Traffic" onClose={onClose}
       footer={<SaveFooter onClose={onClose} onSave={null} saveLabel="Close" />}>
       <div style={{ marginBottom: 12, display: 'flex', gap: 6, alignItems: 'center' }}>
-        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Range:</span>
+        <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Range:</span>
         {['1h', '24h', '7d', '30d'].map(r => (
           <button key={r}
             className={`btn btn-sm ${range === r ? 'btn-primary' : 'btn-default'}`}
-            style={{ fontSize: 11, padding: '3px 10px' }}
+            style={{ fontSize: 11, padding: '2px 10px' }}
             onClick={() => setRange(r)}>{r}</button>
         ))}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
-            <span style={{ color: '#34C759' }}>●</span> RX <span style={{ color: '#FF9500' }}>●</span> TX
-          </div>
-          <SignalChartRange ontId={ontId} range={range} height={220} />
-        </div>
-        <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
-            <span style={{ color: '#5AC8FA' }}>●</span> Down <span style={{ color: '#FF9500' }}>●</span> Up
-          </div>
-          <TrafficChart ontId={ontId} height={220} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <SignalChartRange ontId={ontId} range={range} height={160} />
+        <div style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '8px 8px 6px' }}>
+          <TrafficChart ontId={ontId} height={160} showTitle />
         </div>
       </div>
     </ModalFrame>
   );
 }
 
-/* ─── Signal Chart (inline Recharts, no iframe) ─── */
-function fmtTime(ts) {
-  const d = new Date(ts);
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
-}
-
-function fmtDate(ts) {
-  const d = new Date(ts);
-  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-}
-
-export function SignalChart({ ontId, height = 200 }) {
-  const { data, isLoading } = useQuery({
-    queryKey: ['signal-chart', ontId],
-    queryFn: () => graphsAPI.signalOnt(ontId).then(r => r.data?.data || r.data),
-    refetchInterval: 60000,
-  });
-  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading signal…</div>;
-  const history = data?.history || [];
-  const points = history.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
-  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No signal data</div>;
-  return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-          <Tooltip
-            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-            labelFormatter={fmtTime}
-          />
-          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-/* ─── Traffic Chart (inline Recharts, no iframe) ─── */
-export function TrafficChart({ ontId, height = 200 }) {
+/* ─── Traffic Chart (Chart.js, clone SmartOLT) ──── */
+export function TrafficChart({ ontId, height = 160, showTitle }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -1224,28 +1360,85 @@ export function TrafficChart({ ontId, height = 200 }) {
   if (loading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading traffic…</div>;
   const hist = Array.isArray(data) ? data : (data?.history || []);
   const points = hist.map(p => ({ t: new Date(p.timestamp || p.t).getTime(), rx: p.rx_mbps || p.rx, tx: p.tx_mbps || p.tx })).filter(p => p.rx != null || p.tx != null);
-  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No traffic data</div>;
+  if (points.length < 2) {
+    return (
+      <div style={{ height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 8 }}>
+        <span style={{ fontSize: 12 }}>Graph data is not yet available for this device.</span>
+      </div>
+    );
+  }
+  const labels = points.map(p => fmtHHmm(p.t));
+  const last = points[points.length - 1];
+  const rxMax = Math.max(...points.map(p => p.rx).filter(v => v != null));
+  const txMax = Math.max(...points.map(p => p.tx).filter(v => v != null));
+  const c = chartDefaults();
   return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" Mbps" domain={['auto', 'auto']} />
-          <Tooltip
-            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-            labelFormatter={fmtTime}
-          />
-          <Line type="monotone" dataKey="rx" stroke="#5AC8FA" name="Down" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="Up" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <>
+      {showTitle && (
+        <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+          Traffic — 24h
+        </div>
+      )}
+      <div style={{ width: '100%', height, backgroundColor: c.bgColor, border: `1px solid ${c.borderColor}`, borderRadius: 0, position: 'relative' }}>
+        <Line
+          data={buildChartData(labels, [
+            { label: 'Download', data: points.map(p => p.rx), borderColor: '#4285F4', backgroundColor: '#4285F4', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+            { label: 'Upload', data: points.map(p => p.tx), borderColor: '#F58411', backgroundColor: '#F58411', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+          ])}
+          options={buildChartOpts({ unit: 'Mbps', beginAtZero: true, height })}
+        />
+      </div>
+      <SmartOltLegend items={[
+        { color: '#4285F4', label: 'Download', current: last.rx != null ? `${Number(last.rx).toFixed(2)} Mbps` : null, max: rxMax != null ? `${Number(rxMax).toFixed(2)} Mbps` : null },
+        { color: '#F58411', label: 'Upload', current: last.tx != null ? `${Number(last.tx).toFixed(2)} Mbps` : null, max: txMax != null ? `${Number(txMax).toFixed(2)} Mbps` : null },
+      ]} />
+    </>
   );
 }
 
-/* ─── Combined graphs for MoreGraphsModal ──────── */
-export function SignalChartRange({ ontId, range, height = 220 }) {
+/* ─── Signal Chart (Chart.js, clone SmartOLT) ──── */
+export function SignalChart({ ontId, height = 160 }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['signal-chart', ontId],
+    queryFn: () => graphsAPI.signalOnt(ontId).then(r => r.data?.data || r.data),
+    refetchInterval: 60000,
+  });
+  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading signal…</div>;
+  const history = data?.history || [];
+  const points = history.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
+  if (points.length < 2) {
+    return (
+      <div style={{ height, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: 8 }}>
+        <span style={{ fontSize: 12 }}>Graph data is not yet available for this device.</span>
+      </div>
+    );
+  }
+  const labels = points.map(p => fmtHHmm(p.t));
+  const last = points[points.length - 1];
+  const rxMax = Math.max(...points.map(p => p.rx).filter(v => v != null));
+  const txMax = Math.max(...points.map(p => p.tx).filter(v => v != null));
+  const c = chartDefaults();
+  return (
+    <>
+      <div style={{ width: '100%', height, backgroundColor: c.bgColor, border: `1px solid ${c.borderColor}`, borderRadius: 0, position: 'relative' }}>
+        <Line
+          data={buildChartData(labels, [
+            { label: '1490nm (Rx)', data: points.map(p => p.rx), borderColor: '#34C759', backgroundColor: '#34C759', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+            { label: '1310nm (Tx)', data: points.map(p => p.tx), borderColor: '#F58411', backgroundColor: '#F58411', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+          ])}
+          options={buildChartOpts({ unit: 'dBm', beginAtZero: false, height })}
+        />
+      </div>
+      <SmartOltLegend items={[
+        { color: '#34C759', label: '1490nm (Rx)', current: last.rx != null ? `${Number(last.rx).toFixed(2)} dBm` : null, max: rxMax != null ? `${Number(rxMax).toFixed(2)} dBm` : null },
+        { color: '#F58411', label: '1310nm (Tx)', current: last.tx != null ? `${Number(last.tx).toFixed(2)} dBm` : null, max: txMax != null ? `${Number(txMax).toFixed(2)} dBm` : null },
+      ]} />
+    </>
+  );
+}
+
+/* ─── SignalChartRange (for MoreGraphsModal) ────── */
+export function SignalChartRange({ ontId, range, height = 160 }) {
   const { data, isLoading } = useQuery({
     queryKey: ['signal-range', ontId, range],
     queryFn: () => ontAPI.signalHistory(ontId, range).then(r => r.data?.data || r.data),
@@ -1254,24 +1447,88 @@ export function SignalChartRange({ ontId, range, height = 220 }) {
   if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>;
   const points = (Array.isArray(data) ? data : (data?.history || data?.data || [])).map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
   if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No data</div>;
-  const tickFmt = range === '30d' || range === '7d' ? fmtDate : fmtTime;
+  const isDayRange = range === '30d' || range === '7d';
+  const labels = points.map(p => isDayRange ? fmtDDMM(p.t) : fmtHHmm(p.t));
+  const last = points[points.length - 1];
+  const rxMax = Math.max(...points.map(p => p.rx).filter(v => v != null));
+  const txMax = Math.max(...points.map(p => p.tx).filter(v => v != null));
+  const c = chartDefaults();
   return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={tickFmt} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-          <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }} labelFormatter={range === '30d' || range === '7d' ? (v) => new Date(v).toLocaleString() : fmtTime} />
-          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
+    <div style={{ backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: '8px 8px 6px' }}>
+      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+        Signal — {range}
+      </div>
+      <div style={{ width: '100%', height, backgroundColor: c.bgColor, border: `1px solid ${c.borderColor}`, borderRadius: 0, position: 'relative' }}>
+        <Line
+          data={buildChartData(labels, [
+            { label: '1490nm (Rx)', data: points.map(p => p.rx), borderColor: '#34C759', backgroundColor: '#34C759', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+            { label: '1310nm (Tx)', data: points.map(p => p.tx), borderColor: '#F58411', backgroundColor: '#F58411', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+          ])}
+          options={buildChartOpts({ unit: 'dBm', beginAtZero: false, height })}
+        />
+      </div>
+      <SmartOltLegend items={[
+        { color: '#34C759', label: '1490nm (Rx)', current: last.rx != null ? `${Number(last.rx).toFixed(2)} dBm` : null, max: rxMax != null ? `${Number(rxMax).toFixed(2)} dBm` : null },
+        { color: '#F58411', label: '1310nm (Tx)', current: last.tx != null ? `${Number(last.tx).toFixed(2)} dBm` : null, max: txMax != null ? `${Number(txMax).toFixed(2)} dBm` : null },
+      ]} />
     </div>
   );
 }
 
-/* ─── TR069 Stat ────────────────────────────────── */
+/* ─── TR069 Stat Modal ──────────────────────────── */
+function StatField({ label, value }) {
+  return (
+    <div>
+      <span style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>{label}</span>
+      <span style={{ fontSize: 13, color: 'var(--text-primary)', fontFamily: 'monospace' }}>{value ?? '—'}</span>
+    </div>
+  );
+}
+
+export function TR069StatModal({ open, ontId, onClose }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ['tr069-stat', ontId],
+    queryFn: () => ontAPI.tr069Stat(ontId).then(r => r?.data?.data ?? r?.data ?? {}),
+    enabled: !!open && !!ontId,
+  });
+  if (!open) return null;
+  const device = data?.supported === false ? null : data;
+  return (
+    <ModalFrame title="TR-069 Device Info" onClose={onClose}
+      footer={<SaveFooter onClose={onClose} onSave={onClose} busy={false} saveLabel="Close" />}>
+      {isLoading ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div>
+      ) : !device ? (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)' }}>
+          <p>TR-069 not supported for this ONU</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', padding: 8 }}>
+          <StatField label="IP Address" value={device.ip_address} />
+          <StatField label="SW Version" value={device.software_version} />
+          <StatField label="HW Version" value={device.hardware_version} />
+          <StatField label="Serial" value={device.serial_number} />
+          <StatField label="Manufacturer" value={device.manufacturer} />
+          <StatField label="Product Class" value={device.product_class} />
+          <StatField label="OUI" value={device.oui} />
+          <StatField label="Last Inform" value={device.last_inform ? new Date(device.last_inform).toLocaleString() : '—'} />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <StatField label="Connection Request URL" value={device.connection_request_url} />
+          </div>
+          {device.parameters && (
+            <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Parameters</span>
+              <pre style={{ fontSize: 11, background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8, maxHeight: 200, overflow: 'auto', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                {typeof device.parameters === 'string' ? device.parameters : JSON.stringify(device.parameters, null, 2)}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </ModalFrame>
+  );
+}
+
 export async function fetchTR069Stat(ontId, setReadResult) {
   try {
     const r = await ontAPI.signal(ontId);

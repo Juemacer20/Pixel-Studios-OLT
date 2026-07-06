@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { IconReload, IconTrash, IconExternalLink } from '@tabler/icons-react';
-import { ontAPI } from '../../services/api';
+import { ontAPI, onuTypeAPI, speedProfileAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 import {
   ExtIdModal,
@@ -26,6 +26,7 @@ import {
   HistoryModal,
   LiveSignalModal,
   MoreGraphsModal,
+  TR069StatModal,
   SignalChart,
   TrafficChart,
   fetchTR069Stat,
@@ -42,6 +43,16 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
   const [typeId, setTypeId] = useState('');
   const [profileId, setProfileId] = useState('');
   const [busy, setBusy] = useState(false);
+  const { data: onuTypesData } = useQuery({
+    queryKey: ['onu-types'],
+    queryFn: () => onuTypeAPI.list().then(r => r?.data?.data ?? r?.data ?? []),
+  });
+  const { data: profilesData } = useQuery({
+    queryKey: ['speed-profiles'],
+    queryFn: () => speedProfileAPI.list().then(r => r?.data?.data ?? r?.data ?? []),
+  });
+  const ONU_TYPES = onuTypesData || [];
+  const PROFILES = profilesData || [];
   const handleSave = async () => {
     if (!typeId) return;
     setBusy(true);
@@ -49,8 +60,6 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
     catch (e) { toast.error(e?.response?.data?.error || 'Failed'); }
     finally { setBusy(false); }
   };
-  const ONU_TYPES = ['HG8245H', 'HG8240H', 'HG8010H', 'EG8145V5', 'EG8141A5', 'HS8145V', 'VSOL', 'KT-AZUL', 'F601V6.0', 'GP1704-1G', 'GP1704-4GV-22A'];
-  const PROFILES = ['Generic_1', 'Generic_2', 'Generic_3', 'Generic_4', 'Generic_5', 'Generic_6'];
   if (!open) return null;
   return (
     <>
@@ -68,7 +77,7 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
                 <div className="col-sm-6">
                   <select className="form-control" value={typeId} onChange={e => setTypeId(e.target.value)}>
                     <option value="">— Select —</option>
-                    {ONU_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                    {ONU_TYPES.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -77,7 +86,7 @@ function ChangeOnuTypeModal({ open, ontId, onClose }) {
                 <div className="col-sm-6">
                   <select className="form-control" value={profileId} onChange={e => setProfileId(e.target.value)}>
                     <option value="">None</option>
-                    {PROFILES.map(p => <option key={p} value={p}>{p}</option>)}
+                    {PROFILES.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
               </div>
@@ -650,20 +659,14 @@ export default function ONUView() {
               backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)',
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5AC8FA' }}>●</span> {t('onuView.signal.down')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.up')}
-              </div>
-              <TrafficChart ontId={id} height={200} />
+              <TrafficChart ontId={id} height={160} />
             </div>
             <div className="graph-item" style={{
               flex: '0 1 calc(50% - 8px)', minWidth: 'min(100%, 360px)', maxWidth: '100%',
               backgroundColor: 'var(--card-bg)', border: '1px solid var(--border)',
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#34C759' }}>●</span> {t('onuView.signal.rx')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.tx')}
-              </div>
-              <SignalChart ontId={id} height={200} />
+              <SignalChart ontId={id} height={160} />
             </div>
           </div>
           <a href="#" className="more" onClick={e => { e.preventDefault(); setModal({ type: 'moreGraphs' }); }}
@@ -830,6 +833,22 @@ export default function ONUView() {
           <button className="btn btn-danger btn-sm" onClick={() => runAction('Delete')}>
             <IconTrash size={13} style={{ marginRight: 3 }} /> {t('onuView.delete')}
           </button>
+          <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+          <button className="btn btn-info btn-sm" onClick={() => setModal({type:'VoIP service'})}>
+            {t('onuView.voipService')}
+          </button>
+          <button className="btn btn-info btn-sm" onClick={() => setModal({type:'Update IPTV'})}>
+            {t('onuView.updateIptv')}
+          </button>
+          <button className="btn btn-info btn-sm" onClick={() => setModal({type:'Update EPON channel'})}>
+            {t('onuView.eponChannel')}
+          </button>
+          <button className="btn btn-info btn-sm" onClick={() => setModal({type:'webPass'})}>
+            {t('onuView.webUserPass')}
+          </button>
+          <button className="btn btn-info btn-sm" onClick={() => setModal({type:'tr069Stat'})}>
+            TR069 Stat
+          </button>
         </div>
       </div>
 
@@ -943,6 +962,12 @@ export default function ONUView() {
 
       <FirmwareUpgradeModal
         open={m('firmwareUpgrade')}
+        ontId={id}
+        onClose={() => setModal(null)}
+      />
+
+      <TR069StatModal
+        open={m('tr069Stat')}
         ontId={id}
         onClose={() => setModal(null)}
       />

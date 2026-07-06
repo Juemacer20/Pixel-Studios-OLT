@@ -91,13 +91,18 @@ export default function ODBs() {
           <div className="empty-state"><IconBox size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />No ODBs found</div>
         ) : (
           <table className="table-base">
-            <thead><tr><th>Name</th><th style={{ textAlign: 'center' }}>Ports</th><th>Zone</th><th style={{ textAlign: 'center' }}>Usage</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
+            <thead><tr><th>Name</th><th style={{ textAlign: 'center' }}>Ports</th><th>Zone</th><th>Coordinates</th><th style={{ textAlign: 'center' }}>Usage</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
             <tbody>
               {filtered.slice(0, 400).map((o) => (
                 <tr key={o.id}>
                   <td><IconBox size={12} style={{ color: 'var(--text-muted)', verticalAlign: -1, marginRight: 6 }} />{o.name}</td>
                   <td style={{ textAlign: 'center' }}>{o.ports_used ?? 0}/{o.ports_total ?? '—'}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{o.zone || '—'}</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 11, color: 'var(--text-muted)' }}>
+                    {o.latitude != null && o.longitude != null
+                      ? `${o.latitude.toFixed(4)}, ${o.longitude.toFixed(4)}`
+                      : '—'}
+                  </td>
                   <td style={{ textAlign: 'center' }}>
                     <span className={`badge ${(o.usage ?? 0) >= 90 ? 'badge-red' : (o.usage ?? 0) >= 75 ? 'badge-orange' : 'badge-blue'}`}>{o.usage ?? 0}%</span>
                   </td>
