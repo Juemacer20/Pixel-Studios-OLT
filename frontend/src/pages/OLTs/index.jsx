@@ -238,13 +238,11 @@ function PortsSubTable({ oltId }) {
             </div>
           ) : (
             <table className="table-base" style={{ maxWidth: 600 }}>
-              <thead>
-                <tr>
-                  <th>Port</th>
-                  <th>Status</th>
-                  <th>ONUs</th>
-                </tr>
-              </thead>
+              <tr>
+                <th>Port</th>
+                <th>Status</th>
+                <th>ONUs</th>
+              </tr>
               <tbody>
                 {ports.map(p => (
                   <tr key={p.id}>
@@ -422,7 +420,7 @@ export default function OLTs() {
                 <th style={{ textAlign: 'center' }}>UDP</th>
                 <th>OLT hardware version</th>
                 <th>OLT SW version</th>
-                <th style={{ textAlign: 'center', width: 130 }}>Action</th>
+                <th style={{ textAlign: 'center', width: 110 }}>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -446,12 +444,12 @@ export default function OLTs() {
                   <td><span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>{olt.hw_version || olt.model || '—'}</span></td>
                   <td><span className="badge badge-blue">{olt.sw_version || '—'}</span></td>
                   <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', gap: 5 }}>
-                      <button className="sol-act teal tooltip" data-tip="Edit" onClick={() => setModalOlt(olt)}>
-                        <IconPencil size={13} />
+                    <div style={{ display: 'inline-flex', gap: 4 }}>
+                      <button className="sol-act teal tooltip" data-tip="View ONTs" onClick={() => navigate(`/onu/configured?olt=${olt.id}`)}>
+                        <IconWifi size={13} />
                       </button>
-                      <button className="sol-act amber tooltip" data-tip={disabled ? 'Enable OLT' : 'Disable OLT'} onClick={() => handleToggleDisable(olt)}>
-                        {disabled ? <IconWifi size={13} /> : <IconWifiOff size={13} />}
+                      <button className="sol-act amber tooltip" data-tip="Edit" onClick={() => setModalOlt(olt)}>
+                        <IconSettings size={13} />
                       </button>
                       <button className="sol-act red tooltip" data-tip="Delete" onClick={() => handleDelete(olt)}>
                         <IconTrash size={13} />
@@ -484,7 +482,7 @@ export default function OLTs() {
                 </div>
               ) : (
                 <table className="table-base">
-                  <thead><tr><th>ID</th><th>OLT</th><th>Missing / mismatched</th></tr></thead>
+                  <tr><th>ID</th><th>OLT</th><th>Missing / mismatched</th></tr>
                   <tbody>{mismatches.issues.map(it => (
                     <tr key={it.id}><td>{it.id}</td><td>{it.name}</td>
                       <td style={{ color: 'var(--orange)', fontSize: 12 }}>{it.miss.join(', ')}</td></tr>

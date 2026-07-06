@@ -79,7 +79,7 @@ export default function ConfigComparison() {
             <div className="empty-state" style={{ color: 'var(--green)' }}>✓ No mismatches — DB and OLT are in sync</div>
           ) : (
             <table className="table-base">
-              <thead><tr><th>Type</th><th>Serial</th><th>Field</th><th>DB value</th><th>OLT value</th></tr></thead>
+              <tr><th>Type</th><th>Serial</th><th>Field</th><th>DB value</th><th>OLT value</th></tr>
               <tbody>
                 {result.mismatches.map((m, i) => (
                   <tr key={i}>

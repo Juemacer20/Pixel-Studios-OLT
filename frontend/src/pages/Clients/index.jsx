@@ -467,16 +467,14 @@ export default function Clients() {
           </div>
         ) : (
           <table className="table-base">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Phone</th>
-                <th>ONT vinculada</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <tr>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Phone</th>
+              <th>ONT vinculada</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
             <tbody>
               {clients.map(c => (
                 <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(c)}>
@@ -518,22 +516,14 @@ export default function Clients() {
                     </span>
                   </td>
                   <td onClick={e => e.stopPropagation()}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        className="btn-icon tooltip"
-                        data-tip="Ver detalle"
-                        onClick={() => setSelected(c)}
-                      >
-                        <IconEye size={13} />
-                      </button>
-                      <button
-                        className="btn-icon tooltip"
-                        data-tip="Editar"
-                        onClick={() => handleEdit(c)}
-                      >
-                        <IconPencil size={13} />
-                      </button>
-                    </div>
+                    <button
+                      className="btn-icon tooltip"
+                      data-tip="Eliminar"
+                      onClick={() => handleDelete(c)}
+                      style={{ color: 'var(--red)' }}
+                    >
+                      <IconTrash size={13} />
+                    </button>
                   </td>
                 </tr>
               ))}

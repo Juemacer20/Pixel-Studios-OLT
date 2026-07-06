@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
@@ -209,6 +209,70 @@ function ConfirmModal({ open, title, message, onClose, onConfirm, busy, danger }
   );
 }
 
+function LiveSignalInline({ ontId }) {
+  const [live, setLive] = useState({ rx: '—', tx: '—', oltRx: '—', dist: '—' });
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
+  const [chartData, setChartData] = useState([]);
+
+  useEffect(() => {
+    const fetchLive = () => ontAPI.signal(ontId).then(r => {
+      const d = r.data?.data || r.data;
+      setLive({ rx: d.rx_power, tx: d.tx_power, oltRx: d.olt_rx_power, dist: d.distance });
+      setChartData(prev => {
+        const pt = { t: Date.now(), rx: d.rx_power, tx: d.tx_power };
+        return [...prev.slice(-120), pt];
+      });
+    }).catch(() => {});
+    fetchLive();
+    const iv = setInterval(fetchLive, 2000);
+    return () => clearInterval(iv);
+  }, [ontId]);
+
+  useEffect(() => {
+    if (!canvasRef.current || chartData.length < 2) return;
+    const Chart = window.Chart;
+    if (!Chart) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const fmt = (ts) => { const d = new Date(ts); return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`; };
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: chartData.map(p => fmt(p.t)),
+        datasets: [
+          { label: 'RX', data: chartData.map(p => p.rx), borderColor: '#5cb85c', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+          { label: 'TX', data: chartData.map(p => p.tx), borderColor: '#f0ad4e', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        animation: { duration: 0 },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { display: true, ticks: { color: 'var(--text-muted)', font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
+          y: { display: true, ticks: { color: 'var(--text-muted)', font: { size: 9 }, callback: (v) => `${v} dBm` }, grid: { color: 'rgba(120,160,200,0.12)', drawBorder: false } },
+        },
+      },
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [chartData]);
+
+  return (
+    <div style={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 4, padding: 8 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>
+        <span style={{ color: '#1fb325' }}>●</span> LIVE! — Signal monitoring (auto-refresh 2s)
+      </div>
+      <div style={{ display: 'flex', gap: 16, fontSize: 12, marginBottom: 8 }}>
+        <span><strong>RX:</strong> {live.rx != null ? `${live.rx} dBm` : '—'}</span>
+        <span><strong>TX:</strong> {live.tx != null ? `${live.tx} dBm` : '—'}</span>
+        <span><strong>OLT Rx:</strong> {live.oltRx != null ? `${live.oltRx} dBm` : '—'}</span>
+        <span><strong>Distance:</strong> {live.dist != null ? `${live.dist} m` : '—'}</span>
+      </div>
+      <div style={{ width: '100%', height: 160 }}><canvas ref={canvasRef} /></div>
+    </div>
+  );
+}
+
 export default function ONUView() {
   const { t } = useTranslation();
   const { id } = useParams();
@@ -225,6 +289,7 @@ export default function ONUView() {
   const [busy, setBusy] = useState(false);
   const [readResult, setReadResult] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [liveEnabled, setLiveEnabled] = useState(false);
 
   const runAction = (name) => {
     const actions = {
@@ -263,7 +328,7 @@ export default function ONUView() {
 
   return (
     <div className="container-fluid onu-wrapper">
-      <h2>View ONU</h2>
+      <h2>ONU — {name}</h2>
 
       <div className="col-xs-12 col-sm-6">
         <dl className="dl-horizontal">
@@ -413,15 +478,6 @@ export default function ONUView() {
       </div>
 
       <div className="col-xs-12 col-sm-6">
-        <div className="equipment">
-          <img className="img-responsive img-rounded"
-            src="/content/img/4_eth_0_voip_0_catv.png"
-            alt="ONU equipment"
-            style={{ maxHeight: 80, filter: 'grayscale(0.5)', opacity: 0.7 }}
-            onError={e => { e.target.style.display = 'none'; }}
-          />
-        </div>
-
         <dl className="dl-horizontal">
           <dt>{t('onuView.status')}</dt>
           <dd id="onu_status_wrapper">
@@ -443,50 +499,7 @@ export default function ONUView() {
             {o.distance != null ? <span className="text-muted"> · {o.distance}m</span> : null}
           </dd>
 
-          {o.temperature != null || o.voltage != null || o.bias_current != null ? (
-            <>
-              <dt>{t('onuView.health.title')}</dt>
-              <dd>
-                {o.temperature != null ? <span className="text-muted">{o.temperature}°C</span> : null}
-                {o.voltage != null ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.voltage}V</span> : null}
-                {o.bias_current != null ? <span className="text-muted" style={{ marginLeft: 8 }}>{o.bias_current} mA</span> : null}
-                {o.enriched_at ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>({new Date(o.enriched_at).toLocaleString()})</span> : null}
-              </dd>
-            </>
-          ) : null}
 
-          {o.cpu_pct != null || o.mem_pct != null ? (
-            <>
-              <dt>{t('onuView.health.cpu')} / {t('onuView.health.mem')}</dt>
-              <dd>
-                {o.cpu_pct != null ? <span className="text-muted">CPU: {o.cpu_pct}%</span> : null}
-                {o.mem_pct != null ? <span className="text-muted" style={{ marginLeft: 8 }}>MEM: {o.mem_pct}%</span> : null}
-              </dd>
-            </>
-          ) : null}
-
-          {o.last_up || o.last_down || o.online_duration ? (
-            <>
-              <dt>{t('onuView.health.uptime')}</dt>
-              <dd>
-                {o.online_duration ? <span className="text-muted">{o.online_duration}</span> : null}
-                {o.last_up ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>{t('onuView.health.lastUp', { date: new Date(o.last_up).toLocaleString() })}</span> : null}
-                {o.last_down ? <span className="text-muted" style={{ marginLeft: 8, fontSize: 11 }}>{t('onuView.health.lastDown', { date: new Date(o.last_down).toLocaleString() })}</span> : null}
-              </dd>
-            </>
-          ) : null}
-
-          {o.ports ? (
-            <>
-              <dt>{t('onuView.health.ports')}</dt>
-              <dd>
-                {o.ports.eth != null ? <span className="badge badge-blue" style={{ marginRight: 4 }}>{o.ports.eth}x ETH</span> : null}
-                {o.ports.pots != null && o.ports.pots > 0 ? <span className="badge" style={{ marginRight: 4, background: 'rgba(210,153,34,0.15)', color: '#d29922' }}>{o.ports.pots}x POTS</span> : null}
-                {o.ports.catv != null && o.ports.catv > 0 ? <span className="badge" style={{ background: 'rgba(92,184,92,0.15)', color: '#5cb85c' }}>{o.ports.catv}x CATV</span> : null}
-                {o.ports.vdsl != null && o.ports.vdsl > 0 ? <span className="badge" style={{ marginLeft: 4, background: 'rgba(71,146,230,0.15)', color: '#4792e6' }}>{o.ports.vdsl}x VDSL</span> : null}
-              </dd>
-            </>
-          ) : null}
 
           <dt>Attached VLANs</dt>
           <dd>
@@ -612,6 +625,25 @@ export default function ONUView() {
               </dd>
             </>
           ) : null}
+
+          <dt>VoIP</dt>
+          <dd>
+            <a href="#voipService" onClick={() => setModal({ type: 'VoIP service' })}>
+              {o.voip_enabled ? 'Enabled' : 'Disabled'}
+            </a>
+          </dd>
+          <dt>Web user</dt>
+          <dd>
+            <a href="#updateWebPass" onClick={() => setModal({ type: 'webPass' })}>
+              {v(o.web_user)}
+            </a>
+          </dd>
+          <dt>Web password</dt>
+          <dd>
+            <a href="#updateWebPass" onClick={() => setModal({ type: 'webPass' })}>
+              {o.web_pass ? '**********' : '—'}
+            </a>
+          </dd>
         </dl>
       </div>
 
@@ -642,7 +674,7 @@ export default function ONUView() {
         <dt style={{ marginBottom: 5 }} />
         <dd />
 
-        <dt>{t('onuView.graphs')}</dt>
+        <dt>Graphs</dt>
         <dd style={{ position: 'relative' }}>
           <div className="graphs-container" style={{ display: 'flex', gap: 10, flexWrap: 'wrap', width: '100%' }}>
             <div className="graph-item" style={{
@@ -651,7 +683,7 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#5AC8FA' }}>●</span> {t('onuView.signal.down')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.up')}
+                <span style={{ color: '#5AC8FA' }}>●</span> Down <span style={{ color: '#FF9500' }}>●</span> Up
               </div>
               <TrafficChart ontId={id} height={200} />
             </div>
@@ -661,7 +693,7 @@ export default function ONUView() {
               borderRadius: 4, padding: '8px 8px 6px',
             }}>
               <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 2, color: 'var(--text-secondary)' }}>
-                <span style={{ color: '#34C759' }}>●</span> {t('onuView.signal.rx')} <span style={{ color: '#FF9500' }}>●</span> {t('onuView.signal.tx')}
+                <span style={{ color: '#34C759' }}>●</span> Signal
               </div>
               <SignalChart ontId={id} height={200} />
             </div>
@@ -672,19 +704,34 @@ export default function ONUView() {
           </a>
         </dd>
 
+        <dt>Live Signal</dt>
+        <dd>
+          <button className="btn btn-sm" style={{
+            backgroundColor: liveEnabled ? '#1fb325' : 'transparent',
+            border: `1px solid ${liveEnabled ? '#1fb325' : 'var(--border)'}`,
+            color: liveEnabled ? '#fff' : 'var(--text-muted)',
+            fontSize: 11, padding: '4px 12px', cursor: 'pointer',
+          }} onClick={() => setLiveEnabled(s => !s)}>
+            {liveEnabled ? '● LIVE' : 'Start live monitoring'}
+          </button>
+          {liveEnabled && (
+            <div style={{ marginTop: 8 }}>
+              <LiveSignalInline ontId={id} />
+            </div>
+          )}
+        </dd>
+
         <dt>{t('onuView.speedProfiles.title')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
-            <thead>
-              <tr>
-                <th>{t('onuView.speedProfiles.servicePortId')}</th>
-                <th>{t('onuView.speedProfiles.svlan')}</th>
-                <th>{t('onuView.speedProfiles.userVlan')}</th>
-                <th>{t('onuView.speedProfiles.download')}</th>
-                <th>{t('onuView.speedProfiles.upload')}</th>
-                <th>{t('onuView.speedProfiles.action')}</th>
-              </tr>
-            </thead>
+            <tr>
+              <th>{t('onuView.speedProfiles.servicePortId')}</th>
+              <th>{t('onuView.speedProfiles.svlan')}</th>
+              <th>{t('onuView.speedProfiles.userVlan')}</th>
+              <th>{t('onuView.speedProfiles.download')}</th>
+              <th>{t('onuView.speedProfiles.upload')}</th>
+              <th>{t('onuView.speedProfiles.action')}</th>
+            </tr>
             <tbody>
               {(o.service_ports || []).length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t('onuView.speedProfiles.noPorts')}</td></tr>
@@ -696,9 +743,8 @@ export default function ONUView() {
                   <td>{sp.download || sp.download_speed}</td>
                   <td>{sp.upload || sp.upload_speed}</td>
                   <td>
-                    <a href="#updateSpeedProfiles" className="btn btn-link update-speed-profiles"
-                      onClick={() => setModal({ type: 'speedProfile' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.speedProfiles.configure')}
+                    <a href="#" className="btn btn-link" onClick={() => handleDelete(sp.id)}>
+                      <IconTrash size={13} />
                     </a>
                   </td>
                 </tr>
@@ -710,15 +756,13 @@ export default function ONUView() {
         <dt>{t('onuView.ethernetPorts')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
-            <thead>
-              <tr>
-                <th className="col-md-1">{t('onuView.ethPorts.port')}</th>
-                <th className="col-md-1">{t('onuView.ethPorts.adminState')}</th>
-                <th className="col-md-3">{t('onuView.ethPorts.mode')}</th>
-                <th className="col-md-1">{t('onuView.ethPorts.dhcp')}</th>
-                <th className="col-md-1 text-center">{t('onuView.ethPorts.action')}</th>
-              </tr>
-            </thead>
+            <tr>
+              <th className="col-md-1">{t('onuView.ethPorts.port')}</th>
+              <th className="col-md-1">{t('onuView.ethPorts.adminState')}</th>
+              <th className="col-md-3">{t('onuView.ethPorts.mode')}</th>
+              <th className="col-md-1">{t('onuView.ethPorts.dhcp')}</th>
+              <th className="col-md-1 text-center">{t('onuView.ethPorts.action')}</th>
+            </tr>
             <tbody>
               {(o.eth_ports || [{ port: 'eth_0/1' }, { port: 'eth_0/2' }, { port: 'eth_0/3' }, { port: 'eth_0/4' }]).map(ep => (
                 <tr className="valign-center" key={ep.port}>
@@ -727,9 +771,8 @@ export default function ONUView() {
                   <td>{ep.mode || 'LAN'}</td>
                   <td>{ep.dhcp || 'No control'}</td>
                   <td>
-                    <a href="#configureNetworkPort" className="btn btn-link configure-vlan"
-                      onClick={() => setModal({ type: 'ethPort' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.ethPorts.configure')}
+                    <a href="#" className="btn btn-link" onClick={() => handleDelete(ep.port)}>
+                      <IconTrash size={13} />
                     </a>
                   </td>
                 </tr>
@@ -741,16 +784,14 @@ export default function ONUView() {
         <dt>{t('onuView.wifiPorts')}</dt>
         <dd>
           <table className="table table-bordered table-striped table-condensed table-nonfluid">
-            <thead>
-              <tr>
-                <th className="col-md-1">{t('onuView.wifiPorts.port')}</th>
-                <th className="col-md-1">{t('onuView.wifiPorts.adminState')}</th>
-                <th className="col-md-2">{t('onuView.wifiPorts.mode')}</th>
-                <th className="col-md-2">{t('onuView.wifiPorts.ssid')}</th>
-                <th className="col-md-1">{t('onuView.wifiPorts.dhcp')}</th>
-                <th className="col-md-1 text-center">{t('onuView.wifiPorts.action')}</th>
-              </tr>
-            </thead>
+            <tr>
+              <th className="col-md-1">{t('onuView.wifiPorts.port')}</th>
+              <th className="col-md-1">{t('onuView.wifiPorts.adminState')}</th>
+              <th className="col-md-2">{t('onuView.wifiPorts.mode')}</th>
+              <th className="col-md-2">{t('onuView.wifiPorts.ssid')}</th>
+              <th className="col-md-1">{t('onuView.wifiPorts.dhcp')}</th>
+              <th className="col-md-1 text-center">{t('onuView.wifiPorts.action')}</th>
+            </tr>
             <tbody>
               {(o.wifi_ports || []).length === 0 ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>{t('onuView.wifiPorts.noPorts')}</td></tr>
@@ -762,9 +803,8 @@ export default function ONUView() {
                   <td>{wp.ssid || '—'}</td>
                   <td>{wp.dhcp || 'No control'}</td>
                   <td>
-                    <a href="#configureWifiPort" className="btn btn-link configure-wifi"
-                      onClick={() => setModal({ type: 'wifiPort' })}>
-                      <i className="glyphicon glyphicon-plus-sign" /> {t('onuView.wifiPorts.configure')}
+                    <a href="#" className="btn btn-link" onClick={() => handleDelete(wp.port)}>
+                      <IconTrash size={13} />
                     </a>
                   </td>
                 </tr>
@@ -775,61 +815,39 @@ export default function ONUView() {
 
       </dl>
 
-      {/* ── Quick Actions Footer ── */}
       <div className="col-xs-12" style={{ marginTop: 8, marginBottom: 16 }}>
         <div style={{
           display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center',
           padding: '10px 14px', background: 'var(--card-bg)', border: '1px solid var(--border)',
           borderRadius: 6,
         }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginRight: 6 }}>{t('onuView.actions')}</span>
-          <button className="btn btn-warning btn-sm" onClick={() => runAction('Reboot')}>
-            <IconReload size={13} style={{ marginRight: 3 }} /> {t('onuView.reboot')}
-          </button>
-          <button className="btn btn-warning btn-sm"
-            style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
-            onClick={() => runAction('Resync config')}>
-            {t('onuView.resyncConfig')}
-          </button>
-          <button className="btn btn-warning btn-sm"
-            style={{ backgroundColor: '#f0ad4e', borderColor: '#eea236', color: '#333' }}
-            onClick={() => runAction('Reset ONU')}>
-            {t('onuView.resetOnu')}
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={() => runAction('Save Config')}>
-            {t('onuView.saveConfig')}
-          </button>
+          <button className="btn btn-success margin-bottom status_buttons" onClick={async () => {
+            setRefreshing(true);
+            const results = {};
+            try { const r = await ontAPI.signal(id); results.status = r.data?.data || r.data; } catch { results.status = { error: 'Failed' }; }
+            try { const r = await ontAPI.runningConfig(id); results.config = r.data?.data || r.data; } catch { results.config = { error: 'Failed' }; }
+            try { const r = await ontAPI.swInfo(id); results.sw = r.data?.data || r.data; } catch { results.sw = { error: 'Failed' }; }
+            try { await fetchTR069Stat(id, (r) => { results.tr069 = r?.data || r; }); } catch { results.tr069 = { error: 'Failed' }; }
+            setReadResult({ title: 'ONU status', data: results });
+            setRefreshing(false);
+          }} disabled={refreshing}>{refreshing ? 'Refreshing...' : 'Get status'}</button>
           <button className="btn btn-info btn-sm" onClick={async () => {
             setRefreshing(true);
             try { const r = await ontAPI.runningConfig(id); setReadResult({ title: 'Running config', data: r.data?.data || r.data }); }
-            catch { setReadResult({ title: 'Running config', data: { error: 'Failed to fetch running config' } }); }
+            catch { setReadResult({ title: 'Running config', data: { error: 'Failed' } }); }
             setRefreshing(false);
-          }} disabled={refreshing}>
-            {t('onuView.runningConfig')}
-          </button>
+          }} disabled={refreshing}>Show running-config</button>
           <button className="btn btn-info btn-sm" onClick={async () => {
             setRefreshing(true);
             try { const r = await ontAPI.swInfo(id); setReadResult({ title: 'SW Info', data: r.data?.data || r.data }); }
-            catch { setReadResult({ title: 'SW Info', data: { error: 'Failed to fetch SW info' } }); }
+            catch { setReadResult({ title: 'SW Info', data: { error: 'Failed' } }); }
             setRefreshing(false);
-          }} disabled={refreshing}>
-            {t('onuView.swInfo')}
-          </button>
-          <button className="btn btn-success btn-sm" onClick={() => runAction('Enable ONU')}>
-            {t('onuView.enable')}
-          </button>
-          <button className="btn btn-warning btn-sm" onClick={() => runAction('Disable ONU')}>
-            {t('onuView.disable')}
-          </button>
-          <button className="btn btn-success btn-sm" onClick={() => runAction('Start ONU')}>
-            {t('onuView.start')}
-          </button>
-          <button className="btn btn-warning btn-sm" onClick={() => runAction('Stop ONU')}>
-            {t('onuView.stop')}
-          </button>
-          <button className="btn btn-danger btn-sm" onClick={() => runAction('Delete')}>
-            <IconTrash size={13} style={{ marginRight: 3 }} /> {t('onuView.delete')}
-          </button>
+          }} disabled={refreshing}>SW info</button>
+          <button className="btn btn-success btn-sm" style={{ backgroundColor: '#337ab7', borderColor: '#2e6da4' }}
+            onClick={async () => {
+              try { await fetchTR069Stat(id, (r) => setReadResult({ title: 'TR069 Stat', data: r?.data || r })); }
+              catch { setReadResult({ title: 'TR069 Stat', data: { error: 'Failed' } }); }
+            }}>TR069 Stat</button>
         </div>
       </div>
 

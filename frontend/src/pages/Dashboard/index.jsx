@@ -177,22 +177,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* ONU authorizations per day */}
-          <div className="card" style={{ padding: 0 }}>
-            <div className="sol-card-h"><span>📊 ONU authorizations per day</span></div>
-            <div style={{ padding: 14 }}>
-              <ResponsiveContainer width="100%" height={190}>
-                <BarChart data={authSeries} margin={{ top: 5, right: 8, bottom: 0, left: -22 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.08)" vertical={false} />
-                  <XAxis dataKey="d" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
-                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: '#0e2740', border: '1px solid var(--border-light)', borderRadius: 8, fontSize: 11 }} />
-                  <Bar dataKey="n" fill="rgba(43,127,212,0.78)" radius={[3, 3, 0, 0]} maxBarSize={18} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
           {/* PON outage — tabla real */}
           <div className="card" style={{ padding: 0 }}>
             <div className="sol-card-h">
@@ -217,7 +201,7 @@ export default function Dashboard() {
                 <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 8 }}>No active outages</div>
               ) : (
                 <table className="table-base">
-                  <thead><tr><th>{ponGroup}</th><th style={{ textAlign: 'center' }}>PONs</th><th style={{ textAlign: 'center' }}>Subscribers</th><th>Since</th></tr></thead>
+                  <tr><th>{ponGroup}</th><th style={{ textAlign: 'center' }}>PONs</th><th style={{ textAlign: 'center' }}>Subscribers</th><th>Since</th></tr>
                   <tbody>
                     {pon.rows.slice(0, 8).map((r, i) => (
                       <tr key={i}>
@@ -238,6 +222,22 @@ export default function Dashboard() {
           </div>
 
           <SignalDegradationTable />
+
+          {/* ONU authorizations per day */}
+          <div className="card" style={{ padding: 0 }}>
+            <div className="sol-card-h"><span>📊 ONU authorizations per day</span></div>
+            <div style={{ padding: 14 }}>
+              <ResponsiveContainer width="100%" height={190}>
+                <BarChart data={authSeries} margin={{ top: 5, right: 8, bottom: 0, left: -22 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.08)" vertical={false} />
+                  <XAxis dataKey="d" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} tickLine={false} axisLine={false} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: '#0e2740', border: '1px solid var(--border-light)', borderRadius: 8, fontSize: 11 }} />
+                  <Bar dataKey="n" fill="rgba(43,127,212,0.78)" radius={[3, 3, 0, 0]} maxBarSize={18} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
         </div>
 
         {/* right column */}

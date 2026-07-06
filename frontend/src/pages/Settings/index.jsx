@@ -27,7 +27,7 @@ function ApiKeysTab() {
       <div className="sol-card-h"><span>API keys</span>
         <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => createMut.mutate()}>Generate API Key</button></div>
       <table className="table-base">
-        <thead><tr><th>#</th><th>Name</th><th>Type</th><th>Key</th><th>Allowed IPs</th><th style={{ width: 150 }}>Actions</th></tr></thead>
+        <tr><th>#</th><th>Name</th><th>Type</th><th>Key</th><th>Allowed IPs</th><th style={{ width: 150 }}>Actions</th></tr>
         <tbody>
           {keys.length === 0 && <tr><td colSpan={6} className="empty-state">No API keys</td></tr>}
           {keys.map((k, i) => (
@@ -58,7 +58,7 @@ function BillingTab() {
     <div className="card" style={{ padding: 0 }}>
       <div className="sol-card-h"><span>Billing — subscriptions per OLT</span></div>
       <table className="table-base">
-        <thead><tr><th>OLT</th><th>Status</th><th>End date</th><th style={{ width: 120 }}>Action</th></tr></thead>
+        <tr><th>OLT</th><th>Status</th><th>End date</th><th style={{ width: 120 }}>Action</th></tr>
         <tbody>
           {subs.map((s) => (
             <tr key={s.olt_id}>
@@ -328,7 +328,7 @@ function ApiLogsTab() {
       <div className="card" style={{ padding: 0 }}>
         <div className="sol-card-h"><span>API rate limits</span></div>
         <table className="table-base">
-          <thead><tr><th>Method</th><th style={{ textAlign: 'right' }}>Max calls / hour</th><th style={{ textAlign: 'right' }}>Current</th></tr></thead>
+          <tr><th>Method</th><th style={{ textAlign: 'right' }}>Max calls / hour</th><th style={{ textAlign: 'right' }}>Current</th></tr>
           <tbody>
             {methods.length === 0 ? (
               <tr><td colSpan={3} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 12 }}>No API calls in the last hour</td></tr>

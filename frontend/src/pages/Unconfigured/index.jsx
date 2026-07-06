@@ -206,17 +206,15 @@ export default function Unconfigured() {
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={tableCls}>
-                <thead>
-                  <tr>
-                    <th style={thCls}>PON type</th>
-                    <th style={thCls}>Board</th>
-                    <th style={thCls}>Port</th>
-                    <th style={thCls}>PON Description</th>
-                    <th style={thCls}>SN</th>
-                    <th style={thCls}>Type</th>
-                    <th style={{ ...thCls, textAlign: 'center' }}>Action</th>
-                  </tr>
-                </thead>
+                <tr>
+                  <th style={thCls}>PON type</th>
+                  <th style={thCls}>Board</th>
+                  <th style={thCls}>Port</th>
+                  <th style={thCls}>PON Description</th>
+                  <th style={thCls}>SN</th>
+                  <th style={thCls}>Type</th>
+                  <th style={{ ...thCls, textAlign: 'center' }}>Action</th>
+                </tr>
                 <tbody>
                   {group.onts.map((ont, i) => (
                     <tr key={ont.id}
@@ -250,7 +248,7 @@ export default function Unconfigured() {
           <div style={panelHeading}><span>★ Saved ONUs</span></div>
           <div style={{ overflowX: 'auto' }}>
             <table style={tableCls}>
-              <thead><tr><th style={thCls}>Name</th><th style={thCls}>SN</th><th style={thCls}>OLT</th><th style={{ ...thCls, textAlign: 'center' }}>Action</th></tr></thead>
+              <tr><th style={thCls}>Name</th><th style={thCls}>SN</th><th style={thCls}>OLT</th><th style={{ ...thCls, textAlign: 'center' }}>Action</th></tr>
               <tbody>
                 {saved.map((s, i) => (
                   <tr key={s.id} style={{ background: i % 2 === 0 ? 'var(--panel-bg)' : 'rgba(127,150,180,0.04)' }}>

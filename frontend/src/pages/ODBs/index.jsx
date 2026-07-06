@@ -11,6 +11,7 @@ export default function ODBs() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [usageFilter, setUsageFilter] = useState('');
+  const [coordsFilter, setCoordsFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [deleting, setDeleting] = useState(null);
 
@@ -22,8 +23,9 @@ export default function ODBs() {
   const odbs = Array.isArray(data) ? data : [];
   const filtered = useMemo(() => odbs.filter(o =>
     o.name?.toLowerCase().includes(search.toLowerCase()) &&
-    (!usageFilter || (o.usage ?? 0) >= Number(usageFilter))
-  ), [odbs, search, usageFilter]);
+    (!usageFilter || (o.usage ?? 0) >= Number(usageFilter)) &&
+    (!coordsFilter || (coordsFilter === 'yes' ? (o.latitude != null && o.longitude != null) : (!o.latitude && !o.longitude)))
+  ), [odbs, search, usageFilter, coordsFilter]);
 
   const saveMut = useMutation({
     mutationFn: (v) => (editing?.id ? odbAPI.update(editing.id, v) : odbAPI.create(v)),
@@ -34,6 +36,11 @@ export default function ODBs() {
     mutationFn: (id) => odbAPI.delete(id),
     onSuccess: () => { toast.success('ODB deleted'); qc.invalidateQueries({ queryKey: ['odbs'] }); setDeleting(null); },
     onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
+  });
+  const delUnusedMut = useMutation({
+    mutationFn: () => odbAPI.deleteUnused(),
+    onSuccess: (r) => { const n = r.data?.data?.deleted ?? 0; toast.success(`Deleted ${n} unused ODBs`); qc.invalidateQueries({ queryKey: ['odbs'] }); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Failed'),
   });
 
   const importRef = React.useRef(null);
@@ -68,6 +75,9 @@ export default function ODBs() {
           <button className="btn" onClick={doExport}><IconDownload size={13} /> Export</button>
           <button className="btn" onClick={() => importRef.current?.click()}><IconUpload size={13} /> Import</button>
           <input ref={importRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files[0])} />
+          <button className="btn btn-danger" onClick={() => { if (confirm('Delete all ODBs with no ONUs assigned?')) delUnusedMut.mutate(); }}>
+            <IconTrash size={13} /> Delete unused
+          </button>
           <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add ODB (Splitter)</button>
         </div>
       </div>
@@ -82,6 +92,11 @@ export default function ODBs() {
           <option value="50">≥ 50%</option><option value="75">≥ 75%</option>
           <option value="90">≥ 90%</option><option value="100">Capacity exceeded</option>
         </select>
+        <select className="input-base" style={{ maxWidth: 170 }} value={coordsFilter} onChange={e => setCoordsFilter(e.target.value)}>
+          <option value="">Coordinates: Any</option>
+          <option value="yes">Yes</option>
+          <option value="no">No</option>
+        </select>
       </div>
 
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
@@ -91,19 +106,21 @@ export default function ODBs() {
           <div className="empty-state"><IconBox size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />No ODBs found</div>
         ) : (
           <table className="table-base">
-            <thead><tr><th>Name</th><th style={{ textAlign: 'center' }}>Ports</th><th>Zone</th><th style={{ textAlign: 'center' }}>Usage</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
+            <tr><th>Name</th><th style={{ textAlign: 'center' }}>Coords</th><th style={{ textAlign: 'center' }}>Ports</th><th>Zone</th><th style={{ textAlign: 'center' }}>Usage</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr>
             <tbody>
               {filtered.slice(0, 400).map((o) => (
                 <tr key={o.id}>
                   <td><IconBox size={12} style={{ color: 'var(--text-muted)', verticalAlign: -1, marginRight: 6 }} />{o.name}</td>
+                  <td style={{ textAlign: 'center', color: o.latitude ? 'var(--green)' : 'var(--text-muted)', fontSize: 12 }}>
+                    {o.latitude && o.longitude ? '✓' : '—'}
+                  </td>
                   <td style={{ textAlign: 'center' }}>{o.ports_used ?? 0}/{o.ports_total ?? '—'}</td>
                   <td style={{ color: 'var(--text-secondary)' }}>{o.zone || '—'}</td>
                   <td style={{ textAlign: 'center' }}>
                     <span className={`badge ${(o.usage ?? 0) >= 90 ? 'badge-red' : (o.usage ?? 0) >= 75 ? 'badge-orange' : 'badge-blue'}`}>{o.usage ?? 0}%</span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => setEditing(o)}><IconEdit size={12} /></button>
-                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => setDeleting(o)}><IconTrash size={12} /></button>
+                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)' }} onClick={() => setDeleting(o)}><IconTrash size={12} /></button>
                   </td>
                 </tr>
               ))}

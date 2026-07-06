@@ -69,11 +69,9 @@ export default function KingTypeDashboard() {
             <div style={{ padding: 14, color: 'var(--text-muted)', fontSize: 13 }}>No PON ports found</div>
           ) : (
             <table className="table-base">
-              <thead>
-                <tr>
-                  <th>Port</th><th>Total ONUs</th><th>Online</th><th>Offline</th><th />
-                </tr>
-              </thead>
+              <tr>
+                <th>Port</th><th>Total ONUs</th><th>Online</th><th>Offline</th><th />
+              </tr>
               <tbody>
                 {ports.map(p => (
                   <tr key={p.port} className="valign-center">

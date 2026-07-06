@@ -93,9 +93,24 @@ async function wanConfig(req, res, next) {
   try {
     const prisma = require('../config/database');
     const { mode, ip, gateway, dns, username, password } = req.body;
-    const ont = await prisma.oNT.findUnique({ where: { id: req.params.id } });
+    const ont = await prisma.oNT.findUnique({ where: { id: req.params.id }, include: { olt: true } });
     if (!ont) return res.status(404).json({ error: 'ONT not found' });
-    res.json({ data: { ontId: req.params.id, mode, applied: true } });
+    const { getAdapter } = require('../utils/oltFactory');
+    const adapter = getAdapter(ont.olt);
+    const location = { board: ont.board, port: ont.port, onu_id: ont.onu_id };
+    const results = [];
+    if (mode && typeof adapter.updateMode === 'function') {
+      const r = await adapter.updateMode(ont.serial_number, { mode, wanMode: req.body.wanMode, vlanId: req.body.vlanId }, location);
+      results.push({ action: 'updateMode', ...r });
+    }
+    if (username && password && typeof adapter.changeWebUserPass === 'function') {
+      const r = await adapter.changeWebUserPass(ont.serial_number, { webUser: username, webPassword: password }, location);
+      results.push({ action: 'changeWebUserPass', ...r });
+    }
+    await prisma.auditLog.create({
+      data: { user_id: req.user?.id, action: 'ONT_WAN_CONFIG', action_type: 'ONT_ACTION', target: req.params.id, target_type: 'ONT', details: { mode, serial: ont.serial_number } },
+    });
+    res.json({ data: { ontId: req.params.id, mode, applied: true, results } });
   } catch (err) { next(err); }
 }
 

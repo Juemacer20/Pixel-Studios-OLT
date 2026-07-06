@@ -68,15 +68,13 @@ export default function Batch() {
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: 36 }}><input type="checkbox" className="checkbox" onChange={selectAll} checked={selected.length === onuList.length && onuList.length > 0} /></th>
-                <th style={{ width: 50 }}>ID</th>
-                <th>Serial</th>
-                <th style={{ width: 80 }}>Status</th>
-                <th>Description</th>
-              </tr>
-            </thead>
+            <tr>
+              <th style={{ width: 36 }}><input type="checkbox" className="checkbox" onChange={selectAll} checked={selected.length === onuList.length && onuList.length > 0} /></th>
+              <th style={{ width: 50 }}>ID</th>
+              <th>Serial</th>
+              <th style={{ width: 80 }}>Status</th>
+              <th>Description</th>
+            </tr>
             <tbody>
               {onuList.map(o => (
                 <tr

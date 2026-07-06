@@ -107,13 +107,12 @@ export default function AuthPresets() {
           </div>
         ) : (
           <table className="table-base">
-            <thead><tr><th>Name</th><th>PON</th><th>SN pattern</th><th>Mode</th><th>Active</th><th style={{ width: 90 }}>Action</th></tr></thead>
+            <tr><th>Name</th><th>PON</th><th>SN pattern</th><th>Mode</th><th>Active</th><th style={{ width: 90 }}>Action</th></tr>
             <tbody>{presets.map((p) => (
               <tr key={p.id}>
                 <td>{p.name}</td><td>{p.ponType || '—'}</td><td className="mono" style={{ fontSize: 11 }}>{p.snPattern || '—'}</td>
                 <td>{p.mode || '—'}</td><td>{p.isActive ? <span className="badge badge-green">Yes</span> : <span className="badge">No</span>}</td>
-                <td style={{ display: 'flex', gap: 6 }}>
-                  <button className="btn-icon" onClick={() => setEditing(p)} aria-label="Edit"><IconEdit size={14} /></button>
+                <td>
                   <button className="btn-icon" onClick={() => setDeleting(p)} aria-label="Delete"><IconTrash size={14} /></button>
                 </td>
               </tr>

@@ -23,6 +23,25 @@ router.put('/signal-thresholds', checkRole('admin'), wrap(async (req, res) => {
   res.json({ data: cfg });
 }));
 
+// API usage logs: counts by action type from audit log.
+router.get('/api-logs', wrap(async (req, res) => {
+  const since = new Date(Date.now() - 3600000);
+  const groups = await prisma.auditLog.groupBy({
+    by: ['action'],
+    _count: { id: true },
+    where: { created_at: { gte: since } },
+  });
+  const totalAll = await prisma.auditLog.count();
+  const totalLastHour = await prisma.auditLog.count({ where: { created_at: { gte: since } } });
+  const methods = groups.map(g => ({
+    method: g.action,
+    maxPerHour: 1000,
+    current: g._count.id,
+  }));
+  methods.sort((a, b) => b.current - a.current);
+  res.json({ data: { methods, totalAll, totalLastHour } });
+}));
+
 // Billing: una fila por OLT (crea las faltantes como "active").
 router.get('/billing', wrap(async (req, res) => {
   const olts = await prisma.oLT.findMany({ select: { id: true, name: true } });

@@ -132,17 +132,15 @@ export function ReportsTasks() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="table-base">
-            <thead>
-              <tr>
-                <th>Action</th>
-                <th>Target / ONT</th>
-                <th>User</th>
-                <th>IP Address</th>
-                <th>Status</th>
-                <th>Date</th>
-                <th>Details</th>
-              </tr>
-            </thead>
+            <tr>
+              <th>Action</th>
+              <th>Target / ONT</th>
+              <th>User</th>
+              <th>IP Address</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Details</th>
+            </tr>
             <tbody>
               {loading ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '40px 0' }}><div className="spinner" style={{ margin: '0 auto' }} /></td></tr>
@@ -257,16 +255,14 @@ export function ReportsAuthorizations() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="table-base">
-            <thead>
-              <tr>
-                <th style={{ width: 40 }}>#</th>
-                <th>User</th>
-                <th>SN / MAC</th>
-                <th>Action</th>
-                <th>IP</th>
-                <th>Date</th>
-              </tr>
-            </thead>
+            <tr>
+              <th style={{ width: 40 }}>#</th>
+              <th>User</th>
+              <th>SN / MAC</th>
+              <th>Action</th>
+              <th>IP</th>
+              <th>Date</th>
+            </tr>
             <tbody>
               {loading ? (
                 <tr><td colSpan={6} style={{ textAlign: 'center', padding: '40px 0' }}><div className="spinner" style={{ margin: '0 auto' }} /></td></tr>
@@ -444,14 +440,12 @@ export function ReportsExport() {
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="table-base">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Filters</th>
-                  <th>Count</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
+              <tr>
+                <th>Date</th>
+                <th>Filters</th>
+                <th>Count</th>
+                <th>Actions</th>
+              </tr>
               <tbody>
                 {recentExports.map(entry => (
                   <tr key={entry.id}>
@@ -588,7 +582,7 @@ function AvailabilityTab() {
         <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Detalle por día</div>
         <div style={{ overflowX: 'auto' }}>
           <table className="table-base">
-            <thead><tr><th>Date</th><th>Disponibilidad</th><th>Downtime (min)</th><th>SLA status</th></tr></thead>
+            <tr><th>Date</th><th>Disponibilidad</th><th>Downtime (min)</th><th>SLA status</th></tr>
             <tbody>
               {data.slice(-10).reverse().map((row, i) => (
                 <tr key={i}>

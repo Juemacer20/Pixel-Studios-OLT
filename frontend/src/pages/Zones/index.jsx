@@ -32,6 +32,11 @@ export default function Zones() {
     onSuccess: () => { toast.success('Zone deleted'); qc.invalidateQueries({ queryKey: ['zones'] }); setDeleting(null); },
     onError: (e) => toast.error(e?.response?.data?.error || 'Delete failed'),
   });
+  const delUnusedMut = useMutation({
+    mutationFn: () => zoneAPI.deleteUnused(),
+    onSuccess: (r) => { const n = r.data?.data?.deleted ?? 0; toast.success(`Deleted ${n} unused zones`); qc.invalidateQueries({ queryKey: ['zones'] }); },
+    onError: (e) => toast.error(e?.response?.data?.error || 'Failed'),
+  });
 
   const importRef = React.useRef(null);
   const doExport = () => downloadCSV(zones.map((z) => ({ name: z.name, description: z.description || '', latitude: z.latitude ?? '', longitude: z.longitude ?? '' })), 'zones.csv');
@@ -63,6 +68,9 @@ export default function Zones() {
           <button className="btn" onClick={doExport}><IconDownload size={13} /> Export</button>
           <button className="btn" onClick={() => importRef.current?.click()}><IconUpload size={13} /> Import</button>
           <input ref={importRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files[0])} />
+          <button className="btn btn-danger" onClick={() => { if (confirm('Delete zones with no ONUs assigned?')) delUnusedMut.mutate(); }}>
+            <IconTrash size={13} /> Delete unused
+          </button>
           <button className="btn btn-primary" onClick={() => setEditing({})}><IconPlus size={13} /> Add Zone</button>
         </div>
       </div>
@@ -79,15 +87,14 @@ export default function Zones() {
           <div className="empty-state"><IconMapPin size={32} style={{ margin: '0 auto 10px', opacity: 0.25, display: 'block' }} />No zones found</div>
         ) : (
           <table className="table-base">
-            <thead><tr><th>Name</th><th style={{ textAlign: 'right' }}>ONUs</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr></thead>
+            <tr><th>Name</th><th style={{ textAlign: 'right' }}>ONUs</th><th style={{ textAlign: 'center', width: 90 }}>Action</th></tr>
             <tbody>
               {filtered.map((z) => (
                 <tr key={z.id}>
                   <td><IconMapPin size={12} style={{ color: 'var(--text-muted)', verticalAlign: -1, marginRight: 6 }} />{z.name}</td>
                   <td style={{ textAlign: 'right' }}><span className="badge badge-blue">{z.ont_count ?? z.onus ?? 0}</span></td>
                   <td style={{ textAlign: 'center' }}>
-                    <button className="btn-icon" style={{ padding: 4 }} onClick={() => setEditing(z)}><IconEdit size={12} /></button>
-                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)', marginLeft: 4 }} onClick={() => setDeleting(z)}><IconTrash size={12} /></button>
+                    <button className="btn-icon" style={{ padding: 4, color: 'var(--red)' }} onClick={() => setDeleting(z)}><IconTrash size={12} /></button>
                   </td>
                 </tr>
               ))}

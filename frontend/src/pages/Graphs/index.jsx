@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { IconInfoCircle } from '@tabler/icons-react';
 import api from '../../services/api';
 import { oltAPI } from '../../services/api';
 import SignalCard from '../../components/graphs/SignalCard';
@@ -34,25 +33,6 @@ function Pagination({ page, pages, onChange }) {
           {n}
         </button>
       ))}
-    </div>
-  );
-}
-
-function ComingSoonCard({ title }) {
-  return (
-    <div style={{
-      background: 'rgba(14,34,54,0.5)',
-      border: '1px solid var(--border)',
-      borderRadius: 11,
-      padding: '20px 18px',
-      display: 'flex', alignItems: 'center', gap: 12,
-      opacity: 0.7,
-    }}>
-      <IconInfoCircle size={20} style={{ color: 'var(--text-muted)', flexShrink: 0 }} />
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>{title}</div>
-        <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Coming soon — SNMP traffic polling not yet implemented</div>
-      </div>
     </div>
   );
 }

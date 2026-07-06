@@ -14,7 +14,6 @@ import {
 } from '@tabler/icons-react';
 import { ontAPI, oltAPI, reportsAPI } from '../../services/api';
 import { useAuthStore } from '../../store/authStore';
-import StatusBadge from '../../components/shared/StatusBadge';
 import SignalBadge from '../../components/shared/SignalBadge';
 import toast from 'react-hot-toast';
 import { Chart, registerables } from 'chart.js';
@@ -164,133 +163,45 @@ function ImportLocationModal({ open, onClose, onImport }) {
 function MiniSignalChart({ ontId, height = 160 }) {
   const canvasRef = useRef(null);
   const chartRef = useRef(null);
-
   const { data: raw = [], isLoading } = useQuery({
     queryKey: ['signal-history', ontId, '24h'],
-    queryFn: () =>
-      ontAPI.signalHistory(ontId, '24h')
-        .then(r => r.data?.data || r.data || [])
-        .catch(() => []),
-    enabled: !!ontId,
-    staleTime: 60000,
+    queryFn: () => ontAPI.signalHistory(ontId, '24h').then(r => r.data?.data || r.data || []).catch(() => []),
+    enabled: !!ontId, staleTime: 60000,
   });
-
-  const chartData = useMemo(() =>
-    raw.map(h => ({
-      ts: new Date(h.timestamp).getTime(),
-      rx: h.rx_power != null ? parseFloat(h.rx_power.toFixed(2)) : null,
-      tx: h.tx_power != null ? parseFloat(h.tx_power.toFixed(2)) : null,
-    })), [raw]);
-
   useEffect(() => {
-    if (!canvasRef.current || isLoading || chartData.length === 0) return;
-    const ctx = canvasRef.current.getContext('2d');
-    if (!ctx) return;
-
-    if (chartRef.current) {
-      chartRef.current.destroy();
-    }
-
-    chartRef.current = new Chart(ctx, {
+    if (!canvasRef.current || !raw.length) return;
+    const points = raw.map(h => ({ t: new Date(h.timestamp).getTime(), rx: h.rx_power, tx: h.tx_power }));
+    if (points.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
       data: {
+        labels: points.map(p => new Date(p.t).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })),
         datasets: [
-          {
-            label: 'RX',
-            data: chartData.map(d => ({ x: d.ts, y: d.rx })),
-            borderColor: '#79c0ff',
-            backgroundColor: 'rgba(121,192,255,0.1)',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: true,
-            tension: 0.3,
-          },
-          {
-            label: 'TX',
-            data: chartData.map(d => ({ x: d.ts, y: d.tx })),
-            borderColor: '#3fb950',
-            backgroundColor: 'rgba(63,185,80,0.1)',
-            borderWidth: 1.5,
-            pointRadius: 0,
-            fill: true,
-            tension: 0.3,
-          },
+          { label: 'RX', data: points.map(p => p.rx), borderColor: '#79c0ff', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
+          { label: 'TX', data: points.map(p => p.tx), borderColor: '#3fb950', pointRadius: 0, borderWidth: 1.5, tension: 0.3 },
         ],
       },
       options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            enabled: true,
-            backgroundColor: '#1c2128',
-            titleColor: 'var(--text-secondary)',
-            bodyColor: '#fff',
-            borderColor: '#30363d',
-            borderWidth: 1,
-            padding: 8,
-            titleFont: { size: 11 },
-            bodyFont: { size: 11 },
-            callbacks: {
-              title: items => {
-                if (!items.length) return '';
-                return new Date(items[0].parsed.x).toLocaleString('es-AR', {
-                  hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit',
-                });
-              },
-              label: ctx => `${ctx.dataset.label}: ${ctx.parsed.y.toFixed(2)} dBm`,
-            },
-          },
-        },
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: true, backgroundColor: '#1c2128', titleColor: '#8b949e', bodyColor: '#c9d1d9', borderColor: '#30363d', borderWidth: 1 } },
         scales: {
-          x: {
-            type: 'linear',
-            ticks: {
-              color: '#94a3b8',
-              font: { size: 9 },
-              maxTicksLimit: 6,
-              callback: v => new Date(v).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' }),
-            },
-            grid: { display: false },
-          },
-          y: {
-            min: -32,
-            max: -2,
-            ticks: {
-              color: '#94a3b8',
-              font: { size: 9 },
-            },
-            grid: {
-              color: 'rgba(255,255,255,0.06)',
-            },
-          },
+          x: { display: true, ticks: { color: 'var(--text-muted)', font: { size: 9 }, maxTicksLimit: 6 }, grid: { display: false } },
+          y: { display: true, min: -32, max: -2, ticks: { color: 'var(--text-muted)', font: { size: 9 } }, grid: { color: 'var(--border)', drawBorder: false } },
         },
       },
     });
-
-    return () => {
-      if (chartRef.current) {
-        chartRef.current.destroy();
-        chartRef.current = null;
-      }
-    };
-  }, [chartData, isLoading]);
-
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [raw]);
   return (
     <div style={{ background: 'var(--content-bg)', border: '1px solid var(--border)', borderRadius: 6, padding: '10px 12px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <span style={{ fontSize: 11, color: 'var(--text-secondary)', fontWeight: 600 }}>Signal — last 24h</span>
       </div>
       {isLoading ? (
-        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span className="spinner" />
-        </div>
+        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><span className="spinner" /></div>
       ) : (
-        <div style={{ height, position: 'relative' }}>
-          <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
-        </div>
+        <div style={{ width: '100%', height }}><canvas ref={canvasRef} /></div>
       )}
       <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
         {[['#79c0ff', 'RX'], ['#3fb950', 'TX']].map(([c, l]) => (
@@ -628,14 +539,12 @@ function ONTDrawer({ ont, onClose }) {
                   VLANs Configuradas
                 </div>
                 <table className="table-base">
-                  <thead>
-                    <tr>
-                      <th>VLAN ID</th>
-                      <th>Name</th>
-                      <th>Type</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
+                  <tr>
+                    <th>VLAN ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Status</th>
+                  </tr>
                   <tbody>
                     {[
                       { id: 100, name: 'Datos Internet', type: 'Tagged',   active: true  },
@@ -703,9 +612,7 @@ function ONTDrawer({ ont, onClose }) {
                 <div className="empty-state">No active DHCP leases</div>
               ) : (
                 <table className="table-base">
-                  <thead>
-                    <tr><th>MAC</th><th>IP</th><th>Hostname</th><th>Expira</th></tr>
-                  </thead>
+                  <tr><th>MAC</th><th>IP</th><th>Hostname</th><th>Expira</th></tr>
                   <tbody>
                     {dhcpLeases.map(l => (
                       <tr key={l.id}>
@@ -776,7 +683,7 @@ export default function ONTs() {
   const [searchParams] = useSearchParams();
 
   const [search,       setSearch]       = useState(searchParams.get('search') || '');
-  const [filterOLT,    setFilterOLT]    = useState('');
+  const [filterOLT,    setFilterOLT]    = useState([]);
   const [filterPort,   setFilterPort]   = useState('');
   const [filterBoard,  setFilterBoard]  = useState('');
   const [filterSignal, setFilterSignal] = useState('');
@@ -910,7 +817,7 @@ export default function ONTs() {
         o.ip_address?.toLowerCase().includes(q)
       );
     }
-    if (filterOLT)    list = list.filter(o => String(o.olt?.id) === filterOLT);
+    if (filterOLT.length) list = list.filter(o => filterOLT.includes(String(o.olt?.id)));
     if (filterBoard)  list = list.filter(o => String(o.board) === filterBoard);
     if (filterPort)   list = list.filter(o => o.description === filterPort);
     if (filterSignal) {
@@ -1111,7 +1018,7 @@ export default function ONTs() {
   const hasFilters = search || filterOLT || filterBoard || filterPort || filterSignal || filterStatus || filterZone || filterVlan || filterMode || filterOnuType || filterProfile || filterPonType || filterOdb || filterWanMode || filterMgmtIpMode || filterTr069 || filterVoip || filterCatv || filterConfigMethod || filterIpProtocol || filterSvlan || filterCvlan || filterTagTransform || filterDownloadSpeed || filterUploadSpeed || filterLastStatusChange || filterShouldRebuild || filterResyncFailed;
 
   const clearAllFilters = () => {
-    setSearch(''); setFilterOLT(''); setFilterBoard(''); setFilterPort('');
+    setSearch(''); setFilterOLT([]); setFilterBoard(''); setFilterPort('');
     setFilterSignal(''); setFilterStatus(''); setFilterZone(''); setFilterVlan('');
     setFilterMode(''); setFilterOnuType(''); setFilterProfile(''); setFilterPonType('');
     setFilterOdb(''); setFilterWanMode(''); setFilterMgmtIpMode(''); setFilterTr069('');
@@ -1179,8 +1086,10 @@ export default function ONTs() {
           <div className="form-group">
             <label className="control-label" htmlFor="olt">OLT</label>
             <select name="olt_id" id="olt" className="form-control input-150 select-search text-nowrap"
-              value={filterOLT} onChange={e => { setFilterOLT(e.target.value); setPage(1); }}>
-              <option value="">All OLTs</option>
+              multiple value={filterOLT} onChange={e => {
+                const opts = [...e.target.options].filter(o => o.selected).map(o => o.value);
+                setFilterOLT(opts); setPage(1);
+              }} style={{ height: 80 }}>
               {olts.map(o => <option key={o.id} value={String(o.id)}>{o.name}</option>)}
             </select>
           </div>
@@ -2140,26 +2049,24 @@ export default function ONTs() {
           </div>
         ) : (
           <table className="sol-otable">
-            <thead>
-              <tr>
-                <th style={{ width: 36, textAlign: 'center', paddingLeft: 12 }}>
-                  <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
-                </th>
-                <SortTh sortKey="status" sortState={sortState} onSort={handleSort} style={{ width: 60, textAlign: 'center' }}>Status</SortTh>
-                <th style={{ width: 55, textAlign: 'center' }}>View</th>
-                <SortTh sortKey="client" sortState={sortState} onSort={handleSort}>Name</SortTh>
-                <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort} style={{ width: 140 }}>SN / MAC</SortTh>
-                <SortTh sortKey="model" sortState={sortState} onSort={handleSort} style={{ width: 100 }}>ONU</SortTh>
-                <SortTh sortKey="zone" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>Zone</SortTh>
-                <SortTh sortKey="odb" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>ODB</SortTh>
-                <SortTh sortKey="rx_power" sortState={sortState} onSort={handleSort} style={{ width: 65, textAlign: 'right' }}>Signal</SortTh>
-                <SortTh sortKey="wan_mode" sortState={sortState} onSort={handleSort} style={{ width: 40, textAlign: 'center' }}>B/R</SortTh>
-                <SortTh sortKey="vlan" sortState={sortState} onSort={handleSort} style={{ width: 50, textAlign: 'center' }}>VLAN</SortTh>
-                <th style={{ width: 40, textAlign: 'center' }}>VoIP</th>
-                <th style={{ width: 35, textAlign: 'center' }}>TV</th>
-                <SortTh sortKey="provisioned_at" sortState={sortState} onSort={handleSort} style={{ width: 85 }}>Auth date</SortTh>
-              </tr>
-            </thead>
+            <tr>
+              <th style={{ width: 36, textAlign: 'center', paddingLeft: 12 }}>
+                <input type="checkbox" className="checkbox" checked={allVisible} onChange={toggleAll} />
+              </th>
+              <SortTh sortKey="status" sortState={sortState} onSort={handleSort} style={{ width: 60, textAlign: 'center' }}>Status</SortTh>
+              <th style={{ width: 55, textAlign: 'center' }}>View</th>
+              <SortTh sortKey="client" sortState={sortState} onSort={handleSort}>Name</SortTh>
+              <SortTh sortKey="serial_number" sortState={sortState} onSort={handleSort} style={{ width: 140 }}>SN / MAC</SortTh>
+              <SortTh sortKey="model" sortState={sortState} onSort={handleSort} style={{ width: 100 }}>ONU</SortTh>
+              <SortTh sortKey="zone" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>Zone</SortTh>
+              <SortTh sortKey="odb" sortState={sortState} onSort={handleSort} style={{ width: 80 }}>ODB</SortTh>
+              <SortTh sortKey="rx_power" sortState={sortState} onSort={handleSort} style={{ width: 65, textAlign: 'right' }}>Signal</SortTh>
+              <SortTh sortKey="wan_mode" sortState={sortState} onSort={handleSort} style={{ width: 40, textAlign: 'center' }}>B/R</SortTh>
+              <SortTh sortKey="vlan" sortState={sortState} onSort={handleSort} style={{ width: 50, textAlign: 'center' }}>VLAN</SortTh>
+              <th style={{ width: 40, textAlign: 'center' }}>VoIP</th>
+              <th style={{ width: 35, textAlign: 'center' }}>TV</th>
+              <SortTh sortKey="provisioned_at" sortState={sortState} onSort={handleSort} style={{ width: 85 }}>Auth date</SortTh>
+            </tr>
             <tbody>
               {pageData.map(ont => (
                 <tr
@@ -2170,7 +2077,16 @@ export default function ONTs() {
                   <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                     <input type="checkbox" className="checkbox" checked={selected.has(ont.id)} onChange={() => toggleOne(ont.id)} />
                   </td>
-                  <td style={{ textAlign: 'center' }}><StatusBadge status={ont.status} /></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <span style={{
+                      display: 'inline-block', width: 12, height: 12, borderRadius: '50%',
+                      background: (ont.status || '') === 'online' ? '#5cb85c'
+                        : (ont.status || '') === 'los' ? '#d9534f'
+                        : (ont.status || '') === 'pwrfail' ? '#e08a16'
+                        : '#98989D',
+                      boxShadow: (ont.status || '') === 'online' ? '0 0 6px rgba(92,184,92,0.7)' : 'none',
+                    }} />
+                  </td>
                   <td style={{ textAlign: 'center' }} onClick={e => e.stopPropagation()}>
                     <button className="sol-viewbtn" onClick={() => navigate(`/onu/view/${ont.id}`)}>
                       <IconEye size={11} /> View

@@ -182,18 +182,16 @@ export default function Alerts() {
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ overflowX: 'auto' }}>
           <table className="table-base">
-            <thead>
-              <tr>
-                <th>Timestamp</th>
-                <th>Type</th>
-                <th>Severity</th>
-                <th>OLT</th>
-                <th>ONT</th>
-                <th>Message</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Type</th>
+              <th>Severity</th>
+              <th>OLT</th>
+              <th>ONT</th>
+              <th>Message</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
             <tbody>
               {filtered.length === 0 ? (
                 <tr>

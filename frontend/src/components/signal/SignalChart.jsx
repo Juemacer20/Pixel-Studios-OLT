@@ -19,22 +19,6 @@ const COLOR_TX = '#79c0ff'; // cyan/blue
 // ─── Range selector options ──────────────────────────────────────────────────
 const RANGES = ['24h', '7d', '30d'];
 
-// ─── Mock signal history generator ───────────────────────────────────────────
-function buildMockHistory(range) {
-  const now    = Date.now();
-  const points = range === '30d' ? 60 : range === '7d' ? 84 : 48;
-  const step   = range === '30d' ? 12 * 3600_000 : range === '7d' ? 2 * 3600_000 : 30 * 60_000;
-
-  return Array.from({ length: points }, (_, i) => {
-    const noise = (Math.random() - 0.5) * 1.5;
-    return {
-      timestamp: now - (points - i) * step,
-      rx_power:  parseFloat((-21.5 + noise).toFixed(2)),
-      tx_power:  parseFloat((-8.3  + (Math.random() - 0.5) * 0.6).toFixed(2)),
-    };
-  });
-}
-
 // ─── Custom tooltip ──────────────────────────────────────────────────────────
 function SignalTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -108,10 +92,7 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
     return () => { cancel = true; clearInterval(iv); };
   }, [live, ontId]);
 
-  // Fall back to mock data when API is unavailable or returns nothing
-  const history = live
-    ? liveBuf
-    : (isError || !rawHistory || rawHistory.length === 0 ? buildMockHistory(range) : rawHistory);
+  const history = live ? liveBuf : (rawHistory || []);
 
   const chartData = history.map((h) => ({
     timestamp: typeof h.timestamp === 'string' ? new Date(h.timestamp).getTime() : h.timestamp,
@@ -187,6 +168,10 @@ export default function SignalChart({ ontId, range: rangeProp = '24h', height = 
         >
           <span className="spinner" />
           Loading...
+        </div>
+      ) : chartData.length === 0 ? (
+        <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+          No signal history available
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={height}>

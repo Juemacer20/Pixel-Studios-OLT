@@ -112,14 +112,12 @@ export default function OnuView() {
     if (!ports.length) return <div className="empty-state">No Ethernet port data</div>;
     return (
       <table className="data-table">
-        <thead>
-          <tr>
-            <th>Port</th>
-            <th>Link</th>
-            <th>Speed</th>
-            <th>Duplex</th>
-          </tr>
-        </thead>
+        <tr>
+          <th>Port</th>
+          <th>Link</th>
+          <th>Speed</th>
+          <th>Duplex</th>
+        </tr>
         <tbody>
           {ports.map((p, i) => (
             <tr key={i}>

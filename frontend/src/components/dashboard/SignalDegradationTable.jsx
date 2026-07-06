@@ -95,16 +95,14 @@ export default function SignalDegradationTable() {
             <div style={{ color: 'var(--text-muted)', fontSize: 13, padding: 14 }}>No degraded ONUs</div>
           ) : (
             <table className="table-base">
-              <thead>
-                <tr>
-                  <th>Severity</th><th>OLT</th><th>Board/Port</th>
-                  <th style={{ textAlign: 'right' }}>Avg Δ (dB)</th>
-                  <th style={{ textAlign: 'right' }}>Max Δ (dB)</th>
-                  <th style={{ textAlign: 'center' }}>Degraded</th>
-                  <th style={{ textAlign: 'center' }}>Events</th>
-                  <th>Last scan</th>
-                </tr>
-              </thead>
+              <tr>
+                <th>Severity</th><th>OLT</th><th>Board/Port</th>
+                <th style={{ textAlign: 'right' }}>Avg Δ (dB)</th>
+                <th style={{ textAlign: 'right' }}>Max Δ (dB)</th>
+                <th style={{ textAlign: 'center' }}>Degraded</th>
+                <th style={{ textAlign: 'center' }}>Events</th>
+                <th>Last scan</th>
+              </tr>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>

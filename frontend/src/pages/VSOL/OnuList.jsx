@@ -112,19 +112,17 @@ export default function OnuList() {
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: 50 }}>ID</th>
-                <th>Serial</th>
-                <th>Description</th>
-                <th style={{ width: 80 }}>Status</th>
-                <th style={{ width: 70 }}>Admin</th>
-                <th style={{ width: 70 }}>OMCC</th>
-                <th style={{ width: 70 }}>Phase</th>
-                <th style={{ width: 70 }}>Config</th>
-                <th style={{ width: 150 }}>Actions</th>
-              </tr>
-            </thead>
+            <tr>
+              <th style={{ width: 50 }}>ID</th>
+              <th>Serial</th>
+              <th>Description</th>
+              <th style={{ width: 80 }}>Status</th>
+              <th style={{ width: 70 }}>Admin</th>
+              <th style={{ width: 70 }}>OMCC</th>
+              <th style={{ width: 70 }}>Phase</th>
+              <th style={{ width: 70 }}>Config</th>
+              <th style={{ width: 150 }}>Actions</th>
+            </tr>
             <tbody>
               {filtered.map(o => {
                 const isOnline = o.status === 'online';
@@ -146,12 +144,7 @@ export default function OnuList() {
                     <td style={{ fontSize: 12 }}>{o.phaseState}</td>
                     <td style={{ fontSize: 12 }}>{o.configState}</td>
                     <td>
-                      <div style={{ display: 'flex', gap: 3 }}>
-                        <button className="sol-act teal" title="Activate" onClick={() => activateMut.mutate(o.onuId)}><IconPlayerPlay size={12} /></button>
-                        <button className="sol-act amber" title="Deactivate" onClick={() => deactivateMut.mutate(o.onuId)}><IconPlayerStop size={12} /></button>
-                        <button className="sol-act" title="Reboot" onClick={() => rebootMut.mutate(o.onuId)}><IconRestore size={12} /></button>
-                        <button className="sol-act red" title="Delete" onClick={() => { if (confirm(`Delete ONU ${o.onuId} (${o.serialNumber})?`)) deleteMut.mutate(o.onuId); }}><IconTrash size={12} /></button>
-                      </div>
+                      <button className="sol-act red" title="Delete" onClick={() => { if (confirm(`Delete ONU ${o.onuId} (${o.serialNumber})?`)) deleteMut.mutate(o.onuId); }}><IconTrash size={12} /></button>
                     </td>
                   </tr>
                 );

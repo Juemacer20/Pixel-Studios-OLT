@@ -285,18 +285,16 @@ export default function SpeedProfiles() {
           </div>
         ) : (
           <table className="table-base">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Download (Mbps)</th>
-                <th>Upload (Mbps)</th>
-                <th>Type</th>
-                <th>Default</th>
-                <th>Burst</th>
-                <th>ONUs using</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
+            <tr>
+              <th>Name</th>
+              <th>Download (Mbps)</th>
+              <th>Upload (Mbps)</th>
+              <th>Type</th>
+              <th>Default</th>
+              <th>Burst</th>
+              <th>ONUs using</th>
+              <th>Actions</th>
+            </tr>
             <tbody>
               {profiles.map(p => (
                 <tr key={p.id}>
@@ -345,24 +343,15 @@ export default function SpeedProfiles() {
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        className="btn-icon tooltip"
-                        data-tip="Editar"
-                        onClick={() => setModalProfile(p)}
-                      >
-                        <IconPencil size={13} />
-                      </button>
-                      <button
-                        className="btn-icon tooltip"
-                        data-tip="Eliminar"
-                        onClick={() => handleDelete(p)}
-                        style={{ color: 'var(--red)', borderColor: 'rgba(248,81,73,0.3)' }}
-                        disabled={(p.ont_count || 0) > 0}
-                      >
-                        <IconTrash size={13} />
-                      </button>
-                    </div>
+                    <button
+                      className="btn-icon tooltip"
+                      data-tip="Eliminar"
+                      onClick={() => handleDelete(p)}
+                      style={{ color: 'var(--red)', borderColor: 'rgba(248,81,73,0.3)' }}
+                      disabled={(p.ont_count || 0) > 0}
+                    >
+                      <IconTrash size={13} />
+                    </button>
                   </td>
                 </tr>
               ))}

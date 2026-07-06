@@ -31,6 +31,19 @@ zones.delete('/:id', checkRole('admin'), wrap(async (req, res) => {
   res.json({ message: 'deleted' });
 }));
 
+// POST /api/v1/zones/delete-unused — elimina zonas sin ONUs asociadas.
+zones.post('/delete-unused', checkRole('admin'), wrap(async (req, res) => {
+  const usedNames = await prisma.oNT.findMany({ select: { zone: true }, distinct: ['zone'] });
+  const usedSet = new Set(usedNames.map((o) => o.zone).filter(Boolean));
+  const toDelete = await prisma.zone.findMany({ where: { name: { notIn: [...usedSet] } } });
+  const ids = toDelete.map((z) => z.id);
+  if (ids.length) await prisma.zone.deleteMany({ where: { id: { in: ids } } });
+  await prisma.auditLog.create({
+    data: { user_id: req.user?.id, action: 'DELETE_UNUSED_ZONES', action_type: 'SYSTEM', details: { deleted: ids.length } },
+  }).catch(() => {});
+  res.json({ data: { deleted: ids.length } });
+}));
+
 // ---------- ODBs (NAPBox) ----------
 const odbs = express.Router();
 odbs.use(verifyToken);
@@ -62,6 +75,20 @@ odbs.put('/:id', checkRole('noc'), wrap(async (req, res) => {
 odbs.delete('/:id', checkRole('admin'), wrap(async (req, res) => {
   await prisma.nAPBox.delete({ where: { id: req.params.id } });
   res.json({ message: 'deleted' });
+}));
+
+// DELETE /api/v1/odbs/delete-unused — elimina ODBs sin ONUs asociadas.
+odbs.post('/delete-unused', checkRole('admin'), wrap(async (req, res) => {
+  const odbs = await prisma.nAPBox.findMany({
+    where: { onts: { none: {} } },
+    select: { id: true, name: true },
+  });
+  const ids = odbs.map((o) => o.id);
+  if (ids.length) await prisma.nAPBox.deleteMany({ where: { id: { in: ids } } });
+  await prisma.auditLog.create({
+    data: { user_id: req.user?.id, action: 'DELETE_UNUSED_ODBS', action_type: 'SYSTEM', details: { deleted: ids.length } },
+  }).catch(() => {});
+  res.json({ data: { deleted: ids.length } });
 }));
 
 // ---------- ONU types ----------

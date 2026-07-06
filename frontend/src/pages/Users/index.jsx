@@ -290,16 +290,14 @@ export default function Users() {
       {/* Table */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="table-base">
-          <thead>
-            <tr>
-              <th>User</th>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Last access</th>
-              <th>Active</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Last access</th>
+            <th>Active</th>
+            <th>Actions</th>
+          </tr>
           <tbody>
             {users.length === 0 ? (
               <tr>
@@ -343,23 +341,14 @@ export default function Users() {
                     </div>
                   </td>
                   <td>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        className="btn-icon"
-                        title="Editar"
-                        onClick={() => setModal({ type: 'edit', user })}
-                      >
-                        <IconPencil size={13} />
-                      </button>
-                      <button
-                        className="btn-icon"
-                        title="Eliminar"
-                        onClick={() => setDelUser(user)}
-                        style={{ color: 'var(--red)' }}
-                      >
-                        <IconTrash size={13} />
-                      </button>
-                    </div>
+                    <button
+                    className="btn-icon"
+                    title="Eliminar"
+                    onClick={() => setDelUser(user)}
+                    style={{ color: 'var(--red)' }}
+                  >
+                    <IconTrash size={13} />
+                  </button>
                   </td>
                 </tr>
               );

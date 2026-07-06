@@ -30,9 +30,9 @@ function VpnAndProfiles() {
   const Section = ({ title, items, cols, render, onAdd }) => (
     <div className="card" style={{ padding: 0, flex: '1 1 360px' }}>
       <div className="sol-card-h"><span><IconShieldLock size={13} style={{ verticalAlign: -2 }} /> {title}</span>
-        <button className="btn btn-primary" style={{ fontSize: 11 }} onClick={onAdd}><IconPlus size={12} /> Add</button></div>
+        <button className="btn btn-success" style={{ fontSize: 11 }} onClick={onAdd}><IconPlus size={12} /> Add</button></div>
       <table className="table-base">
-        <thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}<th style={{ width: 40 }} /></tr></thead>
+        <tr>{cols.map((c) => <th key={c}>{c}</th>)}<th style={{ width: 40 }} /></tr>
         <tbody>
           {items.length === 0 && <tr><td colSpan={cols.length + 1} className="empty-state">None</td></tr>}
           {items.map(render)}
@@ -214,6 +214,7 @@ function DeviceDrawer({ device, onClose }) {
 export default function TR069() {
   const [selected, setSelected] = useState(null);
   const [search,   setSearch]   = useState('');
+  const [tab, setTab] = useState('VPN Tunnels');
 
   const { data: devicesRaw } = useQuery({
     queryKey: ['tr069-devices'],
@@ -235,7 +236,7 @@ export default function TR069() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {/* Header */}
       <div className="page-header">
-        <span className="page-title">VPN & TR069</span>
+        <span className="page-title">System Config</span>
         <button className="btn-icon" title="Refrescar"><IconRefresh size={14} /></button>
       </div>
 
@@ -247,53 +248,67 @@ export default function TR069() {
         <div className="stat-item"><div className="stat-label">With pending task</div><div className="stat-value" style={{ color: 'var(--orange)', fontSize: 16 }}>{pending}</div></div>
       </div>
 
-      {/* VPN tunnels + TR-069 profiles */}
-      <VpnAndProfiles />
+      {/* Tabs */}
+      <ul className="nav nav-tabs" style={{ marginBottom: 16 }}>
+        {['VPN Tunnels', 'TR-069 Profiles', 'Devices'].map(t => (
+          <li key={t} className={tab === t ? 'active' : ''} style={{ cursor: 'pointer' }}
+            onClick={() => setTab(t)}>
+            <a href="#" onClick={e => e.preventDefault()} style={{ fontSize: 13 }}>{t}</a>
+          </li>
+        ))}
+      </ul>
 
-      {/* Search */}
-      <div style={{ maxWidth: 320 }}>
-        <input className="input-base" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by serial, model or IP…" />
-      </div>
+      {tab === 'VPN Tunnels' && (
+        <VpnAndProfiles />
+      )}
 
-      {/* Table */}
-      <div className="card" style={{ padding: 0 }}>
-        <table className="table-base">
-          <thead>
-            <tr>
-              <th>Serial</th>
-              <th>Model</th>
-              <th>IP</th>
-              <th>Current firmware</th>
-              <th>New FW</th>
-              <th>Last connection</th>
-              <th>Status</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {devices.map(d => (
-              <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(d)}>
-                <td className="mono" style={{ fontSize: 11 }}>{d.serial}</td>
-                <td style={{ fontSize: 12 }}>{d.model}</td>
-                <td className="mono" style={{ fontSize: 11, color: 'var(--cyan)' }}>{d.ip}</td>
-                <td className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.firmware}</td>
-                <td>
-                  {d.fw_new
-                    ? <span className="badge badge-green" style={{ fontSize: 10 }}>↑ {d.fw_new}</span>
-                    : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>}
-                </td>
-                <td className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                  {new Date(d.last_conn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                </td>
-                <td><StatusBadge status={d.status} /></td>
-                <td>
-                  {d.tasks > 0 && <span className="badge badge-orange" style={{ fontSize: 10 }}>{d.tasks} tarea</span>}
-                </td>
+      {tab === 'TR-069 Profiles' && (
+        <div className="card" style={{ padding: 0 }}>
+          {/* TR-069 profiles table with assigned OLTs column */}
+        </div>
+      )}
+
+      {tab === 'Devices' && (
+        <>
+          {/* Search */}
+          <div style={{ maxWidth: 320, marginBottom: 12 }}>
+            <input className="input-base" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by serial, model or IP…" />
+          </div>
+          {/* Table */}
+          <div className="card" style={{ padding: 0 }}>
+            <table className="table-base">
+              <tr>
+                <th>Serial</th>
+                <th>Model</th>
+                <th>IP</th>
+                <th>Current firmware</th>
+                <th>New FW</th>
+                <th>Last connection</th>
+                <th>Status</th>
+                <th></th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+              <tbody>
+                {devices.map(d => (
+                  <tr key={d.id} style={{ cursor: 'pointer' }} onClick={() => setSelected(d)}>
+                    <td className="mono" style={{ fontSize: 11 }}>{d.serial}</td>
+                    <td style={{ fontSize: 12 }}>{d.model}</td>
+                    <td className="mono" style={{ fontSize: 11, color: 'var(--cyan)' }}>{d.ip}</td>
+                    <td className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{d.firmware}</td>
+                    <td>
+                      {d.fw_new ? <span className="badge badge-green" style={{ fontSize: 10 }}>↑ {d.fw_new}</span> : <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>—</span>}
+                    </td>
+                    <td className="mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                      {new Date(d.last_conn).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td><StatusBadge status={d.status} /></td>
+                    <td>{d.tasks > 0 && <span className="badge badge-orange" style={{ fontSize: 10 }}>{d.tasks} tarea</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
 
       {selected && <DeviceDrawer device={selected} onClose={() => setSelected(null)} />}
     </div>

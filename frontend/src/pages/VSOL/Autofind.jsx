@@ -133,25 +133,23 @@ export default function Autofind() {
       ) : (
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
           <table className="data-table">
-            <thead>
-              <tr>
-                <th style={{ width: 36, textAlign: 'center' }}>
-                  <input type="checkbox" className="checkbox"
-                    checked={raw.length > 0 && raw.every(o => selected.has(o.serialNumber))}
-                    onChange={() => {
-                      if (raw.every(o => selected.has(o.serialNumber))) setSelected(new Set());
-                      else setSelected(new Set(raw.map(o => o.serialNumber)));
-                    }} />
-                </th>
-                <th style={{ width: 60 }}>ONU ID</th>
-                <th>Serial</th>
-                <th>PON Port</th>
-                <th>Status</th>
-                <th>RX (dBm)</th>
-                <th>Description</th>
-                <th style={{ width: 100 }}>Action</th>
-              </tr>
-            </thead>
+            <tr>
+              <th style={{ width: 36, textAlign: 'center' }}>
+                <input type="checkbox" className="checkbox"
+                  checked={raw.length > 0 && raw.every(o => selected.has(o.serialNumber))}
+                  onChange={() => {
+                    if (raw.every(o => selected.has(o.serialNumber))) setSelected(new Set());
+                    else setSelected(new Set(raw.map(o => o.serialNumber)));
+                  }} />
+              </th>
+              <th style={{ width: 60 }}>ONU ID</th>
+              <th>Serial</th>
+              <th>PON Port</th>
+              <th>Status</th>
+              <th>RX (dBm)</th>
+              <th>Description</th>
+              <th style={{ width: 100 }}>Action</th>
+            </tr>
             <tbody>
               {raw.map(o => (
                 <tr key={o.onuId + '-' + (o.ponPort || '1')} style={{ background: selected.has(o.serialNumber) ? 'rgba(31,111,235,0.08)' : undefined }}>

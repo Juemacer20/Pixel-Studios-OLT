@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery } from '@tanstack/react-query';
 import { ontAPI, graphsAPI } from '../../services/api';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Chart, registerables } from 'chart.js';
+Chart.register(...registerables);
 
 function ModalBackdrop({ onClose }) {
   return <div className="modal-backdrop" onClick={onClose} />;
@@ -33,11 +34,25 @@ function SaveFooter({ onClose, onSave, busy, saveLabel, danger }) {
     <>
       <a href="#" className="btn btn-link" onClick={onClose}>Close</a>
       <a href="#"
-        className={`btn ${danger ? 'btn-danger' : 'btn-primary'}`}
+        className={`btn ${danger ? 'btn-danger' : 'btn-success'}`}
         onClick={busy ? undefined : onSave}>
         {busy ? 'Working…' : (saveLabel || 'Save')}
       </a>
     </>
+  );
+}
+
+/* ─── SmartOLT-style Legend ──────────────────────── */
+function SmartOltLegend({ color, label, current, max }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 12, color: 'var(--text-secondary)' }}>
+      <span style={{ width: 10, height: 10, borderRadius: 2, background: color, display: 'inline-block' }} />
+      <span>{label}</span>
+      <span style={{ color: 'var(--text-muted)', marginLeft: 2, fontSize: 11 }}>
+        {current != null ? `${current}` : '—'}
+        {max != null ? ` / ${max}` : ''}
+      </span>
+    </span>
   );
 }
 
@@ -1035,7 +1050,7 @@ export function HistoryModal({ open, ontId, ontName, onClose }) {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>No history entries found</p>
       ) : (
         <table className="table table-bordered table-condensed" style={{ fontSize: 12 }}>
-          <thead><tr><th>Date</th><th>Action</th><th>User</th><th>Details</th></tr></thead>
+          <tr><th>Date</th><th>Action</th><th>User</th><th>Details</th></tr>
           <tbody>
             {logs.map(log => (
               <tr key={log.id}>
@@ -1058,6 +1073,8 @@ export function LiveSignalModal({ open, ontId, onClose }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const histFetched = useRef(false);
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -1090,6 +1107,30 @@ export function LiveSignalModal({ open, ontId, onClose }) {
     return () => clearInterval(iv);
   }, [open, ontId]);
 
+  useEffect(() => {
+    if (!canvasRef.current || history.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    chartRef.current = new Chart(canvasRef.current, {
+      type: 'line',
+      data: {
+        labels: history.map(p => formatTime(p.t)),
+        datasets: [
+          { label: 'RX', data: history.map(p => p.rx), borderColor: '#5cb85c', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+          { label: 'TX', data: history.map(p => p.tx), borderColor: '#f0ad4e', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { ticks: { font: { size: 10 }, color: 'var(--text-muted)', maxTicksLimit: 12 }, grid: { display: false } },
+          y: { ticks: { font: { size: 10 }, color: 'var(--text-muted)', callback: v => `${v} dBm` }, grid: { color: 'rgba(120,160,200,0.12)', drawBorder: false } },
+        },
+      },
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [history]);
+
   const formatTime = (ts) => {
     const d = new Date(ts);
     return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
@@ -1112,19 +1153,7 @@ export function LiveSignalModal({ open, ontId, onClose }) {
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading signal history...</p>
       ) : history.length > 1 ? (
         <div style={{ width: '100%', height: 220 }}>
-          <ResponsiveContainer>
-            <LineChart data={history} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-              <XAxis dataKey="t" tickFormatter={formatTime} stroke="var(--text-muted)" fontSize={10} />
-              <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-              <Tooltip
-                contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-                labelFormatter={formatTime}
-              />
-              <Line type="monotone" dataKey="rx" stroke="#5cb85c" name="RX" dot={false} strokeWidth={1.5} />
-              <Line type="monotone" dataKey="tx" stroke="#f0ad4e" name="TX" dot={false} strokeWidth={1.5} />
-            </LineChart>
-          </ResponsiveContainer>
+          <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
         </div>
       ) : (
         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Collecting signal data…</p>
@@ -1181,36 +1210,48 @@ function fmtDate(ts) {
 }
 
 export function SignalChart({ ontId, height = 200 }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
   const { data, isLoading } = useQuery({
     queryKey: ['signal-chart', ontId],
     queryFn: () => graphsAPI.signalOnt(ontId).then(r => r.data?.data || r.data),
     refetchInterval: 60000,
   });
-  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading signal…</div>;
   const history = data?.history || [];
   const points = history.map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
+  useEffect(() => {
+    if (points.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const ctx = canvasRef.current.getContext('2d');
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: points.map(p => fmtTime(p.t)),
+        datasets: [
+          { label: 'RX', data: points.map(p => p.rx), borderColor: '#34C759', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+          { label: 'TX', data: points.map(p => p.tx), borderColor: '#FF9500', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { ticks: { font: { size: 10 }, color: 'var(--text-muted)' }, grid: { color: 'rgba(120,160,200,0.12)' } },
+          y: { ticks: { font: { size: 10 }, color: 'var(--text-muted)', callback: v => `${v} dBm` }, grid: { color: 'rgba(120,160,200,0.12)' } },
+        },
+      },
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [points]);
+  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading signal…</div>;
   if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No signal data</div>;
-  return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-          <Tooltip
-            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-            labelFormatter={fmtTime}
-          />
-          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  return <div style={{ width: '100%', height }}><canvas ref={canvasRef} /></div>;
 }
 
 /* ─── Traffic Chart (inline Recharts, no iframe) ─── */
 export function TrafficChart({ ontId, height = 200 }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
@@ -1221,54 +1262,75 @@ export function TrafficChart({ ontId, height = 200 }) {
       setData((Array.isArray(d) ? d : d?.history) || []);
     }).catch(() => setData([])).finally(() => setLoading(false));
   }, [ontId]);
-  if (loading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading traffic…</div>;
   const hist = Array.isArray(data) ? data : (data?.history || []);
   const points = hist.map(p => ({ t: new Date(p.timestamp || p.t).getTime(), rx: p.rx_mbps || p.rx, tx: p.tx_mbps || p.tx })).filter(p => p.rx != null || p.tx != null);
+  useEffect(() => {
+    if (points.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const ctx = canvasRef.current.getContext('2d');
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: points.map(p => fmtTime(p.t)),
+        datasets: [
+          { label: 'Down', data: points.map(p => p.rx), borderColor: '#5AC8FA', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+          { label: 'Up', data: points.map(p => p.tx), borderColor: '#FF9500', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { ticks: { font: { size: 10 }, color: 'var(--text-muted)' }, grid: { color: 'rgba(120,160,200,0.12)' } },
+          y: { ticks: { font: { size: 10 }, color: 'var(--text-muted)', callback: v => `${v} Mbps` }, grid: { color: 'rgba(120,160,200,0.12)' } },
+        },
+      },
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [points]);
+  if (loading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading traffic…</div>;
   if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No traffic data</div>;
-  return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={fmtTime} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" Mbps" domain={['auto', 'auto']} />
-          <Tooltip
-            contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }}
-            labelFormatter={fmtTime}
-          />
-          <Line type="monotone" dataKey="rx" stroke="#5AC8FA" name="Down" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="Up" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  return <div style={{ width: '100%', height }}><canvas ref={canvasRef} /></div>;
 }
 
 /* ─── Combined graphs for MoreGraphsModal ──────── */
 export function SignalChartRange({ ontId, range, height = 220 }) {
+  const canvasRef = useRef(null);
+  const chartRef = useRef(null);
   const { data, isLoading } = useQuery({
     queryKey: ['signal-range', ontId, range],
     queryFn: () => ontAPI.signalHistory(ontId, range).then(r => r.data?.data || r.data),
     refetchInterval: 30000,
   });
-  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>;
-  const points = (Array.isArray(data) ? data : (data?.history || data?.data || [])).map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
-  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No data</div>;
   const tickFmt = range === '30d' || range === '7d' ? fmtDate : fmtTime;
-  return (
-    <div style={{ width: '100%', height }}>
-      <ResponsiveContainer>
-        <LineChart data={points} margin={{ top: 4, right: 8, left: 0, bottom: 2 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(120,160,200,0.12)" />
-          <XAxis dataKey="t" tickFormatter={tickFmt} stroke="var(--text-muted)" fontSize={10} />
-          <YAxis stroke="var(--text-muted)" fontSize={10} unit=" dBm" domain={['auto', 'auto']} />
-          <Tooltip contentStyle={{ background: 'var(--card-bg)', border: '1px solid var(--border)', borderRadius: 6, fontSize: 12 }} labelFormatter={range === '30d' || range === '7d' ? (v) => new Date(v).toLocaleString() : fmtTime} />
-          <Line type="monotone" dataKey="rx" stroke="#34C759" name="RX" dot={false} strokeWidth={1.5} />
-          <Line type="monotone" dataKey="tx" stroke="#FF9500" name="TX" dot={false} strokeWidth={1.5} />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
+  const points = (Array.isArray(data) ? data : (data?.history || data?.data || [])).map(p => ({ t: new Date(p.timestamp).getTime(), rx: p.rx_power, tx: p.tx_power })).filter(p => p.rx != null || p.tx != null);
+  useEffect(() => {
+    if (points.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const ctx = canvasRef.current.getContext('2d');
+    chartRef.current = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: points.map(p => tickFmt(p.t)),
+        datasets: [
+          { label: 'RX', data: points.map(p => p.rx), borderColor: '#34C759', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+          { label: 'TX', data: points.map(p => p.tx), borderColor: '#FF9500', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 0, tension: 0.3 },
+        ],
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { ticks: { font: { size: 10 }, color: 'var(--text-muted)' }, grid: { color: 'rgba(120,160,200,0.12)' } },
+          y: { ticks: { font: { size: 10 }, color: 'var(--text-muted)', callback: v => `${v} dBm` }, grid: { color: 'rgba(120,160,200,0.12)' } },
+        },
+      },
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [points, tickFmt]);
+  if (isLoading) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>Loading…</div>;
+  if (points.length < 2) return <div style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontSize: 12 }}>No data</div>;
+  return <div style={{ width: '100%', height }}><canvas ref={canvasRef} /></div>;
 }
 
 /* ─── TR069 Stat ────────────────────────────────── */
